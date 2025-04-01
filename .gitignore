@@ -1,0 +1,46 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Environment files
+.env
+backend/.env
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Build directories
+/dist
+/build
+/.next
+/.nuxt
+/.vite
+/.webpack
+
+# Dependency directories
+/.pnp
+.pnp.js
+
+# TypeScript
+*.tsbuildinfo
+
+# IDE and editor directories
+.vscode/
+.idea/
+
+# MacOS-specific
+*.swp
+
+# JetBrains specific files
+.idea/
+
+# Ignore Visual Studio Code workspace settings
+.vscode/

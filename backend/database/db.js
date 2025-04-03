@@ -4,7 +4,6 @@ require('dotenv').config({path: '../.env'});
 const isLocal = process.env.USE_LOCAL_DB === "true";
 const dbUri = isLocal ? process.env.DB_URI_LOCAL : process.env.DB_URI;
 
-console.log("DB URI:", dbUri);
 
 const client = new MongoClient(dbUri, {
     tlsAllowInvalidCertificates: true,

@@ -37,9 +37,9 @@ async function connectAndMigrate() {
         const { db } = await database.connect();
 
         console.log("Running migrations...");
-        await up(db, client);
+        let res = await up(db, client);
         
-        console.log("Migrations applied!");
+        console.log("Migrations applied!" + res);
     } catch (error) {
         console.error("Error during migration:", error);
     }

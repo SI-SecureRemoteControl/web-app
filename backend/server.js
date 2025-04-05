@@ -74,7 +74,7 @@ app.post('/devices/deregistration/:id', async (req, res) => {
     }
     const result = await db.collection('devices').updateOne(
       { deviceId: id },
-      { $set: { deregistrationKey, status: 'pending' } }
+      { $set: { deregistrationKey } }
     );
     if (result.matchedCount === 0) {
       return res.status(500).json({ error: 'Failed to update device.' });

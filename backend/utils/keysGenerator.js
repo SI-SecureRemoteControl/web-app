@@ -1,14 +1,15 @@
 const crypto = require('crypto');
 
-function generateRegistrationKey() {
-  return crypto.randomBytes(50).toString('hex').slice(0, 10).toUpperCase();
-}
-
-function generateDeregistrationKey() {
-  return crypto.randomBytes(50).toString('hex').slice(-10).toUpperCase();
+function generateKey(type = 'registration') {
+  let digitPool = '';
+  while (digitPool.length < 20) {
+    const randomByte = crypto.randomBytes(1)[0];
+    const digit = randomByte % 10;
+    digitPool += digit.toString();
+  }
+  return type === 'registration' ? digitPool.slice(0, 10) : digitPool.slice(-10);
 }
 
 module.exports = {
-  generateRegistrationKey,
-  generateDeregistrationKey
+  generateKey
 };

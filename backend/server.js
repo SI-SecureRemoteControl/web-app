@@ -1,11 +1,8 @@
 const express = require('express');
-const dotenv = require('dotenv');
+const dotenv = require('dotenv').config();
 const bcrypt = require('bcrypt');
 const { generateKey } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
-
-
-dotenv.config(); 
 
 const app = express();
 const port = process.env.PORT || 5000;

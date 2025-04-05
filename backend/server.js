@@ -1,7 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const bcrypt = require('bcrypt');
-const { generateRegistrationKey, generateDeregistrationKey } = require('./utils/keysGenerator');
+const { generateKey } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 
 
@@ -48,11 +48,11 @@ app.post('/devices/registration', async (req, res) => {
   if (!deviceName) {
     return res.status(400).json({ error: 'Device name is required.' });
   }
-  const registrationKey = generateRegistrationKey();
+  const registrationKey = generateKey('registration');
 
   const newDevice = {
     name: deviceName,
-    registrationKey,
+    registrationKey: registrationKey,
     status: 'pending'
   };
   try {
@@ -66,7 +66,7 @@ app.post('/devices/registration', async (req, res) => {
 
 app.post('/devices/deregistration/:id', async (req, res) => {
   const { id } = req.params; 
-  const deregistrationKey = generateDeregistrationKey();
+  const deregistrationKey = generateKey('deregistration');
   try {
     const device = await db.collection('devices').findOne({ deviceId: id });
     if (!device) {

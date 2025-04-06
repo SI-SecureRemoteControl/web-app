@@ -11,11 +11,15 @@ function App() {
 
     return (
         <Routes>
-            <Route path="/login" element={token ? <Navigate to="/dashboard" /> : <Login />} />
+            {/* Ako korisnik nije prijavljen, preusmerava na /login */}
+            <Route path="/" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+            <Route path="/login" element={<Login />} />
+            {/* Zaštićene rute */}
             <Route element={<ProtectedRoute />}>
-                <Route index element={<DeviceDashboard />} />
                 <Route path="/dashboard" element={<DeviceDashboard />} />
             </Route>
+            {/* Catch-all za nepostojeće rute */}
+            <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
 }

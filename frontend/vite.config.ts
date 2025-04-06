@@ -4,17 +4,13 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: '/',
   plugins: [react(), tailwindcss()],
   build: {
     rollupOptions:{
       output:{
         manualChunks:undefined,
       },
-    },
-  },
-  server:{
-    fs:{
-      strict: false,
     },
   },
 });

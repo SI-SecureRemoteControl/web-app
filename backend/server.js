@@ -199,7 +199,6 @@ connectDB()
     .then((database) => {
       db = database;
 
-      console.log(`Connected to MongoDB: ${database.databaseName}`);
       setupChangeStream()
 
     })

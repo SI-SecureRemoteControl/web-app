@@ -128,220 +128,65 @@ app.post('/devices/deregistration/:id', async (req, res) => {
 });
 
 
-
-
-app.get('/api/devices/status/:status', async (req, res) => {
-  try {
-    const { status } = req.params;
-    const { page = 1, pageSize = 10 } = req.query;
-
-    if (!['active', 'inactive', 'pending'].includes(status)) {
-      return res.status(400).json({ success: false, error: 'Invalid status value' });
-    }
-
-    const skip = (page - 1) * pageSize;
-    const devices = await db.collection('devices')
-        .find({ status })
-        .skip(skip)
-        .limit(parseInt(pageSize))
-        .toArray();
-
-    const totalCount = await db.collection('devices').countDocuments({ status });
-
-    res.json({
-      success: true,
-      data: devices,
-      pagination: {
-        page: parseInt(page),
-        pageSize: parseInt(pageSize),
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize)
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching devices by status:', err);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-app.get('/api/devices/by-last-active-dmy', async (req, res) => {
-  try {
-    const {
-      startDay, startMonth, startYear,
-      endDay, endMonth, endYear,
-      page = 1,
-      pageSize = 10
-    } = req.query;
-
-
-    if (!startDay || !startMonth || !startYear) {
-      return res.status(400).json({
-        success: false,
-        error: 'startDay, startMonth, and startYear are required (e.g., startDay=5&startMonth=4&startYear=2025)'
-      });
-    }
-
-
-    const startDate = new Date(
-        `${startYear}-${startMonth.padStart(2, '0')}-${startDay.padStart(2, '0')}T00:00:00Z`
-    );
-
-    const endDate = endDay && endMonth && endYear
-        ? new Date(`${endYear}-${endMonth.padStart(2, '0')}-${endDay.padStart(2, '0')}T23:59:59Z`)
-        : new Date(startDate.getTime() + 24 * 60 * 60 * 1000); // Default: startDate + 1 day
-
-
-    console.log('Parsed dates:', { startDate, endDate });
-
-    const query = {
-      lastActiveTime: {
-        $gte: startDate,
-        $lte: endDate
-      }
-    };
-
-    const skip = (page - 1) * pageSize;
-    const devices = await db.collection('devices')
-        .find(query)
-        .sort({ lastActiveTime: -1 })
-        .skip(skip)
-        .limit(parseInt(pageSize))
-        .toArray();
-
-    const totalCount = await db.collection('devices').countDocuments(query);
-
-    res.json({
-      success: true,
-      data: devices,
-      pagination: {
-        page: parseInt(page),
-        pageSize: parseInt(pageSize),
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize)
-      }
-    });
-
-  } catch (err) {
-    console.error('Error:', err);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: err.message
-    });
-  }
-});
-
-app.get('/api/devices/by-ip/:ipAddress', async (req, res) => {
-  try {
-    const { ipAddress } = req.params;
-    const { exact = 'true', page = 1, pageSize = 10 } = req.query;
-
-    const query = {
-      ipAddress: exact === 'true'
-          ? ipAddress
-          : { $regex: ipAddress, $options: 'i' }
-    };
-
-    const skip = (page - 1) * pageSize;
-    const devices = await db.collection('devices')
-        .find(query)
-        .skip(skip)
-        .limit(parseInt(pageSize))
-        .toArray();
-
-    const totalCount = await db.collection('devices').countDocuments(query);
-
-    res.json({
-      success: true,
-      data: devices,
-      pagination: {
-        page: parseInt(page),
-        pageSize: parseInt(pageSize),
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize)
-      }
-    });
-  } catch (err) {
-    console.error('Error fetching devices by IP:', err);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      details: err.message
-    });
-  }
-});
-
-app.get('/api/devices/:id', async (req, res) => {
-  try {
-    const device = await db.collection('devices').findOne({ deviceId: req.params.id });
-    if (!device) {
-      return res.status(404).json({ success: false, error: 'Device not found' });
-    }
-    res.json({ success: true, data: device });
-  } catch (err) {
-    console.error('Error fetching device:', err);
-    res.status(500).json({ success: false, error: 'Internal server error' });
-  }
-});
-
-
-
-
-
 app.get('/api/devices', async (req, res) => {
   try {
     const {
-      page = 1,
-      pageSize = 10,
+      deviceId,
+      deviceName,
+      model,
+      osVersion,
       status,
       networkType,
-      search,
+      ipAddress,
+      lastActivityBefore,
+      lastActivityAfter,
       sortBy = 'lastActiveTime',
-      sortOrder = 'desc'
+      sortOrder = 'desc',
+      page = 1,
+      limit = 10
     } = req.query;
 
-    const skip = (page - 1) * pageSize;
     const query = {};
 
+    if (deviceId) query.deviceId = deviceId;
+    if (deviceName) query.name = deviceName;
+    if (model) query.model = model;
+    if (osVersion) query.osVersion = osVersion;
     if (status) query.status = status;
     if (networkType) query.networkType = networkType;
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { model: { $regex: search, $options: 'i' } },
-        { osVersion: { $regex: search, $options: 'i' } }
-      ];
+    if (ipAddress) query.ipAddress = ipAddress;
+
+    if (lastActivityBefore || lastActivityAfter) {
+      query.lastActiveTime = {};
+      if (lastActivityBefore) query.lastActiveTime.$lte = new Date(lastActivityBefore);
+      if (lastActivityAfter) query.lastActiveTime.$gte = new Date(lastActivityAfter);
     }
 
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-    const devices = await db.collection('devices')
-        .find(query)
-        .sort(sortOptions)
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const devicesCollection = db.collection('devices');
+
+    const devices = await devicesCollection.find(query)
+        .sort(sort)
         .skip(skip)
-        .limit(parseInt(pageSize))
+        .limit(parseInt(limit))
         .toArray();
 
-    const totalCount = await db.collection('devices').countDocuments(query);
+    const total = await devicesCollection.countDocuments(query);
 
     res.json({
-      success: true,
-      data: devices,
-      pagination: {
-        page: parseInt(page),
-        pageSize: parseInt(pageSize),
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize)
-      }
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages: Math.ceil(total / limit),
+      devices
     });
   } catch (err) {
-    console.error('Error fetching devices:', err);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
-
-
 
 
 app.get('/', (req, res) => {

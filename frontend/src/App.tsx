@@ -16,6 +16,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DeviceDashboard />} />
             </Route>
+            <Route path="/dashboard" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
         </Routes>
     );
 }

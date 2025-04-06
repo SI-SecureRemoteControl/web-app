@@ -16,7 +16,7 @@ export const DeviceStatusBadge: React.FC<DeviceStatusBadgeProps> = ({ status }) 
 
     return (
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status]}`}>
-      {status.charAt(0).toUpperCase() + status.slice(1)}
+      {status.charAt(0) + status.slice(1)}
     </span>
     );
 };

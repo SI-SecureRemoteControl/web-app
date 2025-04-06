@@ -47,9 +47,9 @@ export const DeviceFilters: React.FC<DeviceFiltersProps> = ({
                             onChange={(e) => setStatusFilter(e.target.value as DeviceStatus | 'all')}
                         >
                             <option value="all">All Status</option>
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Notregistered">Not Registered</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="pending">Pending</option>
                         </select>
                     </div>
                     <select

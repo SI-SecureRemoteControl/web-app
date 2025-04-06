@@ -6,9 +6,9 @@ interface DeviceStatusBadgeProps {
 }
 
 const statusColors = {
-    Active: 'bg-green-100 text-green-800',
-    Inactive: 'bg-yellow-100 text-yellow-800',
-    Notregistered: 'bg-red-100 text-red-800',
+    active: 'bg-green-100 text-green-800',
+    inactive: 'bg-yellow-100 text-yellow-800',
+    pending: 'bg-red-100 text-red-800',
 };
 
 export const DeviceStatusBadge: React.FC<DeviceStatusBadgeProps> = ({ status }) => {

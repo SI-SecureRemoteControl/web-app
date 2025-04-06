@@ -1,10 +1,7 @@
-// src/App.tsx
-
 import './App.css';
 import { Route, Routes } from "react-router-dom";
 import Login from "./pages/Login/Login.tsx";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute.tsx";
-import Home from "./pages/Home/Home.tsx";
 import Registration from "./pages/Registration/Registration.tsx";
 
 function App() {

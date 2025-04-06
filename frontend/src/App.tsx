@@ -20,7 +20,6 @@ function App() {
                 <Route path="/registration" element={<Registration />} />
             </Route>
             {/* Catch-all za nepostojeće rute */}
-            <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
 }

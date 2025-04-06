@@ -25,7 +25,7 @@ export default function Login() {
 
         if(res.status === 200) {
             localStorage.setItem("token", "This is a temporary login solution");
-            navigate("/dashboard");
+            navigate("/");
         } else {
             setBadLogin(true);
             setUsername('');

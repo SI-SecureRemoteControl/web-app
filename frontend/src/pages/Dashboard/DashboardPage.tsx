@@ -1,10 +1,7 @@
-import React from 'react'; // Import React itself
 import { useState, useEffect } from 'react'; // Keep state and effect hooks
-import axios from 'axios'; // Keep axios for API calls
-import { Smartphone, Wifi, Radio } from 'lucide-react'; // Keep icons
+import { Smartphone, Wifi, Radio, WifiOff } from 'lucide-react'; // Keep icons
 
-// Pretpostavka je da su ove putanje tačne u odnosu na novi fajl
-// Ako nisu, prilagodite ih:
+
 import { Device, DeviceStatus, NetworkType } from '../../components/types/device';
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
@@ -32,7 +29,6 @@ export default function DeviceDashboard() {
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
 
-    // useEffect za dohvatanje podataka ostaje ovde
     useEffect(() => {
         fetchDevices();
     }, [page, searchQuery, statusFilter, networkTypeFilter]);
@@ -59,7 +55,6 @@ export default function DeviceDashboard() {
                 params.append('networkType', networkTypeFilter);
             }
 
-            
             const url: string = import.meta.env.VITE_BASE_URL + `/api/devices?${params.toString()}`;
             const headers = new Headers({ 'Content-Type': 'application/json' });
         
@@ -104,19 +99,41 @@ export default function DeviceDashboard() {
         setIsUnregisterModalOpen(true);
     };
 
-    // getNetworkIcon funkcija ostaje ovde
     const getNetworkIcon = (type?: NetworkType) => {
         switch (type) {
             case 'wifi':
-                return <Wifi className="h-5 w-5 text-blue-500" />;
+                return <Wifi className="h-5 w-5 text-blue-500"/>;
             case 'mobileData':
-                return <Radio className="h-5 w-5 text-green-500" />;
+                return <Radio className="h-5 w-5 text-green-500"/>;
             default:
                 return null;
         }
     };
 
-    // Prikaz greške ostaje ovde
+    const EmptyState = () => (
+        <div className="text-center py-12">
+            <WifiOff className="h-16 w-16 text-gray-400 mx-auto mb-4"/>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No devices found</h3>
+            <p className="text-gray-500 mb-6">
+                {searchQuery || statusFilter !== 'all' || networkTypeFilter !== 'all'
+                    ? "No devices match your current filters. Try adjusting your search criteria."
+                    : "There are no registered devices in the system yet."}
+            </p>
+            {(searchQuery || statusFilter !== 'all' || networkTypeFilter !== 'all') && (
+                <button
+                    onClick={() => {
+                        setSearchQuery('');
+                        setStatusFilter('all');
+                        setNetworkTypeFilter('all');
+                    }}
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                    Clear all filters
+                </button>
+            )}
+        </div>
+    );
+
     if (error) {
         return (
             <div className="min-h-screen bg-gray-100 p-6 flex items-center justify-center">
@@ -127,7 +144,6 @@ export default function DeviceDashboard() {
         );
     }
 
-    // Glavni JSX za prikaz dashboard-a ostaje ovde
     return (
         <div className="min-h-screen bg-transparent p-6">
             <div className="max-w-7xl mx-auto">
@@ -150,49 +166,56 @@ export default function DeviceDashboard() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP
+                                    Address
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last
+                                    Active
+                                </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center">
+                                    <td colSpan={6} className="px-6 py-4">
                                         <div className="flex items-center justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                            <div
+                                                className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                                         </div>
                                     </td>
                                 </tr>
                             ) : devices.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                                        No devices found
+                                    <td colSpan={6} className="px-6 py-4">
+                                        <EmptyState/>
                                     </td>
                                 </tr>
                             ) : (
                             
                                 devices.map((device) => (
-                                    // Proverite da li 'device.id' postoji i da je jedinstven. Ako koristite MongoDB _id, možda je device._id
+                                                                        // Proverite da li 'device.id' postoji i da je jedinstven. Ako koristite MongoDB _id, možda je device._id
                                     <tr key={device.deviceId}>
+
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <Smartphone className="h-5 w-5 text-gray-400 mr-2" />
+                                                <Smartphone className="h-5 w-5 text-gray-400 mr-2"/>
                                                 <div>
-                                                    <div className="text-sm font-medium text-gray-900">{device.name}</div>
+                                                    <div
+                                                        className="text-sm font-medium text-gray-900">{device.name}</div>
                                                     <div className="text-sm text-gray-500">{device.model}</div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <DeviceStatusBadge status={device.status} />
+                                            <DeviceStatusBadge status={device.status}/>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 {getNetworkIcon(device.networkType)}
                                                 <span className="ml-2 text-sm text-gray-500">
-                                                    {device.networkType ? device.networkType === 'mobileData' ? 'Mobile Data' : 'WiFi' : '-'}
-                                                </span>
+                            {device.networkType ? device.networkType === 'mobileData' ? 'Mobile Data' : 'WiFi' : '-'}
+                          </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -221,7 +244,7 @@ export default function DeviceDashboard() {
                     </div>
                 </div>
 
-                {/* Pagination ostaje ovde */}
+                {/* Pagination */}
                 {totalPages > 1 && (
                     <div className="mt-4 flex justify-center">
                         <nav className="flex items-center gap-2">
@@ -233,8 +256,8 @@ export default function DeviceDashboard() {
                                 Previous
                             </button>
                             <span className="px-3 py-1">
-                                Page {page} of {totalPages}
-                            </span>
+                Page {page} of {totalPages}
+              </span>
                             <button
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}

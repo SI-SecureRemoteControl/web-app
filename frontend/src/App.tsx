@@ -12,6 +12,7 @@ function App() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+            <Route path="/dashboard" element ={<DeviceDashboard />} />
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DeviceDashboard />} />
             </Route>

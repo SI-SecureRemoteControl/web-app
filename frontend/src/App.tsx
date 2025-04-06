@@ -17,7 +17,7 @@ function App() {
             {/* Zaštićene rute */}
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DeviceDashboard />} />
-                <Route path="/registration" element={<Registration />} />
+                <Route path="/devices/registration" element={<Registration />} />
             </Route>
             {/* Catch-all za nepostojeće rute */}
         </Routes>

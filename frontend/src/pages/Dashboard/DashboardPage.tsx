@@ -32,9 +32,22 @@ export default function DeviceDashboard() {
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
 
     const navigate = useNavigate();
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            const url = import.meta.env.VITE_BASE_URL + '/logout';
+            await fetch(url, { method: 'POST', credentials: 'include' }); 
+        } catch (error) {
+            console.error('Error during logout:', error);
+        } finally {
+            localStorage.removeItem('token');
+    
+            document.cookie.split(";").forEach((cookie) => {
+                const [name] = cookie.split("=");
+                document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+            });
+    
+            navigate('/login');
+        }
     };
 
     useEffect(() => {

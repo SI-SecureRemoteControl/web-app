@@ -199,8 +199,9 @@ connectDB()
     .then((database) => {
       db = database;
 
-      setupChangeStream()
-
+      if (process.env.USE_LOCAL_DB !== "true") {
+        setupChangeStream();
+      }
     })
     .catch((err) => {
       process.exit(1);

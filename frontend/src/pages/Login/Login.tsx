@@ -1,5 +1,5 @@
 import ButtonPrimary from "../../components/ButtonPrimary/ButtonPrimary.tsx";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 
 interface LoginRequest {
@@ -12,6 +12,12 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [badLogin, setBadLogin] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if(localStorage.getItem("token")) {
+            navigate("/");
+        }
+    })
 
     async function handleSubmit() {
         const req: LoginRequest = {username: username, password: password};

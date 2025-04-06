@@ -8,13 +8,13 @@ import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
 
 // Definicija interfejsa ostaje ista
-interface DeviceResponse {
+/*interface DeviceResponse {
     page: number;
     limit: number;
     total: number;
     totalPages: number;
     devices: Device[];
-}
+}*/
 
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);

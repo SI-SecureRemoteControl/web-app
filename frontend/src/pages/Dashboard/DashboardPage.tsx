@@ -6,6 +6,8 @@ import { Device, DeviceStatus, NetworkType } from '../../components/types/device
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
+import { useNavigate } from 'react-router-dom'; 
+
 
 // Definicija interfejsa ostaje ista
 /*interface DeviceResponse {
@@ -28,6 +30,12 @@ export default function DeviceDashboard() {
     const [networkTypeFilter, setNetworkTypeFilter] = useState<NetworkType | 'all'>('all');
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
+
+    const navigate = useNavigate();
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        navigate('/login');
+    };
 
     useEffect(() => {
         fetchDevices();
@@ -146,9 +154,17 @@ export default function DeviceDashboard() {
 
     return (
         <div className="min-h-screen bg-transparent p-6">
-            <div className="max-w-7xl mx-auto">
-                <h1 className="text-3xl font-bold text-gray-900 mb-8">Device Dashboard</h1>
-
+        <div className="max-w-7xl mx-auto">
+            {/* Dodajemo flex container za naslov i dugme za logout */}
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900">Device Dashboard</h1>
+                <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                    Logout
+                </button>
+            </div>
                 <DeviceFilters
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}

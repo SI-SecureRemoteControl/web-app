@@ -2,8 +2,8 @@ import './App.css';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Login from './pages/Login/Login.tsx';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute.tsx';
-//import Home from './pages/Home/Home.tsx';
 import DeviceDashboard from './pages/Dashboard/DashboardPage.tsx';
+import Registration from "./pages/Registration/Registration.tsx";
 
 function App() {
 
@@ -17,6 +17,7 @@ function App() {
             {/* Zaštićene rute */}
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<DeviceDashboard />} />
+                <Route path="/registration" element={<Registration />} />
             </Route>
             {/* Catch-all za nepostojeće rute */}
             <Route path="*" element={<Navigate to="/" />} />

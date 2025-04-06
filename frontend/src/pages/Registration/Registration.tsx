@@ -112,11 +112,11 @@ const Registration = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Device ID</label>
+                                    <label className="block text-sm font-medium text-gray-700">Device Name</label>
                                     <input
                                         type="text"
                                         readOnly
-                                        value={registrationData.deviceId}
+                                        value={deviceName}
                                         className="mt-1 block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-gray-500 shadow-sm"
                                     />
                                 </div>

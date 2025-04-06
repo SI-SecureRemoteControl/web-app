@@ -12,10 +12,8 @@ function App() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
-                <Route path="/registration" element={<Registration />} />
-            </Route>
-            <Route element={<ProtectedRoute />}>
                 <Route path="/" element={<Registration />} />
+                <Route path="/registration" element={<Registration />} />
             </Route>
         </Routes>
     );

@@ -10,10 +10,9 @@ function App() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
+                <Route path="/" element={<Home />} />
             </Route>
             <Route path="/dashboard" element={<DeviceDashboard />} />
-
         </Routes>
     );
 }

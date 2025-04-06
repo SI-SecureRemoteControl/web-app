@@ -2,7 +2,7 @@ export type DeviceStatus = 'active' | 'inactive' | 'pending';
 export type NetworkType = 'wifi' | 'mobileData';
 
 export interface Device {
-    id?: string;
+    deviceId?: string;
     name: string;
     model?: string;
     os?: string;
@@ -10,6 +10,6 @@ export interface Device {
     status?: DeviceStatus;
     networkType?: NetworkType;
     ipAddress?: string;
-    lastActive?: string;
+    lastActiveTime?: string;
     deregistrationKey?: string;
 }

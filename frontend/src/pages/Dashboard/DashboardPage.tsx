@@ -59,21 +59,48 @@ export default function DeviceDashboard() {
                 params.append('networkType', networkTypeFilter);
             }
 
-            // Vodite računa da je ova putanja dostupna iz vašeg okruženja
-            const response = await axios.get<DeviceResponse>(`/api/devices?${params.toString()}`);
-            setDevices(response.data.devices);
-            setTotalPages(response.data.totalPages);
+            
+            const url: string = import.meta.env.VITE_BASE_URL + `/api/devices?${params.toString()}`;
+            const headers = new Headers({ 'Content-Type': 'application/json' });
+        
+            const res: Response = await fetch(url, {
+                method: 'GET',
+                headers: headers
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json();
+            console.log(data);
+            setDevices(data.devices);
+            setTotalPages(data.totalPages);
+        
         } catch (err) {
             setError('Failed to fetch devices. Please try again later.');
             console.error('Error fetching devices:', err);
         } finally {
+            console.log(devices);
             setLoading(false);
         }
     };
 
     // handleUnregister funkcija ostaje ovde
-    const handleUnregister = (device: Device) => {
+    const handleUnregister = async (device: Device) => {
         setSelectedDevice(device);
+        const url: string = import.meta.env.VITE_BASE_URL + `/devices/deregistration/${device.deviceId}`;
+            const headers = new Headers({ 'Content-Type': 'application/json' });
+        
+            const res: Response = await fetch(url, {
+                method: 'POST',
+                headers: headers
+            });
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json();
+            device.deregistrationKey=data.deregistrationKey;
         setIsUnregisterModalOpen(true);
     };
 
@@ -102,7 +129,7 @@ export default function DeviceDashboard() {
 
     // Glavni JSX za prikaz dashboard-a ostaje ovde
     return (
-        <div className="min-h-screen bg-gray-100 p-6">
+        <div className="min-h-screen bg-transparent p-6">
             <div className="max-w-7xl mx-auto">
                 <h1 className="text-3xl font-bold text-gray-900 mb-8">Device Dashboard</h1>
 
@@ -144,9 +171,10 @@ export default function DeviceDashboard() {
                                     </td>
                                 </tr>
                             ) : (
+                            
                                 devices.map((device) => (
                                     // Proverite da li 'device.id' postoji i da je jedinstven. Ako koristite MongoDB _id, možda je device._id
-                                    <tr key={device.id || device._id}>
+                                    <tr key={device.deviceId}>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <Smartphone className="h-5 w-5 text-gray-400 mr-2" />
@@ -171,15 +199,19 @@ export default function DeviceDashboard() {
                                             {device.ipAddress || '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {device.lastActive ? new Date(device.lastActive).toLocaleString() : '-'}
+                                            {device.lastActiveTime ? new Date(device.lastActiveTime).toLocaleString() : '-'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button
-                                                onClick={() => handleUnregister(device)}
-                                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                        <button
+                                            onClick={() => handleUnregister(device)}
+                                            disabled={device.status !== 'active'}
+                                            className={`px-4 py-2 rounded-lg transition-colors font-medium
+                                                ${device.status === 'active'
+                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                                             >
-                                                Unregister
-                                            </button>
+                                            Unregister
+                                        </button>
                                         </td>
                                     </tr>
                                 ))

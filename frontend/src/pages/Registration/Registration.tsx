@@ -19,7 +19,8 @@ const Registration = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('/api/devices/register', {
+            const url: string = import.meta.env.VITE_BASE_URL + '/devices/registration';
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

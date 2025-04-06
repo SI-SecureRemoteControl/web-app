@@ -18,7 +18,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-let db, client;
+let db;
 
 
 const server = app.listen(port, () => {
@@ -149,7 +149,7 @@ app.get('/api/devices', async (req, res) => {
     const query = {};
 
     if (deviceId) query.deviceId = deviceId;
-    if (deviceName) query.name = deviceName;
+    if (deviceName) query.name = { $regex: deviceName, $options: 'i' };
     if (model) query.model = model;
     if (osVersion) query.osVersion = osVersion;
     if (status) query.status = status;
@@ -200,6 +200,7 @@ connectDB()
       db = database;
 
       console.log(`Connected to MongoDB: ${database.databaseName}`);
+      setupChangeStream()
 
     })
     .catch((err) => {

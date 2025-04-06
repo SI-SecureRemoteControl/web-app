@@ -6,7 +6,7 @@ import { Device, DeviceStatus, NetworkType } from '../../components/types/device
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 
 
 // Definicija interfejsa ostaje ista
@@ -65,7 +65,7 @@ export default function DeviceDashboard() {
 
             const url: string = import.meta.env.VITE_BASE_URL + `/api/devices?${params.toString()}`;
             const headers = new Headers({ 'Content-Type': 'application/json' });
-        
+
             const res: Response = await fetch(url, {
                 method: 'GET',
                 headers: headers
@@ -78,7 +78,7 @@ export default function DeviceDashboard() {
             console.log(data);
             setDevices(data.devices);
             setTotalPages(data.totalPages);
-        
+
         } catch (err) {
             setError('Failed to fetch devices. Please try again later.');
             console.error('Error fetching devices:', err);
@@ -92,27 +92,27 @@ export default function DeviceDashboard() {
     const handleUnregister = async (device: Device) => {
         setSelectedDevice(device);
         const url: string = import.meta.env.VITE_BASE_URL + `/devices/deregistration/${device.deviceId}`;
-            const headers = new Headers({ 'Content-Type': 'application/json' });
-        
-            const res: Response = await fetch(url, {
-                method: 'POST',
-                headers: headers
-            });
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
+        const headers = new Headers({ 'Content-Type': 'application/json' });
 
-            const data = await res.json();
-            device.deregistrationKey=data.deregistrationKey;
+        const res: Response = await fetch(url, {
+            method: 'POST',
+            headers: headers
+        });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const data = await res.json();
+        device.deregistrationKey = data.deregistrationKey;
         setIsUnregisterModalOpen(true);
     };
 
     const getNetworkIcon = (type?: NetworkType) => {
         switch (type) {
             case 'wifi':
-                return <Wifi className="h-5 w-5 text-blue-500"/>;
+                return <Wifi className="h-5 w-5 text-blue-500" />;
             case 'mobileData':
-                return <Radio className="h-5 w-5 text-green-500"/>;
+                return <Radio className="h-5 w-5 text-green-500" />;
             default:
                 return null;
         }
@@ -120,7 +120,7 @@ export default function DeviceDashboard() {
 
     const EmptyState = () => (
         <div className="text-center py-12">
-            <WifiOff className="h-16 w-16 text-gray-400 mx-auto mb-4"/>
+            <WifiOff className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No devices found</h3>
             <p className="text-gray-500 mb-6">
                 {searchQuery || statusFilter !== 'all' || networkTypeFilter !== 'all'
@@ -154,17 +154,17 @@ export default function DeviceDashboard() {
 
     return (
         <div className="min-h-screen bg-transparent p-6">
-        <div className="max-w-7xl mx-auto">
-            {/* Dodajemo flex container za naslov i dugme za logout */}
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Device Dashboard</h1>
-                <button
-                    onClick={handleLogout}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                    Logout
-                </button>
-            </div>
+            <div className="max-w-7xl mx-auto">
+                {/* Dodajemo flex container za naslov i dugme za logout */}
+                <div className="flex justify-between items-center mb-8">
+                    <h1 className="text-3xl font-bold text-gray-900">Device Dashboard</h1>
+                    <button
+                        onClick={handleLogout}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    >
+                        Logout
+                    </button>
+                </div>
                 <DeviceFilters
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
@@ -178,83 +178,83 @@ export default function DeviceDashboard() {
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP
-                                    Address
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last
-                                    Active
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Network</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP
+                                        Address
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last
+                                        Active
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-4">
-                                        <div className="flex items-center justify-center">
-                                            <div
-                                                className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : devices.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="px-6 py-4">
-                                        <EmptyState/>
-                                    </td>
-                                </tr>
-                            ) : (
-                            
-                                devices.map((device) => (
-                                                                        // Proverite da li 'device.id' postoji i da je jedinstven. Ako koristite MongoDB _id, možda je device._id
-                                    <tr key={device.deviceId}>
-
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                <Smartphone className="h-5 w-5 text-gray-400 mr-2"/>
-                                                <div>
-                                                    <div
-                                                        className="text-sm font-medium text-gray-900">{device.name}</div>
-                                                    <div className="text-sm text-gray-500">{device.model}</div>
-                                                </div>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-4">
+                                            <div className="flex items-center justify-center">
+                                                <div
+                                                    className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <DeviceStatusBadge status={device.status}/>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center">
-                                                {getNetworkIcon(device.networkType)}
-                                                <span className="ml-2 text-sm text-gray-500">
-                            {device.networkType ? device.networkType === 'mobileData' ? 'Mobile Data' : 'WiFi' : '-'}
-                          </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {device.ipAddress || '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {device.lastActiveTime ? new Date(device.lastActiveTime).toLocaleString() : '-'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => handleUnregister(device)}
-                                            disabled={device.status !== 'active'}
-                                            className={`px-4 py-2 rounded-lg transition-colors font-medium
-                                                ${device.status === 'active'
-                                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                                            >
-                                            Unregister
-                                        </button>
                                         </td>
                                     </tr>
-                                ))
-                            )}
+                                ) : devices.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-4">
+                                            <EmptyState />
+                                        </td>
+                                    </tr>
+                                ) : (
+
+                                    devices.map((device) => (
+                                        // Proverite da li 'device.id' postoji i da je jedinstven. Ako koristite MongoDB _id, možda je device._id
+                                        <tr key={device.deviceId}>
+
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <Smartphone className="h-5 w-5 text-gray-400 mr-2" />
+                                                    <div>
+                                                        <div
+                                                            className="text-sm font-medium text-gray-900">{device.name}</div>
+                                                        <div className="text-sm text-gray-500">{device.model}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <DeviceStatusBadge status={device.status} />
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    {getNetworkIcon(device.networkType)}
+                                                    <span className="ml-2 text-sm text-gray-500">
+                                                        {device.networkType ? device.networkType === 'mobileData' ? 'Mobile Data' : 'WiFi' : '-'}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {device.ipAddress || '-'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {device.lastActiveTime ? new Date(device.lastActiveTime).toLocaleString() : '-'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button
+                                                    onClick={() => handleUnregister(device)}
+                                                    disabled={device.status !== 'active' && device.status !== 'inactive'} 
+                                                    className={`px-4 py-2 rounded-lg transition-colors font-medium
+                                            ${device.status === 'active' || device.status === 'inactive'
+                                                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                                                >
+                                                    Unregister
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -272,8 +272,8 @@ export default function DeviceDashboard() {
                                 Previous
                             </button>
                             <span className="px-3 py-1">
-                Page {page} of {totalPages}
-              </span>
+                                Page {page} of {totalPages}
+                            </span>
                             <button
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}

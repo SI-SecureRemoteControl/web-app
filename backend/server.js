@@ -9,14 +9,14 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 
-const allowedOrigins = [
+const allowedWsOrigins = [
   'http://localhost:5173',
   'https://web-app-1-e9p7.onrender.com'
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedWsOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS: ' + origin));
@@ -36,9 +36,21 @@ let db;
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
+const wss = new WebSocket.Server({
+  server: server,
+  path: '/ws',
+  verifyClient: (info, cb) => {
+    const origin = info.origin;
+    if (!origin || allowedWsOrigins.includes(origin)) {
+      cb(true);
+    } else {
+      console.warn('WebSocket connection rejected from origin:', origin);
+      cb(false, 403, 'Forbidden');
+    }
+  }
+});
 
-
-const wss = new WebSocket.Server({ server, path: '/ws' });
+//const wss = new WebSocket.Server({ server, path: '/ws' });
 
 const clients = new Set();
 

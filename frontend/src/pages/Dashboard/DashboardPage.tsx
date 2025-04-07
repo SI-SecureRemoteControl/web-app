@@ -69,6 +69,7 @@ export default function DeviceDashboard() {
     
             socket.onerror = (error) => {
                 console.error('WebSocket error:', error);
+                console.log('Error message:', error);
                 setError('Connection error. Retrying...');
             };
     

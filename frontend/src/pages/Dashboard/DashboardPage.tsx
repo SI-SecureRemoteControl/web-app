@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import { Smartphone, Wifi, Radio, WifiOff } from 'lucide-react'; 
 import { Device, DeviceStatus, NetworkType } from '../../components/types/device';
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
@@ -6,6 +6,7 @@ import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
 
 export default function DeviceDashboard() {
+
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -18,48 +19,71 @@ export default function DeviceDashboard() {
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
 
-    const ws = useRef<WebSocket | null>(null);
-    useEffect(() => {
-        fetchDevices();
-        ws.current = new WebSocket(import.meta.env.VITE_BASE_URL + '/ws/devices');
-        ws.current.onopen = () => {
-            console.log('WebSocket connection established');
-        };
-
-        ws.current.onmessage = (event) => {
-            const updatedDevice: Device = JSON.parse(event.data);
-            setDevices((prevDevices) => {
-                const deviceIndex = prevDevices.findIndex((d) => d.deviceId === updatedDevice.deviceId);
-                if (deviceIndex !== -1) {
-                    // Update the existing device
-                    const updatedDevices = [...prevDevices];
-                    updatedDevices[deviceIndex] = updatedDevice;
-                    return updatedDevices;
-                } else {
-                    // Add the new device if it doesn't exist
-                    return [...prevDevices, updatedDevice];
-                }
-            });
-        };
-
-        ws.current.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-        ws.current.onclose = () => {
-            console.log('WebSocket connection closed');
-        };
-
-        return () => {
-            // Clean up WebSocket connection
-            if (ws.current) {
-                ws.current.close();
-            }
-        };
-    }, []);
-
     useEffect(() => {
         fetchDevices();
     }, [page, searchQuery, statusFilter, networkTypeFilter]);
+    
+    useEffect(() => {
+        const connectWebSocket = () => {
+            // Add fallback URL and console.log for debugging
+            const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+            console.log('Connecting to WebSocket URL:', wsUrl);
+            
+            const socket = new WebSocket(wsUrl);
+    
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                setError(null);
+            };
+    
+            socket.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('Received:', message);
+    
+                    if (message.type === 'DEVICE_UPDATE') {
+                        const updatedDevice = message.data;
+                        if (!updatedDevice || !updatedDevice.deviceId) {
+                            console.error('Invalid update data:', updatedDevice);
+                            return;
+                        }
+    
+                        setDevices(prevDevices => {
+                            const deviceIndex = prevDevices.findIndex(d => d.deviceId === updatedDevice.deviceId);
+                            if (deviceIndex !== -1) {
+                                const updatedDevices = [...prevDevices];
+                                updatedDevices[deviceIndex] = updatedDevice;
+                                return updatedDevices;
+                            }
+                            return prevDevices;
+                        });
+                    }
+                } catch (err) {
+                    console.error('Error processing WebSocket message:', err);
+                }
+            };
+    
+            socket.onclose = () => {
+                console.log('WebSocket disconnected. Attempting to reconnect...');
+                setTimeout(connectWebSocket, 5000);
+            };
+    
+            socket.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                setError('Connection error. Retrying...');
+            };
+    
+            return socket;
+        };
+    
+        const socket = connectWebSocket();
+    
+        return () => {
+            if (socket) {
+                socket.close();
+            }
+        };
+    }, []);
 
     const fetchDevices = async () => {
         try {

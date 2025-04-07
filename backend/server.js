@@ -31,6 +31,7 @@ const wss = new WebSocket.Server({ server });
 const clients = new Set();
 
 wss.on('connection', (ws) => {
+  console.log('Connected on ws');
   clients.add(ws);
   ws.on('close', () => {
     clients.delete(ws);
@@ -38,6 +39,7 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastUpdate(data) {
+  console.log('Broadcasting update:', data);
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(data));
@@ -47,16 +49,17 @@ function broadcastUpdate(data) {
 
 function setupChangeStream() {
   const devicesCollection = db.collection('devices');
-  const changeStream = devicesCollection.watch();
+  // Add fullDocument option to ensure change.fullDocument is populated
+  const changeStream = devicesCollection.watch([], { fullDocument: 'updateLookup' });
 
   changeStream.on('change', (change) => {
+    console.log('Database changed:', change);
     broadcastUpdate({
       type: 'DEVICE_UPDATE',
-      data: change,
+      data: change.fullDocument, // Should now always contain the updated document
     });
   });
 }
-
 
 
 app.post('/login', (req, res) => {

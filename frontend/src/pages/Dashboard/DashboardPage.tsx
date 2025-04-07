@@ -26,7 +26,7 @@ export default function DeviceDashboard() {
     useEffect(() => {
         const connectWebSocket = () => {
             // Add fallback URL and console.log for debugging
-            const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+            const wsUrl = import.meta.env.VITE_WS_URL;
             console.log('Connecting to WebSocket URL:', wsUrl);
             
             const socket = new WebSocket(wsUrl);

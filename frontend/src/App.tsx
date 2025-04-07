@@ -8,7 +8,7 @@ import Navbar from "./components/Navbar/Navbar.tsx"
 
 function App() {
     const location = useLocation();
-    const isAuthenticated = !!localStorage.getItem('token'); // ili tvoja metoda
+    const isAuthenticated = !!localStorage.getItem('token');
 
     const hideNavbarOnRoutes = ['/login'];
     const shouldShowNavbar = isAuthenticated && !hideNavbarOnRoutes.includes(location.pathname);

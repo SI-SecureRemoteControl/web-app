@@ -4,7 +4,6 @@ import { Device, DeviceStatus, NetworkType } from '../../components/types/device
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
-import { useNavigate } from 'react-router-dom';
 
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);

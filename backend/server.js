@@ -9,11 +9,23 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://web-app-1-e9p7.onrender.com'
+];
+
 const corsOptions = {
-  origin: 'https://web-app-1-e9p7.onrender.com',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS: ' + origin));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
@@ -47,19 +59,19 @@ function broadcastUpdate(data) {
   });
 }
 
+
 function setupChangeStream() {
   const devicesCollection = db.collection('devices');
-  // Add fullDocument option to ensure change.fullDocument is populated
-  const changeStream = devicesCollection.watch([], { fullDocument: 'updateLookup' });
+  const changeStream = devicesCollection.watch();
 
   changeStream.on('change', (change) => {
-    console.log('Database changed:', change);
     broadcastUpdate({
       type: 'DEVICE_UPDATE',
-      data: change.fullDocument, // Should now always contain the updated document
+      data: change,
     });
   });
 }
+
 
 
 app.post('/login', (req, res) => {

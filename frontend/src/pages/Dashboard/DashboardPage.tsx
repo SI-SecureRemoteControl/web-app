@@ -1,22 +1,10 @@
-import { useState, useEffect } from 'react'; // Keep state and effect hooks
-import { Smartphone, Wifi, Radio, WifiOff } from 'lucide-react'; // Keep icons
-
-
+import { useState, useEffect } from 'react'; 
+import { Smartphone, Wifi, Radio, WifiOff } from 'lucide-react'; 
 import { Device, DeviceStatus, NetworkType } from '../../components/types/device';
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
 import { useNavigate } from 'react-router-dom';
-
-
-// Definicija interfejsa ostaje ista
-/*interface DeviceResponse {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    devices: Device[];
-}*/
 
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);
@@ -30,12 +18,6 @@ export default function DeviceDashboard() {
     const [networkTypeFilter, setNetworkTypeFilter] = useState<NetworkType | 'all'>('all');
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
-
-    const navigate = useNavigate();
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        navigate('/login');
-    };
 
     useEffect(() => {
         fetchDevices();

@@ -4,7 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute.tsx';
 import DeviceDashboard from './pages/Dashboard/DashboardPage.tsx';
 import Registration from "./pages/Registration/Registration.tsx";
 import Home from "./pages/Home/Home.tsx";
-import Navbar from "./components/Navbar/navbar.tsx"
+import Navbar from "./components/Navbar/Navbar.tsx"
 
 function App() {
     const location = useLocation();

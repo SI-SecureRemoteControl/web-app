@@ -10,9 +10,9 @@ const port = process.env.PORT || 5000;
 const cors = require("cors");
 
 const corsOptions = {
-  origin: '*',
+  origin: 'https://web-app-1-e9p7.onrender.com',
   credentials: true,
-  optionSuccessStatus: 200,
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
@@ -26,7 +26,7 @@ const server = app.listen(port, () => {
 });
 
 
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ server, path: '/ws' });
 
 const clients = new Set();
 

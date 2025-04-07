@@ -19,12 +19,17 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 let db;
+const privateKey = fs.readFileSync('selfsigned.key', 'utf8');
+const certificate = fs.readFileSync('selfsigned.crt', 'utf8');
 
+const credentials = { key: privateKey, cert: certificate };
 
-const server = app.listen(port, () => {
+const server = https.createServer(credentials, app);
+
+/*const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-
+*/
 
 const wss = new WebSocket.Server({ server });
 

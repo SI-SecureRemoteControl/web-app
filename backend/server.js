@@ -4,8 +4,7 @@ const bcrypt = require('bcrypt');
 const { generateKey } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
-const https = require('https');
-const fs = require('fs');
+
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
@@ -20,17 +19,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 let db;
-const privateKey = fs.readFileSync('selfsigned.key', 'utf8');
-const certificate = fs.readFileSync('selfsigned.crt', 'utf8');
 
-const credentials = { key: privateKey, cert: certificate };
 
-const server = https.createServer(credentials, app);
-
-/*const server = app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
-*/
+
 
 const wss = new WebSocket.Server({ server });
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect, useRef } from 'react'; 
 import { Smartphone, Wifi, Radio, WifiOff } from 'lucide-react'; 
 import { Device, DeviceStatus, NetworkType } from '../../components/types/device';
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
@@ -17,6 +17,45 @@ export default function DeviceDashboard() {
     const [networkTypeFilter, setNetworkTypeFilter] = useState<NetworkType | 'all'>('all');
     const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
     const [isUnregisterModalOpen, setIsUnregisterModalOpen] = useState(false);
+
+    const ws = useRef<WebSocket | null>(null);
+    useEffect(() => {
+        fetchDevices();
+        ws.current = new WebSocket(import.meta.env.VITE_BASE_URL + '/ws/devices');
+        ws.current.onopen = () => {
+            console.log('WebSocket connection established');
+        };
+
+        ws.current.onmessage = (event) => {
+            const updatedDevice: Device = JSON.parse(event.data);
+            setDevices((prevDevices) => {
+                const deviceIndex = prevDevices.findIndex((d) => d.deviceId === updatedDevice.deviceId);
+                if (deviceIndex !== -1) {
+                    // Update the existing device
+                    const updatedDevices = [...prevDevices];
+                    updatedDevices[deviceIndex] = updatedDevice;
+                    return updatedDevices;
+                } else {
+                    // Add the new device if it doesn't exist
+                    return [...prevDevices, updatedDevice];
+                }
+            });
+        };
+
+        ws.current.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+        ws.current.onclose = () => {
+            console.log('WebSocket connection closed');
+        };
+
+        return () => {
+            // Clean up WebSocket connection
+            if (ws.current) {
+                ws.current.close();
+            }
+        };
+    }, []);
 
     useEffect(() => {
         fetchDevices();

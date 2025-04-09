@@ -4,6 +4,7 @@ import { Device, DeviceStatus, NetworkType } from '../../components/types/device
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
+import { websocketService } from '../../services/webSocketService';
 
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);
@@ -21,6 +22,30 @@ export default function DeviceDashboard() {
     useEffect(() => {
         fetchDevices();
     }, [page, searchQuery, statusFilter, networkTypeFilter]);
+
+    useEffect(() => {
+        const handleWebSocketMessage = (data: any) => {
+           console.log("Message received in component:", data);
+           if (data.change) { 
+              const change = data.change;
+               if (change.operationType === 'update') {
+                   setDevices(prev => prev.map(d => d.deviceId === change.documentKey._id ? change.fullDocument : d)); 
+               } else if (change.operationType === 'insert') {
+                   setDevices(prev => [change.fullDocument, ...prev]);
+               } else if (change.operationType === 'delete') {
+                    setDevices(prev => prev.filter(d => d.deviceId !== change.documentKey._id)); 
+               }
+           } 
+        };
+      
+        websocketService.connect();
+        websocketService.addMessageListener(handleWebSocketMessage);
+      
+        return () => {
+          console.log("DeviceDashboard unmounting: Removing message listener.");
+          websocketService.removeMessageListener(handleWebSocketMessage);
+        };
+      }, []);
 
     const fetchDevices = async () => {
         try {
@@ -51,6 +76,7 @@ export default function DeviceDashboard() {
                 method: 'GET',
                 headers: headers
             });
+
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
@@ -61,6 +87,7 @@ export default function DeviceDashboard() {
             setTotalPages(data.totalPages);
 
         } catch (err) {
+
             setError('Failed to fetch devices. Please try again later.');
             console.error('Error fetching devices:', err);
         } finally {

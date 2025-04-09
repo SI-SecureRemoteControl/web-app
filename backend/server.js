@@ -32,12 +32,14 @@ const clients = new Set();
 
 wss.on('connection', (ws) => {
   clients.add(ws);
+  console.log("clients are", clients);
   ws.on('close', () => {
     clients.delete(ws);
   });
 });
 
 function broadcastUpdate(data) {
+  
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(data));
@@ -50,9 +52,9 @@ function setupChangeStream() {
   const changeStream = devicesCollection.watch();
 
   changeStream.on('change', (change) => {
+    console.log(change);
     broadcastUpdate({
-      type: 'DEVICE_UPDATE',
-      data: change,
+      change,
     });
   });
 }

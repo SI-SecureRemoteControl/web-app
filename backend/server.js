@@ -38,6 +38,7 @@ wss.on('connection', (ws) => {
 });
 
 function broadcastUpdate(data) {
+  
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(data));
@@ -51,8 +52,7 @@ function setupChangeStream() {
 
   changeStream.on('change', (change) => {
     broadcastUpdate({
-      type: 'DEVICE_UPDATE',
-      data: change,
+      change,
     });
   });
 }

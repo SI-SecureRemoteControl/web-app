@@ -4,6 +4,8 @@ import { Device, DeviceStatus, NetworkType } from '../../components/types/device
 import { DeviceStatusBadge } from '../../components/Devices/DeviceStatusBadge';
 import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
+import { websocketService } from '../../services/webSocketService';
+
 
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);
@@ -21,6 +23,47 @@ export default function DeviceDashboard() {
     useEffect(() => {
         fetchDevices();
     }, [page, searchQuery, statusFilter, networkTypeFilter]);
+
+    useEffect(() => {
+        const handleWebSocketMessage = (data: any) => {
+           if (data.change) { 
+              const change = data.change;
+              if (change.operationType === 'update') {
+                if (change.documentKey?._id && change.updateDescription?.updatedFields) {
+                    const updatedFields = change.updateDescription.updatedFields;
+                    const documentId = change.documentKey._id; 
+                        
+                    setDevices(prev =>
+                        prev.map(device => {
+                            if (device._id === documentId.toString()) {
+                                const updatedDevice = {
+                                    ...device,         
+                                    ...updatedFields
+                                };
+                                return updatedDevice; 
+                            } else {
+                                return device;
+                            }
+                        })
+                    );
+                } else {
+                    console.warn("Update event received, but documentKey._id or updateDescription.updatedFields is missing:", change);
+                }
+            } else if (change.operationType === 'insert') {
+                   setDevices(prev => [change.fullDocument, ...prev]);
+               } else if (change.operationType === 'delete') {
+                    setDevices(prev => prev.filter(d => d._id !== change.documentKey._id)); 
+               }
+           } 
+        };
+      
+        websocketService.connect();
+        websocketService.addMessageListener(handleWebSocketMessage);
+      
+        return () => {
+          websocketService.removeMessageListener(handleWebSocketMessage);
+        };
+      }, []);
 
     const fetchDevices = async () => {
         try {
@@ -51,25 +94,24 @@ export default function DeviceDashboard() {
                 method: 'GET',
                 headers: headers
             });
+
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
 
             const data = await res.json();
-            console.log(data);
             setDevices(data.devices);
             setTotalPages(data.totalPages);
 
         } catch (err) {
+
             setError('Failed to fetch devices. Please try again later.');
             console.error('Error fetching devices:', err);
         } finally {
-            console.log(devices);
             setLoading(false);
         }
     };
 
-    // handleUnregister funkcija ostaje ovde
     const handleUnregister = async (device: Device) => {
         setSelectedDevice(device);
         const url: string = import.meta.env.VITE_BASE_URL + `/devices/deregistration/${device.deviceId}`;

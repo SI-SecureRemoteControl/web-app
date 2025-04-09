@@ -26,25 +26,20 @@ export default function DeviceDashboard() {
 
     useEffect(() => {
         const handleWebSocketMessage = (data: any) => {
-           console.log("Message received in component:", data);
            if (data.change) { 
               const change = data.change;
               if (change.operationType === 'update') {
                 if (change.documentKey?._id && change.updateDescription?.updatedFields) {
                     const updatedFields = change.updateDescription.updatedFields;
                     const documentId = change.documentKey._id; 
-            
-                    console.log(`Handling UPDATE for ID: ${documentId}. Changed fields:`, updatedFields);
-            
+                        
                     setDevices(prev =>
                         prev.map(device => {
                             if (device._id === documentId.toString()) {
-                                console.log(`Found device in state to update:`, device);
                                 const updatedDevice = {
                                     ...device,         
                                     ...updatedFields
                                 };
-                                console.log(`Updated device state:`, updatedDevice);
                                 return updatedDevice; 
                             } else {
                                 return device;
@@ -66,7 +61,6 @@ export default function DeviceDashboard() {
         websocketService.addMessageListener(handleWebSocketMessage);
       
         return () => {
-          console.log("DeviceDashboard unmounting: Removing message listener.");
           websocketService.removeMessageListener(handleWebSocketMessage);
         };
       }, []);
@@ -106,7 +100,6 @@ export default function DeviceDashboard() {
             }
 
             const data = await res.json();
-            console.log(data);
             setDevices(data.devices);
             setTotalPages(data.totalPages);
 
@@ -115,7 +108,6 @@ export default function DeviceDashboard() {
             setError('Failed to fetch devices. Please try again later.');
             console.error('Error fetching devices:', err);
         } finally {
-            console.log(devices);
             setLoading(false);
         }
     };

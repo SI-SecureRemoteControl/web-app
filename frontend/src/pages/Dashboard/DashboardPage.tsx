@@ -29,12 +29,35 @@ export default function DeviceDashboard() {
            console.log("Message received in component:", data);
            if (data.change) { 
               const change = data.change;
-               if (change.operationType === 'update') {
-                   setDevices(prev => prev.map(d => d.deviceId === change.documentKey._id ? change.fullDocument : d)); 
-               } else if (change.operationType === 'insert') {
+              if (change.operationType === 'update') {
+                if (change.documentKey?._id && change.updateDescription?.updatedFields) {
+                    const updatedFields = change.updateDescription.updatedFields;
+                    const documentId = change.documentKey._id; 
+            
+                    console.log(`Handling UPDATE for ID: ${documentId}. Changed fields:`, updatedFields);
+            
+                    setDevices(prev =>
+                        prev.map(device => {
+                            if (device._id === documentId.toString()) {
+                                console.log(`Found device in state to update:`, device);
+                                const updatedDevice = {
+                                    ...device,         
+                                    ...updatedFields
+                                };
+                                console.log(`Updated device state:`, updatedDevice);
+                                return updatedDevice; 
+                            } else {
+                                return device;
+                            }
+                        })
+                    );
+                } else {
+                    console.warn("Update event received, but documentKey._id or updateDescription.updatedFields is missing:", change);
+                }
+            } else if (change.operationType === 'insert') {
                    setDevices(prev => [change.fullDocument, ...prev]);
                } else if (change.operationType === 'delete') {
-                    setDevices(prev => prev.filter(d => d.deviceId !== change.documentKey._id)); 
+                    setDevices(prev => prev.filter(d => d._id !== change.documentKey._id)); 
                }
            } 
         };
@@ -97,7 +120,6 @@ export default function DeviceDashboard() {
         }
     };
 
-    // handleUnregister funkcija ostaje ovde
     const handleUnregister = async (device: Device) => {
         setSelectedDevice(device);
         const url: string = import.meta.env.VITE_BASE_URL + `/devices/deregistration/${device.deviceId}`;

@@ -6,6 +6,7 @@ import { DeviceFilters } from '../../components/Devices/DeviceFilters';
 import { UnregisterModal } from '../../components/Devices/UnregisterModal';
 import { websocketService } from '../../services/webSocketService';
 
+
 export default function DeviceDashboard() {
     const [devices, setDevices] = useState<Device[]>([]);
     const [loading, setLoading] = useState(true);

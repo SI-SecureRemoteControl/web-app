@@ -38,13 +38,6 @@ const controlSessions = new Map();
 
 const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
-wss.on('connection', (ws) => {
-  clients.add(ws);
-  ws.on('close', () => {
-    clients.delete(ws);
-  });
-});
-
 server.on('upgrade', (request, socket, head) => {
 
   const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;

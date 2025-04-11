@@ -51,14 +51,14 @@ server.on('upgrade', (request, socket, head) => {
   }
   else if(pathname === '/ws/control/frontend') {
 
-    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
-      wssDbUpdates.emit('connection', ws, request, 'frontend');
+    wssControl.handleUpgrade(request, socket, head, (ws) => {
+      wssControl.emit('connection', ws, request, 'frontend');
     });
   }
   else if(pathname === '/ws/control/comm') {
     // TODO: Add Comm Layer specific authentication/validation if needed here
-    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
-      wssDbUpdates.emit('connection', ws, request, 'comm');
+    wssControl.handleUpgrade(request, socket, head, (ws) => {
+      wssControl.emit('connection', ws, request, 'comm');
     });
   }
   else {
@@ -88,37 +88,50 @@ wssDbUpdates.on('connection', (ws, req) => {
   });
 });
 
-function broadcastUpdate(data) {
-  
-  clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
+function broadcastDbUpdate(data) {
+  const message = JSON.stringify({ type: 'db_change', ...data }); 
+  console.log(`Broadcasting DB update to ${dbUpdateClients.size} clients.`);
+  dbUpdateClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+      }
   });
 }
 
 function setupChangeStream() {
-
   if (!db) {
-    console.error("Database not connected, cannot setup change stream.");
-    return;
+      console.error("Database not connected, cannot setup change stream.");
+      return;
   }
-
   const devicesCollection = db.collection('devices');
-  const changeStream = devicesCollection.watch();
+  db.listCollections({ name: 'devices' }).next((err, collinfo) => { 
+      if (err) { console.error("Error checking for devices collection:", err); return; }
+      if (!collinfo) { console.warn("Collection 'devices' does not exist. Change stream not started."); return; }
 
-  changeStream.on('change', (change) => {
-    console.log("Database change detected:", change.operationType);
-    broadcastUpdate({
-      change,
-    });
-    changeStream.on('error', (error) => { console.error("Change stream error:", error);});
-    changeStream.on('close', () => { console.log("Change stream closed.");});
+      console.log("Setting up change stream for 'devices' collection...");
+      const changeStream = devicesCollection.watch();
+
+      changeStream.on('change', (change) => {
+          console.log("Database change detected:", change.operationType);
+          broadcastDbUpdate({
+              type: 'db_change', 
+              change: change,
+          });
+      });
+
+      changeStream.on('error', (error) => {
+          console.error("Change stream error:", error);
+          
+      });
+      changeStream.on('close', () => {
+          console.log("Change stream closed.");
+          
+      });
   });
 }
 
 // drugi server, "type" je da razlikujemo odakle dolazi konekcija
-wssDbUpdates.on('connection', (ws, req, type) => {
+wssControl.on('connection', (ws, req, type) => {
 
   console.log(`Client connected to Control WebSocket (type: ${type})`);
 
@@ -197,20 +210,6 @@ wssDbUpdates.on('connection', (ws, req, type) => {
   }
 
 });
-
-function sendToCommLayer(sessionId, data) {
-  const session = controlSessions.get(sessionId);
-  if (!session || !session.commLayerWs) {
-      console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
-      return;
-  }
-  if (session.commLayerWs.readyState === WebSocket.OPEN) {
-      console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-      session.commLayerWs.send(JSON.stringify(data));
-  } else {
-      console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
-      // cleanupSession(sessionId, 'comm_socket_closed'); // Optional: Cleanup if socket closed
-  }
 
 // samo za slanje poruka ka frontend klijentima
 function broadcastToControlFrontend(data) {
@@ -559,4 +558,4 @@ connectDB()
     .catch((err) => {
       process.exit(1);
     });
-  }
+  

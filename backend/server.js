@@ -28,8 +28,8 @@ const server = app.listen(port, () => {
 });
 
 // stari ws server za db updates prema frontu
-const wss = new WebSocket.Server({ server });
-const clients = new Set();
+const wssDbUpdates = new WebSocket.Server({ noServer: true });
+const dbUpdateClients = new Set();
 
 // novi ws server za control requestove sa androida, spomenuta mapa za cache
 const wssControl = new WebSocket.Server({ noServer: true })
@@ -45,6 +45,56 @@ wss.on('connection', (ws) => {
   });
 });
 
+server.on('upgrade', (request, socket, head) => {
+
+  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+  console.log(`WebSocket upgrade request received for path: ${pathname}`);
+
+  if(pathname === '/ws/db_updates') {
+
+    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
+      wssDbUpdates.emit('connection', ws, request);
+    });
+  }
+  else if(pathname === '/ws/control/frontend') {
+
+    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
+      wssDbUpdates.emit('connection', ws, request, 'frontend');
+    });
+  }
+  else if(pathname === '/ws/control/comm') {
+    // TODO: Add Comm Layer specific authentication/validation if needed here
+    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
+      wssDbUpdates.emit('connection', ws, request, 'comm');
+    });
+  }
+  else {
+    
+    console.log(`WebSocket connection rejected for unknown path: ${pathname}`);
+    socket.destroy();
+  }
+})
+
+// prvi server
+wssDbUpdates.on('connection', (ws, req) => {
+  console.log('Client connected for DB Updates');
+  dbUpdateClients.add(ws);
+
+  ws.on('message', (message) => {
+      console.log('Received message on DB Update socket (unexpected):', message);
+  });
+
+  ws.on('close', () => {
+      dbUpdateClients.delete(ws);
+      console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
+  });
+
+  ws.on('error', (error) => {
+      console.error('DB Update WebSocket error:', error);
+      dbUpdateClients.delete(ws); 
+  });
+});
+
 function broadcastUpdate(data) {
   
   clients.forEach(client => {
@@ -55,18 +105,320 @@ function broadcastUpdate(data) {
 }
 
 function setupChangeStream() {
+
+  if (!db) {
+    console.error("Database not connected, cannot setup change stream.");
+    return;
+  }
+
   const devicesCollection = db.collection('devices');
   const changeStream = devicesCollection.watch();
 
   changeStream.on('change', (change) => {
+    console.log("Database change detected:", change.operationType);
     broadcastUpdate({
       change,
     });
+    changeStream.on('error', (error) => { console.error("Change stream error:", error);});
+    changeStream.on('close', () => { console.log("Change stream closed.");});
   });
 }
 
+// drugi server, "type" je da razlikujemo odakle dolazi konekcija
+wssDbUpdates.on('connection', (ws, req, type) => {
 
+  console.log(`Client connected to Control WebSocket (type: ${type})`);
 
+  if(type === 'frontend') {
+
+    controlFrontendClients.add(ws);
+    console.log(`Control Frontend client added. Total control frontend clients: ${controlFrontendClients.size}`);
+
+    controlSessions.forEach((session, sessionId) => {
+      if(session.state === 'PENDING_ADMIN') {
+        ws.send(JSON.stringify({type: 'control_request', sessionId: sessionId, device: session.device}));
+      } else if(session.state === 'CONNECTED') {
+        ws.send(JSON.stringify({type:'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'connected'}));
+      }
+      //drugi stateovi ako bude trebalo
+    });
+
+    ws.on('message', (message) => {
+
+      try {
+        const parsedMessage = JSON.parse(message);
+        console.log('Received message from Control Frontend:', parsedMessage);
+        if (parsedMessage.type === 'control_response'){
+          handleFrontendControlResponse(parsedMessage);
+        } else {
+          console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
+        }
+      } 
+      catch (error) {
+        console.error('Failed to parse message from Control Frontend:', error);
+    }
+      console.log('Received message on DB Update socket (unexpected):', message);
+    });
+
+    ws.on('close', () => {
+      controlFrontendClients.delete(ws);
+      console.log(`Control Frontend client disconnected. Total clients: ${controlFrontendClients.size}`);
+    });
+
+    ws.on('error', (error) => {
+      console.error('Control Frontend WebSocket error:', error);
+      controlFrontendClients.delete(ws); 
+    });
+  } else if (type === 'comm') {
+
+    console.log('Comm Layer client connected to Control WebSocket.');
+
+    ws.on('message', (message) => {
+
+      try {
+        const parsedMessage = JSON.parse(message);
+        console.log('Received message from Comm layer:', parsedMessage);
+        if (parsedMessage.type === 'request_control') {
+          handleCommLayerControlRequest(ws, parsedMessage);
+        }
+        else if (parsedMessage.type === 'control_status') {
+         handleCommLayerStatusUpdate(parsedMessage);
+        } else {
+          console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
+        }
+      } 
+      catch (error) {
+        console.error('Failed to parse message from Control Frontend:', error);
+    }
+    });
+
+    ws.on('close', () => {
+      console.log('Comm Layer client disconnected from Control WebSocket.');
+      cleanupSessionsForSocket(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('Comm Layer WebSocket error:', error);
+      cleanupSessionsForSocket(ws); 
+    });
+  }
+
+});
+
+function sendToCommLayer(sessionId, data) {
+  const session = controlSessions.get(sessionId);
+  if (!session || !session.commLayerWs) {
+      console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
+      return;
+  }
+  if (session.commLayerWs.readyState === WebSocket.OPEN) {
+      console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
+      session.commLayerWs.send(JSON.stringify(data));
+  } else {
+      console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
+      // cleanupSession(sessionId, 'comm_socket_closed'); // Optional: Cleanup if socket closed
+  }
+
+// samo za slanje poruka ka frontend klijentima
+function broadcastToControlFrontend(data) {
+  const message = JSON.stringify(data);
+  console.log(`Broadcasting to ${controlFrontendClients.size} Control Frontend clients:`, message);
+  controlFrontendClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+          client.send(message);
+      }
+  });
+}
+
+// za slanje poruka za sesije
+function sendToCommLayer(sessionId, data) {
+  const session = controlSessions.get(sessionId);
+  if (!session || !session.commLayerWs) {
+      console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
+      return;
+  }
+  if (session.commLayerWs.readyState === WebSocket.OPEN) {
+      console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
+      session.commLayerWs.send(JSON.stringify(data));
+  } else {
+      console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
+  }
+}
+
+// logika za remote control sesije
+async function handleCommLayerControlRequest(ws, message) {
+
+  const { sessionId, deviceId } = message;
+
+  if (!sessionId || !deviceId) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
+  if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
+  if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }
+
+  try {
+      const device = await db.collection('devices').findOne({ deviceId: deviceId });
+      if (!device) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' })); return; }
+
+      const session = {
+          state: 'PENDING_ADMIN',
+          device: { _id: device._id, deviceId: device.deviceId, name: device.name, model: device.model, osVersion: device.osVersion },
+          commLayerWs: ws, 
+          requestedTime: Date.now(),
+          timeoutId: setTimeout(() => { handleAdminTimeout(sessionId); }, CONTROL_REQUEST_TIMEOUT)
+      };
+
+      controlSessions.set(sessionId, session);
+      console.log(`Control session created: ${sessionId} for device ${deviceId}. State: PENDING_ADMIN`);
+
+      if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
+      ws.activeSessionIds.add(sessionId);
+
+      broadcastToControlFrontend({
+          type: 'control_request',
+          sessionId: sessionId,
+          device: session.device
+      });
+
+       ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' })); // za debug
+
+  } catch (error) {
+      console.error(`Error handling control request ${sessionId}:`, error);
+      ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Internal server error handling request' }));
+      if (controlSessions.has(sessionId)) { clearTimeout(controlSessions.get(sessionId).timeoutId); controlSessions.delete(sessionId); } 
+  }
+}
+
+// za handleanje odgovora admina sa fronta
+function handleFrontendControlResponse(message) {
+  const { sessionId, action } = message;
+  if (!sessionId || !action) { console.error('Control Frontend response missing sessionId or action'); return; }
+  const session = controlSessions.get(sessionId);
+  if (!session || session.state !== 'PENDING_ADMIN') { console.warn(`Response for invalid/handled session ${sessionId} or wrong state ${session?.state}`); return; }
+
+  clearTimeout(session.timeoutId);
+  session.timeoutId = null;
+
+  if (action === 'accept') {
+      console.log(`Admin accepted control session: ${sessionId}`);
+      session.state = 'ADMIN_ACCEPTED';
+      controlSessions.set(sessionId, session); 
+
+      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'accepted' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation' });
+
+  } else if (action === 'reject') {
+      console.log(`Admin rejected control session: ${sessionId}`);
+      session.state = 'ADMIN_REJECTED'; 
+
+      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'rejected_by_admin' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected' });
+      cleanupSession(sessionId, 'ADMIN_REJECTED');
+
+  } else {
+      console.warn(`Unknown action '${action}' from Control Frontend for session ${sessionId}`);
+  }
+}
+
+// za handleanje timeout ako admin ne prihvati za 30 sekundi
+function handleAdminTimeout(sessionId) {
+  const session = controlSessions.get(sessionId);
+  if (session && session.state === 'PENDING_ADMIN') {
+      console.log(`Admin response timed out for session: ${sessionId}`);
+      session.state = 'TIMED_OUT'; 
+
+      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'timed_out' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out' });
+      cleanupSession(sessionId, 'TIMED_OUT');
+  }
+}
+
+// za odgovor sa strane androida
+function handleCommLayerStatusUpdate(message) {
+  const { sessionId, status, details } = message;
+  if (!sessionId || !status) { console.error('Comm Layer status update missing sessionId or status'); return; }
+  const session = controlSessions.get(sessionId);
+  if (!session) { console.warn(`Status update for unknown/expired session: ${sessionId}`); return; }
+
+  console.log(`Comm Layer status update for session ${sessionId}: ${status}`, details || '');
+  let frontendStatus = status;
+  let cleanupReason = null;
+
+  switch (status) {
+      case 'connected':
+          session.state = 'CONNECTED';
+          frontendStatus = 'connected';
+          break;
+      case 'failed':
+          session.state = 'FAILED';
+          frontendStatus = 'failed';
+          cleanupReason = 'FAILED';
+          break;
+      case 'disconnected':
+          session.state = 'DISCONNECTED';
+          frontendStatus = 'disconnected';
+          cleanupReason = 'DISCONNECTED';
+          break;
+      default:
+          console.warn(`Unknown status '${status}' from Comm Layer for session ${sessionId}`);
+          return;
+  }
+  controlSessions.set(sessionId, session); // update mapa
+
+  broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: session.device?.deviceId,
+      status: frontendStatus,
+      message: details || `Session ${sessionId} status: ${frontendStatus}.`,
+      details: details
+  });
+
+  if (cleanupReason) {
+      cleanupSession(sessionId, cleanupReason);
+  }
+}
+
+function cleanupSession(sessionId, reason) {
+  const session = controlSessions.get(sessionId);
+  if (session) {
+      console.log(`Cleaning up control session ${sessionId} (Reason: ${reason})`);
+      clearTimeout(session.timeoutId);
+      if (session.commLayerWs && session.commLayerWs.activeSessionIds) {
+          session.commLayerWs.activeSessionIds.delete(sessionId);
+      }
+      controlSessions.delete(sessionId);
+  }
+}
+
+function cleanupSessionsForSocket(ws) {
+  console.log('Cleaning up control sessions for disconnected Comm Layer socket.');
+  if (ws.activeSessionIds && ws.activeSessionIds.size > 0) {
+      ws.activeSessionIds.forEach(sessionId => {
+          const session = controlSessions.get(sessionId);
+          if (session) {
+              console.log(`Handling session ${sessionId} for disconnected socket (State: ${session.state}).`);
+              let cleanupReason = 'COMM_DISCONNECTED';
+              let frontendStatus = 'comm_disconnected';
+               if(session.state === 'CONNECTED') {
+                  frontendStatus = 'disconnected';
+                  cleanupReason = 'COMM_DISCONNECTED_WHILE_CONNECTED';
+               } else if (session.state !== 'PENDING_ADMIN' && session.state !== 'ADMIN_ACCEPTED') {
+                   cleanupSession(sessionId, 'CLEANUP_ON_COMM_CLOSE_TERMINAL');
+                  return;
+               }
+              broadcastToControlFrontend({
+                  type: 'control_status_update',
+                  sessionId: sessionId,
+                  deviceId: session.device?.deviceId,
+                  status: frontendStatus,
+                  message: `Communication channel lost for session ${sessionId}.`
+              });
+              cleanupSession(sessionId, cleanupReason);
+          }
+      });
+  }
+}
+
+// ---------------------------------------------------------- rute
 app.post('/login', (req, res) => {
   //THIS IS TEMPORARY, PROPER AUTHENTICATION WILL BE ADDED LATER
   const loginRequest = req.body;
@@ -214,4 +566,4 @@ connectDB()
     .catch((err) => {
       process.exit(1);
     });
-
+  }

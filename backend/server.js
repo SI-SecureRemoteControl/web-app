@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const { generateKey } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
+const { URL } = require('url')
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -25,10 +27,16 @@ const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-
+// stari ws server za db updates prema frontu
 const wss = new WebSocket.Server({ server });
-
 const clients = new Set();
+
+// novi ws server za control requestove sa androida, spomenuta mapa za cache
+const wssControl = new WebSocket.Server({ noServer: true })
+const controlFrontendClients = new Set();
+const controlSessions = new Map();
+
+const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
 wss.on('connection', (ws) => {
   clients.add(ws);

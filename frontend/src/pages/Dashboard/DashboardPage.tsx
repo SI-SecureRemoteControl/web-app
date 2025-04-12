@@ -57,7 +57,7 @@ export default function DeviceDashboard() {
            } 
         };
       
-        websocketService.connect();
+        // websocketService.connect();
         websocketService.addMessageListener(handleWebSocketMessage);
       
         return () => {

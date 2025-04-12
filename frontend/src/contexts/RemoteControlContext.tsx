@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { websocketService } from '../services/webSocketService';
 
 // Types
@@ -33,6 +33,7 @@ type RemoteControlAction =
   | { type: 'NEW_REQUEST'; payload: RemoteRequest }
   | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
+  | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
   | { type: 'SESSION_STATUS_UPDATE'; payload: { status: 'pending' | 'connected' | 'error'; message: string } }
   | { type: 'CLEAR_NOTIFICATION' };
 
@@ -89,6 +90,15 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           message: 'Request declined'
         }
       };
+    case 'REQUEST_TIMEOUT':
+      return {
+        ...state,
+        requests: state.requests.filter(req => req.requestId !== action.payload.requestId),
+        notification: {
+          type: 'info',
+          message: `Remote control request from ${action.payload.deviceName} timed out`
+        }
+      };
     case 'SESSION_STATUS_UPDATE':
       return {
         ...state,
@@ -122,20 +132,53 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  // Use a ref to track timeout IDs for each request
+  const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  
+  // Timeout duration in milliseconds
+  const REQUEST_TIMEOUT_DURATION = 30000; // 30 seconds
+  
+  // Function to clear timeout for a specific request
+  const clearRequestTimeout = (requestId: string) => {
+    if (requestTimeoutsRef.current[requestId]) {
+      clearTimeout(requestTimeoutsRef.current[requestId]);
+      delete requestTimeoutsRef.current[requestId];
+    }
+  };
+  
+  // Function to handle request timeout
+  const handleRequestTimeout = (requestId: string, deviceName: string) => {
+    dispatch({
+      type: 'REQUEST_TIMEOUT',
+      payload: { requestId, deviceName }
+    });
+    clearRequestTimeout(requestId);
+    
+    // Optionally notify backend about timeout
+    sendWebSocketMessage('timeout_request', { requestId });
+  };
   
   useEffect(() => {
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
       if (data.type === 'remote_control_request') {
+        const request = {
+          requestId: data.requestId,
+          deviceId: data.deviceId,
+          deviceName: data.deviceName,
+          timestamp: data.timestamp || Date.now()
+        };
+        
         dispatch({ 
           type: 'NEW_REQUEST', 
-          payload: {
-            requestId: data.requestId,
-            deviceId: data.deviceId,
-            deviceName: data.deviceName,
-            timestamp: data.timestamp || Date.now()
-          }
+          payload: request
         });
+        
+        // Set timeout for this request
+        clearRequestTimeout(request.requestId); // Clear any existing timeout (just in case)
+        requestTimeoutsRef.current[request.requestId] = setTimeout(() => {
+          handleRequestTimeout(request.requestId, request.deviceName);
+        }, REQUEST_TIMEOUT_DURATION);
       } else if (data.type === 'session_status') {
         dispatch({
           type: 'SESSION_STATUS_UPDATE',
@@ -169,6 +212,11 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     
     // Clean up on unmount
     return () => {
+      // Clear all request timeouts
+      Object.keys(requestTimeoutsRef.current).forEach(requestId => {
+        clearTimeout(requestTimeoutsRef.current[requestId]);
+      });
+      
       websocketService.removeMessageListener(handleWebSocketMessage);
       clearInterval(connectionCheckInterval);
     };
@@ -183,6 +231,9 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     const success = sendWebSocketMessage('accept_request', { requestId, deviceId });
     
     if (success) {
+      // Clear timeout for this request
+      clearRequestTimeout(requestId);
+      
       dispatch({
         type: 'ACCEPT_REQUEST',
         payload: { requestId, deviceId, deviceName }
@@ -202,6 +253,9 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     const success = sendWebSocketMessage('decline_request', { requestId, deviceId });
     
     if (success) {
+      // Clear timeout for this request
+      clearRequestTimeout(requestId);
+      
       dispatch({
         type: 'DECLINE_REQUEST',
         payload: { requestId }

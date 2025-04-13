@@ -250,8 +250,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     }
   };
   
-  const declineRequest = (requestId: string, deviceId: string, sessionId: string) => {
-    const success = sendWebSocketMessage('control_response', { action: 'reject', sessionId, requestId, deviceId});
+  const declineRequest = (requestId: string, from: string, sessionId: string) => {
+    const success = sendWebSocketMessage('control_response', { action: 'reject', sessionId, requestId, from});
     
     if (success) {
       // Clear timeout for this request

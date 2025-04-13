@@ -133,7 +133,7 @@ wssControl.on('connection', (ws) => {
     if(session.state === 'PENDING_ADMIN') {
       ws.send(JSON.stringify({ type: 'request_control', sessionId, device: session.device }));
     } else if(session.state === 'CONNECTED') {
-      ws.send(JSON.stringify({ type: 'control_status_update', sessionId, deviceId: session.device?.deviceId, status: 'connected' }));
+      ws.send(JSON.stringify({ type: 'control_status_update', sessionId, from: session.device?.deviceId, status: 'connected' }));
     }
   });
 
@@ -240,14 +240,14 @@ async function handleCommLayerControlRequest(ws, message) {
 
       const session = {
           state: 'PENDING_ADMIN',
-          device: { _id: device._id, deviceId: device.deviceId, name: device.name, model: device.model, osVersion: device.osVersion },
+          device: { _id: device._id, from: device.deviceId, name: device.name, model: device.model, osVersion: device.osVersion },
           commLayerWs: ws, 
           requestedTime: Date.now(),
           timeoutId: setTimeout(() => { handleAdminTimeout(sessionId); }, CONTROL_REQUEST_TIMEOUT)
       };
 
       controlSessions.set(sessionId, session);
-      console.log(`Control session created: ${sessionId} for device ${deviceId}. State: PENDING_ADMIN`);
+      console.log(`Control session created: ${sessionId} for device ${from}. State: PENDING_ADMIN`);
 
       if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
       ws.activeSessionIds.add(sessionId);

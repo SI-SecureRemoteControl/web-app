@@ -228,14 +228,14 @@ function sendToCommLayer(sessionId, data) {
 // logika za remote control sesije
 async function handleCommLayerControlRequest(ws, message) {
 
-  const { sessionId, deviceId } = message;
+  const { sessionId, from } = message;
 
-  if (!sessionId || !deviceId) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
+  if (!sessionId || !from) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
   if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
   if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }
 
   try {
-      const device = await db.collection('devices').findOne({ deviceId: deviceId
+      const device = await db.collection('devices').findOne({ deviceId: from
        });
       if (!device) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' })); return; }
 
@@ -248,7 +248,7 @@ async function handleCommLayerControlRequest(ws, message) {
       };
 
       controlSessions.set(sessionId, session);
-      console.log(`Control session created: ${sessionId} for device ${deviceId}. State: PENDING_ADMIN`);
+      console.log(`Control session created: ${sessionId} for device ${from}. State: PENDING_ADMIN`);
 
       if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
       ws.activeSessionIds.add(sessionId);
@@ -256,7 +256,7 @@ async function handleCommLayerControlRequest(ws, message) {
       broadcastToControlFrontend({
           requestId: requestId,
           type: 'request_control',
-          deviceId: deviceId,
+          deviceId: from,
           deviceName: session.device.name,
           timestamp: Date.now(),
           sessionId: sessionId

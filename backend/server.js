@@ -330,6 +330,11 @@ function handleCommLayerStatusUpdate(message) {
           frontendStatus = 'disconnected';
           cleanupReason = 'DISCONNECTED';
           break;
+      case 'rejected':
+          session.state = 'REJECTED';
+          frontendStatus = 'rejected';
+          cleanupReason = 'REJECTED';
+          break;
       default:
           console.warn(`Unknown status '${status}' from Comm Layer for session ${sessionId}`);
           return;

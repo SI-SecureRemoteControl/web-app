@@ -17,5 +17,8 @@
     "mongodb": "^6.15.0",
     "ws": "^8.18.1"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^22.14.1"
+  }
 }

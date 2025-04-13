@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 
-const socket = new WebSocket('ws://localhost:5000/ws/control/comm'); 
+const socket = new WebSocket('ws://localhost:8080/ws/control/comm'); 
 
 socket.on('open', () => {
     console.log('Connected to the WebSocket server');
@@ -13,7 +13,6 @@ socket.on('open', () => {
 
     socket.send(JSON.stringify(controlRequest));
 });
-
 
 socket.on('message', (data) => {
   const message = data.toString('utf8');

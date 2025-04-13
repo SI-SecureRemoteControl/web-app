@@ -316,7 +316,7 @@ function handleAdminTimeout(sessionId) {
 
 // za odgovor sa strane androida
 function handleCommLayerStatusUpdate(message) {
-  const { sessionId, status, details } = message;
+  const { sessionId, status, details, deviceId } = message;
   if (!sessionId || !status) { console.error('Comm Layer status update missing sessionId or status'); return; }
   const session = controlSessions.get(sessionId);
   if (!session) { console.warn(`Status update for unknown/expired session: ${sessionId}`); return; }
@@ -354,7 +354,7 @@ function handleCommLayerStatusUpdate(message) {
   broadcastToControlFrontend({
       type: 'control_status_update',
       sessionId: sessionId,
-      from: session.device?.deviceId,
+      from: deviceId,
       status: frontendStatus,
       message: details || `Session ${sessionId} status: ${frontendStatus}.`,
       details: details

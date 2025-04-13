@@ -10,11 +10,11 @@ const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
   const { acceptRequest, declineRequest } = useRemoteControl();
   
   const handleAccept = () => {
-    acceptRequest(request.requestId, request.from, request.deviceName, request.sessionId);
+    acceptRequest(request.requestId, request.deviceId, request.deviceName, request.sessionId);
   };
   
   const handleDecline = () => {
-    declineRequest(request.requestId, request.from, request.sessionId);
+    declineRequest(request.requestId, request.deviceId, request.sessionId);
   };
   
   return (
@@ -25,7 +25,7 @@ const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
         </div>
         <div className="request-modal-body">
           <p><strong>Device:</strong> {request.deviceName}</p>
-          <p><strong>Device ID:</strong> {request.from}</p>
+          <p><strong>Device ID:</strong> {request.deviceId}</p>
           <p><strong>Requested at:</strong> {new Date(request.timestamp).toLocaleTimeString()}</p>
         </div>
         <div className="request-modal-footer">

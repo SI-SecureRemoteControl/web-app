@@ -8,10 +8,10 @@ socket.on('open', () => {
     const controlRequest = {
       requestId: "123",
       type: 'request_control',
-      deviceId: "c51df48d6b532ff0",
+      deviceId: 'c51df48d6b532ff0',
       deviceName: "name",
       timestamp: Date.now(),
-      sessionId: "3123123"
+      sessionId: '3123123'
     };
 
     socket.send(JSON.stringify(controlRequest));

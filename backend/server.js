@@ -123,7 +123,7 @@ wssControl.on('connection', (ws, req, type) => {
 
     controlSessions.forEach((session, sessionId) => {
       if(session.state === 'PENDING_ADMIN') {
-        ws.send(JSON.stringify({type: 'control_request', sessionId: sessionId, device: session.device}));
+        ws.send(JSON.stringify({type: 'request_control', sessionId: sessionId, device: session.device}));
       } else if(session.state === 'CONNECTED') {
         ws.send(JSON.stringify({type:'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'connected'}));
       }

@@ -12,26 +12,17 @@ let controlReconnectTimer: number | null = null;
 
 const connectWebSocket = (
   socketVar: 'dbSocket' | 'controlSocket',
-  listenersVar: 'dbMessageListeners' | 'controlMessageListeners',
-  pathSuffix: string,
-  reconnectAttemptVar: 'dbReconnectAttempt' | 'controlReconnectAttempt',
-  reconnectTimerVar: 'dbReconnectTimer' | 'controlReconnectTimer'
+  pathSuffix: string
 ): number | null => {
   let currentSocket: WebSocket | null;
   let listeners: ((data: any) => void)[];
-  let reconnectAttempt: number;
-  let reconnectTimer: number | null;
 
   if (socketVar === 'dbSocket') {
     currentSocket = dbSocket;
     listeners = dbMessageListeners;
-    reconnectAttempt = dbReconnectAttempt;
-    reconnectTimer = dbReconnectTimer;
   } else {
     currentSocket = controlSocket;
     listeners = controlMessageListeners;
-    reconnectAttempt = controlReconnectAttempt;
-    reconnectTimer = controlReconnectTimer;
   }
 
   if (currentSocket && (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING)) {
@@ -147,8 +138,8 @@ const connectWebSocket = (
   }
 };
 
-const connectDbSocket = () => connectWebSocket('dbSocket', 'dbMessageListeners', '/ws/db_updates', 'dbReconnectAttempt', 'dbReconnectTimer');
-const connectControlSocket = () => connectWebSocket('controlSocket', 'controlMessageListeners', '/ws/control/frontend', 'controlReconnectAttempt', 'controlReconnectTimer');
+const connectDbSocket = () => connectWebSocket('dbSocket', '/ws/db_updates');
+const connectControlSocket = () => connectWebSocket('controlSocket', '/ws/control/frontend');
 
 const disconnectDbSocket = () => {
   if (dbSocket && dbSocket.readyState === WebSocket.OPEN) {

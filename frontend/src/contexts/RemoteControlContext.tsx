@@ -163,7 +163,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
       console.log(data);
-      if (data.type === 'control_request') {
+      if (data.type === 'request_control') {
         const request = {
           requestId: data.requestId,
           deviceId: data.deviceId,

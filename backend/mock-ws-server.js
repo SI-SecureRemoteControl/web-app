@@ -29,11 +29,11 @@ server.on('connection', (socket) => {
     console.log('Received message:', data);
     
     // Handle different message types
-    switch (data.type) {
-      case 'accept_request':
+    switch (data.action) {
+      case 'accept':
         handleAcceptRequest(socket, data);
         break;
-      case 'decline_request':
+      case 'reject':
         handleDeclineRequest(socket, data);
         break;
       default:
@@ -73,7 +73,7 @@ function sendMockRequest() {
   
   clients.forEach(client => {
     client.send(JSON.stringify({
-      type: 'remote_control_request',
+      type: 'request_control',
       requestId: 'req-' + Date.now(),
       deviceId: mockDevice.deviceId,
       deviceName: mockDevice.deviceName,

@@ -348,7 +348,7 @@ function handleCommLayerStatusUpdate(message) {
   broadcastToControlFrontend({
       type: 'control_status_update',
       sessionId: sessionId,
-      deviceId: session.device?.deviceId,
+      from: session.device?.deviceId,
       status: frontendStatus,
       message: details || `Session ${sessionId} status: ${frontendStatus}.`,
       details: details
@@ -390,7 +390,7 @@ function cleanupSessionsForSocket(ws) {
               broadcastToControlFrontend({
                   type: 'control_status_update',
                   sessionId: sessionId,
-                  deviceId: session.device?.deviceId,
+                  from: session.device?.deviceId,
                   status: frontendStatus,
                   message: `Communication channel lost for session ${sessionId}.`
               });

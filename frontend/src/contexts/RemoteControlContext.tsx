@@ -12,7 +12,7 @@ export interface RemoteRequest {
 
 export interface ActiveSession {
   requestId: string;
-  deviceId: string;
+  from: string;
   deviceName: string;
   status: 'pending' | 'connected' | 'error';
 }
@@ -32,7 +32,7 @@ interface RemoteControlState {
 type RemoteControlAction =
   | { type: 'CONNECTION_CHANGE'; payload: { connected: boolean } }
   | { type: 'NEW_REQUEST'; payload: RemoteRequest }
-  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string } }
+  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; from: string; deviceName: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
   | { type: 'SESSION_STATUS_UPDATE'; payload: { status: 'pending' | 'connected' | 'error'; message: string } }
@@ -78,7 +78,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         activeSession: {
           status: 'pending',
           requestId: action.payload.requestId,
-          deviceId: action.payload.deviceId,
+          from: action.payload.from,
           deviceName: action.payload.deviceName
         }
       };
@@ -123,8 +123,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
 
 // Context
 interface RemoteControlContextType extends RemoteControlState {
-  acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
-  declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
+  acceptRequest: (requestId: string, from: string, deviceName: string, sessionId: string) => void;
+  declineRequest: (requestId: string, from: string, sessionId: string) => void;
   clearNotification: () => void;
 }
 
@@ -229,7 +229,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     return websocketService.sendControlMessage({ type, ...data });
   };
   
-  const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
+  const acceptRequest = (requestId: string, from: string, deviceName: string, sessionId: string) => {
     const success = sendWebSocketMessage('control_response', { sessionId, action: 'accept'});
     
     if (success) {
@@ -237,7 +237,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       
       dispatch({
         type: 'ACCEPT_REQUEST',
-        payload: { requestId, deviceId, deviceName }
+        payload: { requestId, from, deviceName }
       });
     } else {
       dispatch({

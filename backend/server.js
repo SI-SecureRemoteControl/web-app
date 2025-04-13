@@ -1,7 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv').config();
 const bcrypt = require('bcrypt');
-const { generateKey } = require('./utils/keysGenerator');
+const { generateKey, generateRequestId } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
 const { URL } = require('url')
@@ -252,11 +252,14 @@ async function handleCommLayerControlRequest(ws, message) {
 
       if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
       ws.activeSessionIds.add(sessionId);
-
+      requestId = generateRequestId();
       broadcastToControlFrontend({
+          requestId: requestId,
           type: 'request_control',
-          sessionId: sessionId,
-          device: session.device
+          deviceId: session.device.deviceId,
+          deviceName: session.device.name,
+          timestamp: Date.now(),
+          sessionId: sessionId
       });
 
        ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' })); // za debug
@@ -553,4 +556,4 @@ connectDB()
     .catch((err) => {
       process.exit(1);
     });
-  
+

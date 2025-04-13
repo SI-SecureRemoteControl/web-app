@@ -6,9 +6,12 @@ socket.on('open', () => {
     console.log('Connected to the WebSocket server');
     
     const controlRequest = {
-        type: 'request_control',
-        sessionId: 'testSession123',
-        deviceId: 'c51df48d6b532ff0'
+      requestId: "123",
+      type: 'request_control',
+      deviceId: "c51df48d6b532ff0",
+      deviceName: "name",
+      timestamp: Date.now(),
+      sessionId: "3123123"
     };
 
     socket.send(JSON.stringify(controlRequest));

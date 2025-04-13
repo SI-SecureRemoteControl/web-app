@@ -166,6 +166,8 @@ wssControl.on('connection', (ws) => {
 wssComm.on('connection', (ws) => {
   console.log('Comm Layer client connected to Control WebSocket.');
 
+  controlFrontendClients.add(ws);
+
   ws.on('message', (message) => {
     try {
       const parsedMessage = JSON.parse(message);
@@ -183,11 +185,15 @@ wssComm.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
+    controlFrontendClients.delete(ws);
+
     console.log('Comm Layer client disconnected from Control WebSocket.');
     cleanupSessionsForSocket(ws);
   });
 
   ws.on('error', (error) => {
+    controlFrontendClients.delete(ws);
+
     console.error('Comm Layer WebSocket error:', error);
     cleanupSessionsForSocket(ws);
   });
@@ -222,14 +228,14 @@ function sendToCommLayer(sessionId, data) {
 // logika za remote control sesije
 async function handleCommLayerControlRequest(ws, message) {
 
-  const { sessionId, deviceId } = message;
+  const { sessionId, from } = message;
 
-  if (!sessionId || !deviceId) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
+  if (!sessionId || !from) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
   if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
   if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }
 
   try {
-      const device = await db.collection('devices').findOne({ deviceId: deviceId });
+      const device = await db.collection('devices').findOne({ deviceId: from });
       if (!device) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' })); return; }
 
       const session = {
@@ -280,14 +286,14 @@ function handleFrontendControlResponse(message) {
       controlSessions.set(sessionId, session); 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'accepted' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, from: session.device?.deviceId, status: 'pending_device_confirmation' });
 
   } else if (action === 'reject') {
       console.log(`Admin rejected control session: ${sessionId}`);
       session.state = 'ADMIN_REJECTED'; 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'rejected_by_admin' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, from: session.device?.deviceId, status: 'rejected' });
       cleanupSession(sessionId, 'ADMIN_REJECTED');
 
   } else {
@@ -303,7 +309,7 @@ function handleAdminTimeout(sessionId) {
       session.state = 'TIMED_OUT'; 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'timed_out' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, from: session.device?.deviceId, status: 'timed_out' });
       cleanupSession(sessionId, 'TIMED_OUT');
   }
 }

@@ -246,7 +246,7 @@ async function handleCommLayerControlRequest(ws, message) {
       ws.activeSessionIds.add(sessionId);
 
       broadcastToControlFrontend({
-          type: 'control_request',
+          type: 'request_control',
           sessionId: sessionId,
           device: session.device
       });

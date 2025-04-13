@@ -1,151 +1,227 @@
-let socket: WebSocket | null = null;
-let messageListeners: ((data: any) => void)[] = [];
+let dbSocket: WebSocket | null = null;
+let controlSocket: WebSocket | null = null;
 
-let reconnectAttempt = 0;
+let dbMessageListeners: ((data: any) => void)[] = [];
+let controlMessageListeners: ((data: any) => void)[] = [];
+
+let dbReconnectAttempt = 0;
+let controlReconnectAttempt = 0;
 const maxReconnectAttempts = 5;
-let reconnectTimer: number | null = null;
+let dbReconnectTimer: number | null = null;
+let controlReconnectTimer: number | null = null;
 
-const connect = () => {
-  // First, check if we already have a connection or are connecting
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-    if (import.meta.env.MODE !== 'production') {
-      console.log("WebSocket connection already exists or is connecting.");
-    }
-    return socket.readyState;
+const connectWebSocket = (
+  socketVar: 'dbSocket' | 'controlSocket',
+  listenersVar: 'dbMessageListeners' | 'controlMessageListeners',
+  pathSuffix: string,
+  reconnectAttemptVar: 'dbReconnectAttempt' | 'controlReconnectAttempt',
+  reconnectTimerVar: 'dbReconnectTimer' | 'controlReconnectTimer'
+): number | null => {
+  let currentSocket: WebSocket | null;
+  let listeners: ((data: any) => void)[];
+  let reconnectAttempt: number;
+  let reconnectTimer: number | null;
+
+  if (socketVar === 'dbSocket') {
+    currentSocket = dbSocket;
+    listeners = dbMessageListeners;
+    reconnectAttempt = dbReconnectAttempt;
+    reconnectTimer = dbReconnectTimer;
+  } else {
+    currentSocket = controlSocket;
+    listeners = controlMessageListeners;
+    reconnectAttempt = controlReconnectAttempt;
+    reconnectTimer = controlReconnectTimer;
   }
-  
-  // Get WebSocket URL from environment variable
-  let wsUrl = import.meta.env.VITE_WS_URL;
-  
-  // Validate the URL to prevent malformed connections
-  if (!wsUrl) {
-    console.error("WebSocket URL is not defined. Please check VITE_WS_URL environment variable.");
+
+  if (currentSocket && (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING)) {
+    if (import.meta.env.MODE !== 'production') {
+      console.log(`WebSocket (${pathSuffix}) connection already exists or is connecting.`);
+    }
+    return currentSocket.readyState;
+  }
+
+  let wsBaseUrl = import.meta.env.VITE_WS_URL;
+
+  if (!wsBaseUrl) {
+    console.error(`WebSocket (${pathSuffix}) URL is not defined. Please check VITE_WS_URL environment variable.`);
     return null;
   }
 
-  console.log(`Attempting WebSocket connection to: ${wsUrl}`);
-  
-  // Remove any trailing slash or 'undefined' from the URL
-  wsUrl = wsUrl.replace(/\/undefined$/, '').replace(/\/$/, '');
-  
-  // Log the actual URL we're connecting to (helpful for debugging)
-  console.log(`Attempting to connect to WebSocket server at: ${wsUrl}`);
-  
+  wsBaseUrl = wsBaseUrl.replace(/\/undefined$/, '').replace(/\/$/, '');
+  const wsUrl = `${wsBaseUrl}${pathSuffix}`;
+
+  console.log(`Attempting WebSocket (${pathSuffix}) connection to: ${wsUrl}`);
+
   try {
-    socket = new WebSocket(wsUrl);
-    
-    socket.onopen = () => {
-      console.log("WebSocket Service: Connection established");
-      // Reset reconnect attempt counter on successful connection
-      reconnectAttempt = 0;
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
+    const newSocket = new WebSocket(wsUrl);
+
+    newSocket.onopen = () => {
+      console.log(`WebSocket (${pathSuffix}): Connection established`);
+      if (socketVar === 'dbSocket') {
+        dbReconnectAttempt = 0;
+        if (dbReconnectTimer) {
+          clearTimeout(dbReconnectTimer);
+          dbReconnectTimer = null;
+        }
+      } else {
+        controlReconnectAttempt = 0;
+        if (controlReconnectTimer) {
+          clearTimeout(controlReconnectTimer);
+          controlReconnectTimer = null;
+        }
       }
-      
-      // Notify listeners about the successful connection
-      messageListeners.forEach(listener => {
+
+      listeners.forEach(listener => {
         try {
-          listener({ type: 'connection_status', connected: true });
+          listener({ type: 'connection_status', connected: true, socketType: socketVar });
         } catch (err) {
-          console.error("Error in connection listener:", err);
+          console.error(`Error in ${socketVar} connection listener:`, err);
         }
       });
     };
 
-    socket.onmessage = (event) => {
+    newSocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        messageListeners.forEach(listener => {
+        listeners.forEach(listener => {
           try {
             listener(data);
           } catch (err) {
-            console.error("Error in message listener:", err);
+            console.error(`Error in ${socketVar} message listener:`, err);
           }
         });
       } catch (err) {
-        console.error("WebSocket Service: Error parsing message", err);
+        console.error(`WebSocket (${pathSuffix}): Error parsing message`, err);
       }
     };
 
-    socket.onerror = (error) => {
-      console.error("WebSocket Service Error:", error);
+    newSocket.onerror = (error) => {
+      console.error(`WebSocket (${pathSuffix}) Error:`, error);
     };
 
-    socket.onclose = (event) => {
-      console.log(`WebSocket Service: Connection closed. Clean: ${event.wasClean}, Code: ${event.code}, Reason: ${event.reason}`);
-      
-      // Notify listeners about the disconnection
-      messageListeners.forEach(listener => {
+    newSocket.onclose = (event) => {
+      console.log(`WebSocket (${pathSuffix}): Connection closed. Clean: ${event.wasClean}, Code: ${event.code}, Reason: ${event.reason}`);
+
+      listeners.forEach(listener => {
         try {
-          listener({ type: 'connection_status', connected: false });
+          listener({ type: 'connection_status', connected: false, socketType: socketVar });
         } catch (err) {
-          console.error("Error in disconnection listener:", err);
+          console.error(`Error in ${socketVar} disconnection listener:`, err);
         }
       });
-      
-      socket = null;
-      
-      // Attempt to reconnect if not a clean close
-      if (!event.wasClean && reconnectAttempt < maxReconnectAttempts) {
-        reconnectAttempt++;
-        const delay = Math.min(30000, 1000 * Math.pow(2, reconnectAttempt)); 
-        console.log(`WebSocket Service: Attempting to reconnect in ${delay/1000} seconds... (Attempt ${reconnectAttempt}/${maxReconnectAttempts})`);
-        
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer);
+
+      if (socketVar === 'dbSocket') {
+        dbSocket = null;
+      } else {
+        controlSocket = null;
+      }
+
+      if (!event.wasClean && (socketVar === 'dbSocket' ? dbReconnectAttempt : controlReconnectAttempt) < maxReconnectAttempts) {
+        if (socketVar === 'dbSocket') {
+          dbReconnectAttempt++;
+          const delay = Math.min(30000, 1000 * Math.pow(2, dbReconnectAttempt));
+          console.log(`WebSocket (db): Attempting to reconnect in ${delay / 1000} seconds... (Attempt ${dbReconnectAttempt}/${maxReconnectAttempts})`);
+          if (dbReconnectTimer) clearTimeout(dbReconnectTimer);
+          dbReconnectTimer = window.setTimeout(() => connectDbSocket(), delay);
+        } else {
+          controlReconnectAttempt++;
+          const delay = Math.min(30000, 1000 * Math.pow(2, controlReconnectAttempt));
+          console.log(`WebSocket (control): Attempting to reconnect in ${delay / 1000} seconds... (Attempt ${controlReconnectAttempt}/${maxReconnectAttempts})`);
+          if (controlReconnectTimer) clearTimeout(controlReconnectTimer);
+          controlReconnectTimer = window.setTimeout(() => connectControlSocket(), delay);
         }
-        
-        reconnectTimer = window.setTimeout(() => {
-          connect();
-        }, delay);
       }
     };
-    
-    return socket.readyState;
+
+    if (socketVar === 'dbSocket') {
+      dbSocket = newSocket;
+    } else {
+      controlSocket = newSocket;
+    }
+
+    return newSocket.readyState;
   } catch (error) {
-    console.error("Failed to create WebSocket connection:", error);
+    console.error(`Failed to create WebSocket (${pathSuffix}) connection:`, error);
     return null;
   }
 };
 
-const disconnect = () => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    console.log("WebSocket Service: Closing connection.");
-    socket.close(1000, "Client requested disconnect");
+const connectDbSocket = () => connectWebSocket('dbSocket', 'dbMessageListeners', '/ws/db_updates', 'dbReconnectAttempt', 'dbReconnectTimer');
+const connectControlSocket = () => connectWebSocket('controlSocket', 'controlMessageListeners', '/ws/control/frontend', 'controlReconnectAttempt', 'controlReconnectTimer');
+
+const disconnectDbSocket = () => {
+  if (dbSocket && dbSocket.readyState === WebSocket.OPEN) {
+    console.log("WebSocket (db): Closing connection.");
+    dbSocket.close(1000, "Client requested disconnect");
   }
-  socket = null; 
-  messageListeners = [];
+  dbSocket = null;
+  dbMessageListeners = [];
 };
 
-const addMessageListener = (callback: (data: any) => void) => {
-  messageListeners.push(callback);
+const disconnectControlSocket = () => {
+  if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+    console.log("WebSocket (control): Closing connection.");
+    controlSocket.close(1000, "Client requested disconnect");
+  }
+  controlSocket = null;
+  controlMessageListeners = [];
 };
 
-const removeMessageListener = (callback: (data: any) => void) => {
-  messageListeners = messageListeners.filter(listener => listener !== callback);
+const addDbMessageListener = (callback: (data: any) => void) => {
+  dbMessageListeners.push(callback);
 };
 
-// Add a sendMessage function
-const sendMessage = (data: any) => {
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(data));
+const removeDbMessageListener = (callback: (data: any) => void) => {
+  dbMessageListeners = dbMessageListeners.filter(listener => listener !== callback);
+};
+
+const addControlMessageListener = (callback: (data: any) => void) => {
+  controlMessageListeners.push(callback);
+};
+
+const removeControlMessageListener = (callback: (data: any) => void) => {
+  controlMessageListeners = controlMessageListeners.filter(listener => listener !== callback);
+};
+
+const sendDbMessage = (data: any) => {
+  if (dbSocket && dbSocket.readyState === WebSocket.OPEN) {
+    dbSocket.send(JSON.stringify(data));
     return true;
   }
-  console.error("WebSocket Service: Cannot send message, connection not open");
+  console.error("WebSocket (db): Cannot send message, connection not open");
   return false;
 };
 
-// Add a method to get connection status
-const getConnectionStatus = () => {
-  return socket && socket.readyState === WebSocket.OPEN;
+const sendControlMessage = (data: any) => {
+    console.log(data);
+  if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
+    controlSocket.send(JSON.stringify(data));
+    return true;
+  }
+  console.error("WebSocket (control): Cannot send message, connection not open");
+  return false;
+};
+
+const getDbConnectionStatus = () => {
+  return dbSocket && dbSocket.readyState === WebSocket.OPEN;
+};
+
+const getControlConnectionStatus = () => {
+  return controlSocket && controlSocket.readyState === WebSocket.OPEN;
 };
 
 export const websocketService = {
-  connect,
-  disconnect,
-  addMessageListener,
-  removeMessageListener,
-  sendMessage,
-  getConnectionStatus
+  connectDbSocket,
+  connectControlSocket,
+  disconnectDbSocket,
+  disconnectControlSocket,
+  addDbMessageListener,
+  removeDbMessageListener,
+  addControlMessageListener,
+  removeControlMessageListener,
+  sendDbMessage,
+  sendControlMessage,
+  getDbConnectionStatus,
+  getControlConnectionStatus,
 };

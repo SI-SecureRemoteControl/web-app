@@ -7,6 +7,7 @@ export interface RemoteRequest {
   deviceId: string;
   deviceName: string;
   timestamp: number;
+  sessionId: string;
 }
 
 export interface ActiveSession {
@@ -122,8 +123,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
 
 // Context
 interface RemoteControlContextType extends RemoteControlState {
-  acceptRequest: (requestId: string, deviceId: string, deviceName: string) => void;
-  declineRequest: (requestId: string, deviceId: string) => void;
+  acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
+  declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
   clearNotification: () => void;
 }
 
@@ -161,12 +162,14 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
-      if (data.type === 'remote_control_request') {
+      console.log(data);
+      if (data.type === 'control_request') {
         const request = {
           requestId: data.requestId,
           deviceId: data.deviceId,
           deviceName: data.deviceName,
-          timestamp: data.timestamp || Date.now()
+          timestamp: data.timestamp || Date.now(),
+          sessionId: data.sessionId
         };
         
         dispatch({ 
@@ -197,13 +200,12 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       }
     };
     
-    // Connect to WebSocket and add listener
-    websocketService.connect();
-    websocketService.addMessageListener(handleWebSocketMessage);
+    websocketService.connectControlSocket(); // Connect to the control socket
+    websocketService.addControlMessageListener(handleWebSocketMessage); 
     
     // Update connection status regularly
     const connectionCheckInterval = setInterval(() => {
-      const isConnected = websocketService.getConnectionStatus();
+      const isConnected = websocketService.getControlConnectionStatus();
       dispatch({
         type: 'CONNECTION_CHANGE',
         payload: { connected: isConnected ?? false }
@@ -217,21 +219,20 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         clearTimeout(requestTimeoutsRef.current[requestId]);
       });
       
-      websocketService.removeMessageListener(handleWebSocketMessage);
+      websocketService.removeControlMessageListener(handleWebSocketMessage);
       clearInterval(connectionCheckInterval);
     };
   }, []);
   
   // Actions
   const sendWebSocketMessage = (type: string, data: any) => {
-    return websocketService.sendMessage({ type, ...data });
+    return websocketService.sendControlMessage({ type, ...data });
   };
   
-  const acceptRequest = (requestId: string, deviceId: string, deviceName: string) => {
-    const success = sendWebSocketMessage('accept_request', { requestId, deviceId });
+  const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
+    const success = sendWebSocketMessage('control_response', { sessionId, action: 'accept'});
     
     if (success) {
-      // Clear timeout for this request
       clearRequestTimeout(requestId);
       
       dispatch({
@@ -249,8 +250,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     }
   };
   
-  const declineRequest = (requestId: string, deviceId: string) => {
-    const success = sendWebSocketMessage('decline_request', { requestId, deviceId });
+  const declineRequest = (requestId: string, deviceId: string, sessionId: string) => {
+    const success = sendWebSocketMessage('control_response', { action: 'reject', sessionId, requestId, deviceId});
     
     if (success) {
       // Clear timeout for this request

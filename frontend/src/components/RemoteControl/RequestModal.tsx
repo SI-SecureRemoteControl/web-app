@@ -9,11 +9,11 @@ export const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
   const { acceptRequest, declineRequest } = useRemoteControl();
   
   const handleAccept = () => {
-    acceptRequest(request.requestId, request.deviceId, request.deviceName);
+    acceptRequest(request.requestId, request.deviceId, request.deviceName, request.sessionId);
   };
   
   const handleDecline = () => {
-    declineRequest(request.requestId, request.deviceId);
+    declineRequest(request.requestId, request.deviceId, request.sessionId);
   };
   
   return (

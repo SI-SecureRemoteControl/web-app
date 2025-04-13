@@ -26,21 +26,21 @@ export default function DeviceDashboard() {
 
     useEffect(() => {
         const handleWebSocketMessage = (data: any) => {
-           if (data.change) { 
+           if (data.change) {
               const change = data.change;
               if (change.operationType === 'update') {
                 if (change.documentKey?._id && change.updateDescription?.updatedFields) {
                     const updatedFields = change.updateDescription.updatedFields;
-                    const documentId = change.documentKey._id; 
-                        
+                    const documentId = change.documentKey._id;
+    
                     setDevices(prev =>
                         prev.map(device => {
                             if (device._id === documentId.toString()) {
                                 const updatedDevice = {
-                                    ...device,         
+                                    ...device,
                                     ...updatedFields
                                 };
-                                return updatedDevice; 
+                                return updatedDevice;
                             } else {
                                 return device;
                             }
@@ -52,16 +52,16 @@ export default function DeviceDashboard() {
             } else if (change.operationType === 'insert') {
                    setDevices(prev => [change.fullDocument, ...prev]);
                } else if (change.operationType === 'delete') {
-                    setDevices(prev => prev.filter(d => d._id !== change.documentKey._id)); 
+                    setDevices(prev => prev.filter(d => d._id !== change.documentKey._id));
                }
-           } 
+           }
         };
-      
-        // websocketService.connect();
-        websocketService.addMessageListener(handleWebSocketMessage);
-      
+    
+        websocketService.connectDbSocket(); 
+        websocketService.addDbMessageListener(handleWebSocketMessage);
+    
         return () => {
-          websocketService.removeMessageListener(handleWebSocketMessage);
+          websocketService.removeDbMessageListener(handleWebSocketMessage); // Koristite removeDbMessageListener
         };
       }, []);
 

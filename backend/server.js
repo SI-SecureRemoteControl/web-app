@@ -6,7 +6,6 @@ const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
 const { URL } = require('url')
 
-
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
@@ -22,7 +21,6 @@ app.use(express.json());
 
 let db;
 
-
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
@@ -35,8 +33,7 @@ const dbUpdateClients = new Set();
 const wssControl = new WebSocket.Server({ noServer: true })
 const controlFrontendClients = new Set();
 const controlSessions = new Map();
-
-const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
+ const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
 server.on('upgrade', (request, socket, head) => {
 
@@ -70,6 +67,7 @@ server.on('upgrade', (request, socket, head) => {
 
 // prvi server
 wssDbUpdates.on('connection', (ws, req) => {
+
   console.log('Client connected for DB Updates');
   dbUpdateClients.add(ws);
 
@@ -78,6 +76,8 @@ wssDbUpdates.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
+    console.log("close req");
+      console.log(req);
       dbUpdateClients.delete(ws);
       console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
   });
@@ -91,42 +91,23 @@ wssDbUpdates.on('connection', (ws, req) => {
 function broadcastDbUpdate(data) {
   const message = JSON.stringify({ type: 'db_change', ...data }); 
   console.log(`Broadcasting DB update to ${dbUpdateClients.size} clients.`);
-  dbUpdateClients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-      }
-  });
+  for (const client of dbUpdateClients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+      console.log(`DB update poslan prvom klijentu.`);
+      return; //todo ovdje prekidam petlju jer nekad ne zatvorimo dobro konekciju na frontendu pa imamo duple handlere
+    }
+  }
 }
 
 function setupChangeStream() {
-  if (!db) {
-      console.error("Database not connected, cannot setup change stream.");
-      return;
-  }
   const devicesCollection = db.collection('devices');
-  db.listCollections({ name: 'devices' }).next((err, collinfo) => { 
-      if (err) { console.error("Error checking for devices collection:", err); return; }
-      if (!collinfo) { console.warn("Collection 'devices' does not exist. Change stream not started."); return; }
+  const changeStream = devicesCollection.watch();
 
-      console.log("Setting up change stream for 'devices' collection...");
-      const changeStream = devicesCollection.watch();
-
-      changeStream.on('change', (change) => {
-          console.log("Database change detected:", change.operationType);
-          broadcastDbUpdate({
-              type: 'db_change', 
-              change: change,
-          });
-      });
-
-      changeStream.on('error', (error) => {
-          console.error("Change stream error:", error);
-          
-      });
-      changeStream.on('close', () => {
-          console.log("Change stream closed.");
-          
-      });
+  changeStream.on('change', (change) => {
+    broadcastDbUpdate({
+      change,
+    });
   });
 }
 
@@ -553,6 +534,7 @@ connectDB()
 
       if (process.env.USE_LOCAL_DB !== "true") {
         setupChangeStream();
+        console.log("setup");
       }
     })
     .catch((err) => {

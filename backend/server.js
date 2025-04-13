@@ -89,14 +89,22 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
-  const message = JSON.stringify({ type: 'db_change', ...data }); 
-  console.log(`Broadcasting DB update to ${dbUpdateClients.size} clients.`);
+  const message = JSON.stringify({ type: 'db_change', ...data });
+  console.log(`Pokušavam poslati DB update zadnjem od ${dbUpdateClients.size} klijenata.`);
+
+  let lastOpenClient = null;
+
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-      console.log(`DB update poslan prvom klijentu.`);
-      return; //todo ovdje prekidam petlju jer nekad ne zatvorimo dobro konekciju na frontendu pa imamo duple handlere
+      lastOpenClient = client;
     }
+  }
+
+  if (lastOpenClient) {
+    lastOpenClient.send(message);
+    console.log(`DB update poslan zadnjem klijentu.`);
+  } else {
+    console.log(`Nijedan povezani klijent nije otvoren za slanje DB update-a.`);
   }
 }
 

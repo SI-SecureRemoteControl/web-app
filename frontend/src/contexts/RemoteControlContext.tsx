@@ -4,7 +4,7 @@ import { websocketService } from '../services/webSocketService';
 // Types
 export interface RemoteRequest {
   requestId: string;
-  deviceId: string;
+  from: string;
   deviceName: string;
   timestamp: number;
   sessionId: string;
@@ -166,7 +166,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       if (data.type === 'request_control') {
         const request = {
           requestId: data.requestId,
-          deviceId: data.deviceId,
+          from: data.deviceId,
           deviceName: data.deviceName,
           timestamp: data.timestamp || Date.now(),
           sessionId: data.sessionId

@@ -230,7 +230,6 @@ async function handleCommLayerControlRequest(ws, message) {
 
   const { sessionId, from } = message;
 
-  if ( !from) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
   if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
   if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }
 

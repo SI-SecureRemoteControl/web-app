@@ -163,8 +163,8 @@ const addDbMessageListener = (callback: (data: any) => void) => {
   dbMessageListeners.push(callback);
 };
 
-const removeDbMessageListener = (callback: (data: any) => void) => {
-  dbMessageListeners = dbMessageListeners.filter(listener => listener !== callback);
+const removeDbMessageListener = () => {
+  dbMessageListeners = [];
 };
 
 const addControlMessageListener = (callback: (data: any) => void) => {

@@ -61,7 +61,7 @@ export default function DeviceDashboard() {
         websocketService.addDbMessageListener(handleWebSocketMessage);
     
         return () => {
-          websocketService.removeDbMessageListener(handleWebSocketMessage); // Koristite removeDbMessageListener
+          websocketService.removeDbMessageListener(); 
         };
       }, []);
 

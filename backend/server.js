@@ -89,22 +89,12 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
-  const message = JSON.stringify({ type: 'db_change', ...data });
-  console.log(`Pokušavam poslati DB update zadnjem od ${dbUpdateClients.size} klijenata.`);
-
-  let lastOpenClient = null;
-
+  const message = JSON.stringify({ type: 'db_change', ...data }); 
+  console.log(`Broadcasting DB update ${message} to clients.`);
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
-      lastOpenClient = client;
+      client.send(message);
     }
-  }
-
-  if (lastOpenClient) {
-    lastOpenClient.send(message);
-    console.log(`DB update poslan zadnjem klijentu.`);
-  } else {
-    console.log(`Nijedan povezani klijent nije otvoren za slanje DB update-a.`);
   }
 }
 
@@ -254,7 +244,7 @@ async function handleCommLayerControlRequest(ws, message) {
       ws.activeSessionIds.add(sessionId);
 
       broadcastToControlFrontend({
-          type: 'request_control',
+          type: 'control_request',
           sessionId: sessionId,
           device: session.device
       });
@@ -337,11 +327,6 @@ function handleCommLayerStatusUpdate(message) {
           session.state = 'DISCONNECTED';
           frontendStatus = 'disconnected';
           cleanupReason = 'DISCONNECTED';
-          break;
-      case 'rejected':
-          session.state = 'REJECTED';
-          frontendStatus = 'rejected';
-          cleanupReason = 'REJECTED';
           break;
       default:
           console.warn(`Unknown status '${status}' from Comm Layer for session ${sessionId}`);

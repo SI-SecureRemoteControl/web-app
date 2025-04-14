@@ -158,7 +158,7 @@ wssControl.on('connection', (ws) => {
 wssComm.on('connection', (ws) => {
   console.log('Comm Layer client connected to Control WebSocket.');
 
-  controlFrontendClients.add(ws);
+  commLayerClients.add(ws);
 
   ws.on('message', (message) => {
     try {
@@ -177,14 +177,14 @@ wssComm.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    controlFrontendClients.delete(ws);
+    commLayerClients.delete(ws);
 
     console.log('Comm Layer client disconnected from Control WebSocket.');
     cleanupSessionsForSocket(ws);
   });
 
   ws.on('error', (error) => {
-    controlFrontendClients.delete(ws);
+    commLayerClients.delete(ws);
 
     console.error('Comm Layer WebSocket error:', error);
     cleanupSessionsForSocket(ws);

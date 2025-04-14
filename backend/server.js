@@ -36,6 +36,8 @@ const wssComm = new WebSocket.Server({ noServer: true })
 
 const controlFrontendClients = new Set();
 const controlSessions = new Map();
+const commLayerClients = new Set();
+
  const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
 server.on('upgrade', (request, socket, head) => {

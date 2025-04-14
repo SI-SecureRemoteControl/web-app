@@ -223,8 +223,8 @@ function sendToCommLayer(sessionId, data) {
 // logika za remote control sesije
 async function handleCommLayerControlRequest(ws, message) {
 
-  const { sessionId, from } = message;
-
+  const { sessionId, deviceId } = message;
+  var from = deviceId;
   if (!sessionId || !from) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
   if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
   if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }

@@ -7,15 +7,12 @@ interface RequestModalProps {
 }
 
 const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
-  const { acceptRequest, declineRequest } = useRemoteControl();
+  const { acceptRequest } = useRemoteControl();
   
   const handleAccept = () => {
     acceptRequest(request.requestId, request.deviceId, request.deviceName, request.sessionId);
   };
   
-  const handleDecline = () => {
-    declineRequest(request.requestId, request.deviceId, request.sessionId);
-  };
   
   return (
     <div className="request-modal-overlay">
@@ -29,12 +26,7 @@ const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
           <p><strong>Requested at:</strong> {new Date(request.timestamp).toLocaleTimeString()}</p>
         </div>
         <div className="request-modal-footer">
-          <button 
-            className="btn-decline" 
-            onClick={handleDecline}
-          >
-            Decline
-          </button>
+       
           <button 
             className="btn-accept" 
             onClick={handleAccept}

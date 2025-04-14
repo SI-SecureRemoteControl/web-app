@@ -282,14 +282,15 @@ async function handleCommLayerControlRequest(ws, message) {
       controlSessions.set(sessionId, session); 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'accepted' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation', decision: 'accepted' });
+
 
   } else if (action === 'reject') {
       console.log(`Admin rejected control session: ${sessionId}`);
       session.state = 'ADMIN_REJECTED'; 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'rejected_by_admin' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected', decision: 'rejected', reason: 'rejected_by_admin' });
       cleanupSession(sessionId, 'ADMIN_REJECTED');
 
   } else {
@@ -305,7 +306,7 @@ async function handleCommLayerControlRequest(ws, message) {
       session.state = 'TIMED_OUT'; 
 
       sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'timed_out' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out' });
+      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out' ,decision: 'rejected', reason: 'timed_out'});
       cleanupSession(sessionId, 'TIMED_OUT');
   }
 }

@@ -6,10 +6,13 @@ interface RequestModalProps {
 }
 
 export const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
-  const { acceptRequest } = useRemoteControl();
+  const { acceptRequest, declineRequest } = useRemoteControl();
   
   const handleAccept = () => {
     acceptRequest(request.requestId, request.deviceId, request.deviceName, request.sessionId);
+  };
+  const handleDecline = () => {
+    declineRequest(request.requestId, request.deviceId, request.sessionId);
   };
   
  
@@ -40,7 +43,12 @@ export const RequestModal: React.FC<RequestModalProps> = ({ request }) => {
         </div>
         
         <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 rounded-b-lg">
-
+        <button
+            onClick={handleDecline}
+            className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Decline
+          </button>
           <button
             onClick={handleAccept}
             className="px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"

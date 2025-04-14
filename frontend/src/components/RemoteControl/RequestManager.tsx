@@ -26,6 +26,7 @@ export const RequestManager: React.FC = () => {
                 <div className="flex items-center mt-1 text-amber-600">
                   <AlertTriangle size={14} className="mr-1" />
                   <span className="text-xs">Establishing connection...</span>
+                  <span className="ml-1 text-xs font-semibold">Waiting Android user...</span>
                 </div>
               )}
             </div>

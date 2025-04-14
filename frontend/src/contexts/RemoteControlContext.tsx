@@ -124,6 +124,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
 // Context
 interface RemoteControlContextType extends RemoteControlState {
   acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
+  declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
   clearNotification: () => void;
 }
 

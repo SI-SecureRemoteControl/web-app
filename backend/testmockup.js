@@ -1,57 +1,64 @@
 const WebSocket = require('ws');
 
-// Mock WebSocket server for testing
-const mockCommLayerServer = new WebSocket.Server({ port: 9001 }, () => {
-  console.log('Mock Comm Layer WebSocket server running on port 9001');
+// WebSocket client for the backend
+const socket = new WebSocket('wss://backend-wf7e.onrender.com/ws/control/comm');
+
+// Session ID to use for the test
+const sessionId = 'testSession123';
+
+// Flag to prevent repeated execution
+let hasSentMessages = false;
+
+socket.on('open', () => {
+  console.log('Connected to the backend WebSocket server.');
+
+  if (!hasSentMessages) {
+    hasSentMessages = true; // Set the flag to true to prevent repeated execution
+
+    // Simulate sending an `accept` decision
+    const acceptDecision = {
+      type: 'control_decision',
+      sessionId: sessionId,
+      decision: 'accepted',
+    };
+
+    console.log('Sending accept decision...');
+    socket.send(JSON.stringify(acceptDecision));
+
+    // Wait for a short delay before sending the `session_status` message
+    setTimeout(() => {
+      const sessionStatus = {
+        type: 'session_status',
+        sessionId: sessionId,
+        status: 'connected', // Change to 'failed' or 'disconnected' as needed
+        details: 'Session successfully connected',
+      };
+
+      console.log('Sending session status...');
+      socket.send(JSON.stringify(sessionStatus));
+    }, 2000); // 2-second delay to simulate processing time
+  }
 });
 
-// Mock session storage
-const controlSessions = new Map();
+// Handle messages from the server
+socket.on('message', (data) => {
+  const message = data.toString('utf8');
+  console.log('Received message from server:', message);
 
-// Mock `sendToCommLayer` function
-function sendToCommLayer(sessionId, data) {
-  const session = controlSessions.get(sessionId);
-  if (!session || !session.commLayerWs) {
-    console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
-    return;
+  try {
+    const parsedMessage = JSON.parse(message);
+    console.log('Parsed message:', parsedMessage);
+  } catch (e) {
+    console.error('Failed to parse message as JSON:', e);
   }
-  if (session.commLayerWs.readyState === WebSocket.OPEN) {
-    console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-    session.commLayerWs.send(JSON.stringify(data));
-  } else {
-    console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
-  }
-}
+});
 
-// Handle incoming connections to the mock server
-mockCommLayerServer.on('connection', (ws) => {
-  console.log('Mock Comm Layer client connected.');
+// Handle WebSocket errors
+socket.on('error', (error) => {
+  console.error('WebSocket error:', error);
+});
 
-  // Simulate a session
-  const sessionId = 'testSession123';
-  controlSessions.set(sessionId, { commLayerWs: ws });
-
-  // Send a test request to the Comm Layer
-  const testData = {
-    type: 'test_request',
-    sessionId: sessionId,
-    message: 'This is a test message to the Comm Layer',
-  };
-
-  console.log('Sending test data to Comm Layer...');
-  sendToCommLayer(sessionId, testData);
-
-  // Handle messages from the mock client
-  ws.on('message', (message) => {
-    console.log('Received message from Comm Layer:', message.toString());
-  });
-
-  ws.on('close', () => {
-    console.log('Mock Comm Layer client disconnected.');
-    controlSessions.delete(sessionId);
-  });
-
-  ws.on('error', (error) => {
-    console.error('Mock Comm Layer WebSocket error:', error);
-  });
+// Handle WebSocket close
+socket.on('close', () => {
+  console.log('WebSocket connection closed.');
 });

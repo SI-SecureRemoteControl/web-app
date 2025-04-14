@@ -209,7 +209,7 @@ async function sendToCommLayer(sessionId, data) {
   }
   if (session.commLayerWs.readyState === WebSocket.OPEN) {
       console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-      console.log("Send to comm layer", session.commLayerWs.readyState);
+      console.log("Send to comm layer", session.commLayerWs);
       session.commLayerWs.send(JSON.stringify(data));
   } else {
       console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);

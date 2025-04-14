@@ -190,7 +190,7 @@ wssComm.on('connection', (ws) => {
 });
 
 // samo za slanje poruka ka frontend klijentima
-function broadcastToControlFrontend(data) {
+async function broadcastToControlFrontend(data) {
   const message = JSON.stringify(data);
   console.log(`Broadcasting to ${controlFrontendClients.size} Control Frontend clients:`, message);
   controlFrontendClients.forEach(client => {
@@ -262,7 +262,7 @@ async function handleCommLayerControlRequest(ws, message) {
 }
 
 // za handleanje odgovora admina sa fronta
-function handleFrontendControlResponse(message) {
+async function handleFrontendControlResponse(message) {
   const { sessionId, action } = message;
   if (!sessionId || !action) { console.error('Control Frontend response missing sessionId or action'); return; }
   const session = controlSessions.get(sessionId);
@@ -293,7 +293,7 @@ function handleFrontendControlResponse(message) {
 }
 
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
-function handleAdminTimeout(sessionId) {
+async function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);
   if (session && session.state === 'PENDING_ADMIN') {
       console.log(`Admin response timed out for session: ${sessionId}`);
@@ -306,7 +306,7 @@ function handleAdminTimeout(sessionId) {
 }
 
 // za odgovor sa strane androida
-function handleCommLayerStatusUpdate(message) {
+async function handleCommLayerStatusUpdate(message) {
   const { sessionId, status, details, deviceId } = message;
   if (!sessionId || !status) { console.error('Comm Layer status update missing sessionId or status'); return; }
   const session = controlSessions.get(sessionId);
@@ -351,7 +351,7 @@ function handleCommLayerStatusUpdate(message) {
   }
 }
 
-function cleanupSession(sessionId, reason) {
+async function cleanupSession(sessionId, reason) {
   const session = controlSessions.get(sessionId);
   if (session) {
       console.log(`Cleaning up control session ${sessionId} (Reason: ${reason})`);
@@ -363,7 +363,7 @@ function cleanupSession(sessionId, reason) {
   }
 }
 
-function cleanupSessionsForSocket(ws) {
+async function cleanupSessionsForSocket(ws) {
   console.log('Cleaning up control sessions for disconnected Comm Layer socket.');
   if (ws.activeSessionIds && ws.activeSessionIds.size > 0) {
       ws.activeSessionIds.forEach(sessionId => {

@@ -1,4 +1,3 @@
-// mock-ws-server.js
 const WebSocket = require('ws');
 
 // Create WebSocket server
@@ -16,18 +15,18 @@ const mockDevices = [
 server.on('connection', (socket) => {
   console.log('Admin client connected');
   clients.add(socket);
-  
+
   // Send connection confirmation
   socket.send(JSON.stringify({
     type: 'connection_status',
     connected: true
   }));
-  
+
   // Handle messages from client
   socket.on('message', (message) => {
     const data = JSON.parse(message.toString());
     console.log('Received message:', data);
-    
+
     // Handle different message types
     switch (data.action) {
       case 'accept':
@@ -40,7 +39,7 @@ server.on('connection', (socket) => {
         console.log('Unknown message type:', data.type);
     }
   });
-  
+
   socket.on('close', () => {
     console.log('Client disconnected');
     clients.delete(socket);
@@ -50,10 +49,8 @@ server.on('connection', (socket) => {
 // Handle accept request
 function handleAcceptRequest(socket, data) {
   console.log(`Admin accepted request for device ${data.deviceId}`);
-  
-  // Simulate connection delay
+
   setTimeout(() => {
-    // Send session established confirmation
     socket.send(JSON.stringify({
       type: 'session_status',
       status: 'connected',
@@ -70,23 +67,24 @@ function handleDeclineRequest(socket, data) {
 // Function to send a mock remote control request
 function sendMockRequest() {
   const mockDevice = mockDevices[Math.floor(Math.random() * mockDevices.length)];
-  
+  const requestId = 'req-' + Date.now();
+  const sessionId = 'sess-' + Math.floor(Math.random() * 1000000);
+
   clients.forEach(client => {
     client.send(JSON.stringify({
+      requestId: requestId,
       type: 'request_control',
-      requestId: 'req-' + Date.now(),
-      deviceId: mockDevice.deviceId,
+      from: mockDevice.deviceId,
       deviceName: mockDevice.deviceName,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      sessionId: sessionId
     }));
   });
-  
+
   console.log(`Sent mock request for device: ${mockDevice.deviceName}`);
 }
 
 // Send a mock request every 20 seconds
 setInterval(sendMockRequest, 20000);
 
-console.log('Mock WebSocket server running on port 8080');
-
-//just one test push
+console.log('Mock WebSocket server running on port 9000');

@@ -1,14 +1,17 @@
 const WebSocket = require('ws');
 
-const socket = new WebSocket('ws://localhost:8080/ws/control/comm'); 
+const socket = new WebSocket('wss://backend-wf7e.onrender.com/ws/control/comm'); 
 
 socket.on('open', () => {
     console.log('Connected to the WebSocket server');
     
     const controlRequest = {
-        type: 'request_control',
-        sessionId: 'testSession123',
-        deviceId: 'test14'
+      requestId: "123",
+      type: 'request_control',
+      from: 'c51df48d6b532ff0',
+      deviceName: "name",
+      timestamp: Date.now(),
+      sessionId: '3123123'
     };
 
     socket.send(JSON.stringify(controlRequest));

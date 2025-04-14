@@ -6,38 +6,34 @@ const socket = new WebSocket('wss://backend-wf7e.onrender.com/ws/control/comm');
 // Session ID to use for the test
 const sessionId = 'testSession123';
 
-// Flag to prevent repeated execution
-let hasSentMessages = false;
-
 socket.on('open', () => {
   console.log('Connected to the backend WebSocket server.');
 
-  if (!hasSentMessages) {
-    hasSentMessages = true; // Set the flag to true to prevent repeated execution
+  // Simulate sending a new request
+  const controlRequest = {
+    type: 'request_control',
+    requestId: 'req-123',
+    sessionId: sessionId,
+    deviceId: 'c7d865a558032f35',
+    deviceName: 'Test Device',
+    timestamp: Date.now(),
+  };
 
-    // Simulate sending an `accept` decision
-    const acceptDecision = {
-      type: 'control_decision',
+  console.log('Sending new control request...');
+  socket.send(JSON.stringify(controlRequest));
+
+  // Wait for a short delay before sending a "declined" status
+  setTimeout(() => {
+    const sessionStatus = {
+      type: 'control_status',
       sessionId: sessionId,
-      decision: 'accepted',
+      status: 'rejected',
+      details: 'Android has declined the request.',
     };
 
-    console.log('Sending accept decision...');
-    socket.send(JSON.stringify(acceptDecision));
-
-    // Wait for a short delay before sending the `session_status` message
-    setTimeout(() => {
-      const sessionStatus = {
-        type: 'session_status',
-        sessionId: sessionId,
-        status: 'connected', // Change to 'failed' or 'disconnected' as needed
-        details: 'Session successfully connected',
-      };
-
-      console.log('Sending session status...');
-      socket.send(JSON.stringify(sessionStatus));
-    }, 2000); // 2-second delay to simulate processing time
-  }
+    console.log('Sending session status: Android has declined...');
+    socket.send(JSON.stringify(sessionStatus));
+  }, 2000); // 2-second delay to simulate processing time
 });
 
 // Handle messages from the server

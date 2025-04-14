@@ -201,18 +201,22 @@ function broadcastToControlFrontend(data) {
 }
 
 // za slanje poruka za sesije
- function sendToCommLayer(sessionId, data) {
+function sendToCommLayer(sessionId, data) {
   const session = controlSessions.get(sessionId);
   if (!session || !session.commLayerWs) {
-      console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
-      return;
+    console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);
+    return;
   }
   if (session.commLayerWs.readyState === WebSocket.OPEN) {
-      console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-      console.log("Send to comm layer", session.commLayerWs);
-      session.commLayerWs.send(JSON.stringify(data));
+    console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
+
+    // Log the WebSocket connection details
+    console.log(`WebSocket URL or details for session ${sessionId}:`, session.commLayerWs.url || 'No URL available');
+    console.log("Send to comm layer", session.commLayerWs);
+
+    session.commLayerWs.send(JSON.stringify(data));
   } else {
-      console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
+    console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
   }
 }
 

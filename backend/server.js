@@ -201,7 +201,7 @@ function broadcastToControlFrontend(data) {
 }
 
 // za slanje poruka za sesije
-function sendToCommLayer(sessionId, data) {
+async function sendToCommLayer(sessionId, data) {
   const session = controlSessions.get(sessionId);
   if (!session || !session.commLayerWs) {
       console.error(`[Comm Send Error] Session ${sessionId} not found or socket missing.`);

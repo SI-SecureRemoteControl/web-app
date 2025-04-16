@@ -4,7 +4,7 @@ import { useRemoteControl } from '../../contexts/RemoteControlContext';
 import WebRTCService from '../../services/webRTCService'; 
 
 const RemoteControlPage: React.FC = () => {
-  const { navigateToWebRTC, resetNavigation, currentSessionId } = useRemoteControl();
+  const { resetNavigation, currentSessionId } = useRemoteControl();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [webRTCService, setWebRTCService] = useState<WebRTCService | null>(null);
@@ -64,15 +64,15 @@ const RemoteControlPage: React.FC = () => {
 
 
   useEffect(() => {
-    const handleWebSocketMessage = (data: any) => {
-      if (webRTCService && currentSessionId) {
-        if (data.type === 'sdp_answer' && data.sessionId === currentSessionId) {
-          webRTCService.handleAnswer(data.sdp);
-        } else if (data.type === 'ice_candidate' && data.sessionId === currentSessionId && data.candidate) {
-          webRTCService.addIceCandidate(data.candidate);
-        }
-      }
-    };
+    // const handleWebSocketMessage = (data: any) => {
+    //   if (webRTCService && currentSessionId) {
+    //     if (data.type === 'sdp_answer' && data.sessionId === currentSessionId) {
+    //       webRTCService.handleAnswer(data.sdp);
+    //     } else if (data.type === 'ice_candidate' && data.sessionId === currentSessionId && data.candidate) {
+    //       webRTCService.addIceCandidate(data.candidate);
+    //     }
+    //   }
+    // };
 
     //dodati handlere na socket
     //websocketService.addControlMessageListener(handleWebSocketMessage); 

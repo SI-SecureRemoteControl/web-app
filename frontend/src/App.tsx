@@ -8,6 +8,7 @@ import Navbar from "./components/Navbar/Navbar.tsx";
 import { RemoteControlProvider } from './contexts/RemoteControlContext.tsx';
 import { NotificationToast } from './components/Notifications/NotificationToast.tsx';
 import { RequestManager } from './components/RemoteControl/RequestManager.tsx';
+import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx'; // Import the new component
 import { ConnectionStatus } from './components/RemoteControl/ConnectionStatus.tsx';
 
 function App() {
@@ -36,10 +37,12 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/dashboard" element={<DeviceDashboard />} />
                     <Route path="/registration" element={<Registration />} />
+                    <Route path="/remote-control" element={<RemoteControlPage />} /> 
                 </Route>
             </Routes>
         </RemoteControlProvider>
     );
 }
+
 
 export default App;

@@ -15,6 +15,7 @@ export interface ActiveSession {
   deviceId: string;
   deviceName: string;
   status: 'pending' | 'connected' | 'error';
+  sessionId: string;
 }
 
 export interface Notification {
@@ -27,23 +28,28 @@ interface RemoteControlState {
   activeSession: ActiveSession | null;
   notification: Notification | null;
   isConnected: boolean;
+  navigateToWebRTC: boolean;
+  currentSessionId?: string;
 }
 
 type RemoteControlAction =
   | { type: 'CONNECTION_CHANGE'; payload: { connected: boolean } }
   | { type: 'NEW_REQUEST'; payload: RemoteRequest }
-  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string } }
+  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string, sessionId: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
   | { type: 'SESSION_STATUS_UPDATE'; payload: { status: 'pending' | 'connected' | 'error'; message: string } }
-  | { type: 'CLEAR_NOTIFICATION' };
+  | { type: 'CLEAR_NOTIFICATION' }
+  | { type: 'RESET_NAVIGATION' };
 
 // Initial state
 const initialState: RemoteControlState = {
   requests: [],
   activeSession: null,
   notification: null,
-  isConnected: false
+  isConnected: false,
+  navigateToWebRTC: false,
+  currentSessionId: undefined
 };
 
 // Reducer function
@@ -79,8 +85,10 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           status: 'pending',
           requestId: action.payload.requestId,
           deviceId: action.payload.deviceId,
-          deviceName: action.payload.deviceName
-        }
+          deviceName: action.payload.deviceName,
+          sessionId: action.payload.sessionId
+        },
+        currentSessionId: action.payload.sessionId,
       };
     case 'DECLINE_REQUEST':
       return {
@@ -101,13 +109,16 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         }
       };
     case 'SESSION_STATUS_UPDATE':
+      let status: boolean = action.payload.status === 'connected';
       return {
         ...state,
-        activeSession: action.payload.status === 'connected' 
+        activeSession: status 
           ? { ...state.activeSession!, status: action.payload.status } 
           : null,
+        navigateToWebRTC: status,
+        currentSessionId: state.currentSessionId,
         notification: {
-          type: action.payload.status === 'connected' ? 'success' : 'error',
+          type: status ? 'success' : 'error',
           message: action.payload.message
         }
       };
@@ -116,6 +127,11 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         ...state,
         notification: null
       };
+      case 'RESET_NAVIGATION':
+        return {
+          ...state,
+          navigateToWebRTC: false,
+        };
     default:
       return state;
   }
@@ -126,6 +142,7 @@ interface RemoteControlContextType extends RemoteControlState {
   acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
   declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
   clearNotification: () => void;
+  resetNavigation: () => void;
 }
 
 const RemoteControlContext = createContext<RemoteControlContextType | undefined>(undefined);
@@ -267,13 +284,18 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   const clearNotification = () => {
     dispatch({ type: 'CLEAR_NOTIFICATION' });
   };
+
+  const resetNavigation = () => {
+    dispatch({ type: 'RESET_NAVIGATION' });
+  };
   
   // Context value
   const value = {
     ...state,
     acceptRequest,
     declineRequest,
-    clearNotification
+    clearNotification,
+    resetNavigation
   };
   
   return (

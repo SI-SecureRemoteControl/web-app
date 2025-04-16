@@ -47,20 +47,25 @@ server.on('upgrade', (request, socket, head) => {
 
   if(pathname === '/ws/db_updates') {
 
-    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
-      wssDbUpdates.emit('connection', ws, request);
+    console.log(">>> BACKEND: Path matches /ws/db_updates. Handling upgrade..."); // Added log
+        wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
+            console.log(">>> BACKEND: wssDbUpdates upgrade successful. Emitting connection..."); // Added log
+            wssDbUpdates.emit('connection', ws, request);
     });
   }
   else if(pathname === '/ws/control/frontend') {
 
+    console.log(">>> BACKEND: Path matches /ws/control/frontend. Handling upgrade..."); // Added log
     wssControl.handleUpgrade(request, socket, head, (ws) => {
-      wssControl.emit('connection', ws, request, 'frontend');
+        console.log(">>> BACKEND: wssControl upgrade successful. Emitting connection..."); // Added log
+        wssControl.emit('connection', ws, request, 'frontend');
     });
   }
   else if(pathname === '/ws/control/comm') {
-    // TODO: Add Comm Layer specific authentication/validation if needed here
-    wssComm.handleUpgrade(request, socket, head, (ws) => {
-      wssComm.emit('connection', ws, request, 'comm');
+    console.log(">>> BACKEND: Path matches /ws/control/comm. Attempting wssComm.handleUpgrade...");
+        wssComm.handleUpgrade(request, socket, head, (ws) => {
+            console.log(">>> BACKEND: wssComm.handleUpgrade successful. Emitting 'connection' for Comm Layer.");
+            wssComm.emit('connection', ws, request, 'comm'); // 'comm' type seems correct
     });
   }
   else {
@@ -155,17 +160,19 @@ wssControl.on('connection', (ws) => {
 });
 
 // -- wssComm -- Comm layer clients --
-wssComm.on('connection', (ws) => {
-  console.log('Comm Layer client connected to Control WebSocket.');
+wssComm.on('connection', (ws, request) => {
+  console.log(`>>> BACKEND: wssComm 'connection' event fired. Comm Layer client connected.`); // Added log
 
   commLayerClients.add(ws);
-  controlFrontendClients.add(ws);
+  console.log(`>>> BACKEND: Attaching message listener to Comm Layer client socket.`); // Added log
 
   ws.on('message', (message) => {
+    console.log(`>>> BACKEND: Received raw message from Comm Layer: ${message.toString()}`); // Added log
     try {
       const parsedMessage = JSON.parse(message);
-      console.log('Received message from Comm layer:', parsedMessage);
+      console.log('>>> BACKEND: Parsed message from Comm layer:', parsedMessage); // Existing log + prefix
       if (parsedMessage.type === 'request_control') {
+        console.log(">>> BACKEND: Handling 'request_control' from Comm Layer..."); // Added log
         handleCommLayerControlRequest(ws, parsedMessage);
       } else if (parsedMessage.type === 'control_status') {
         handleCommLayerStatusUpdate(parsedMessage);
@@ -173,24 +180,24 @@ wssComm.on('connection', (ws) => {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
     } catch (error) {
-      console.error('Failed to parse message from Comm Layer:', error);
+      console.error('!!! BACKEND: Failed to parse message from Comm Layer:', error);
+            console.error(`!!! BACKEND: Raw message was: ${message.toString()}`); // Log raw message on error
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
 
-    console.log('Comm Layer client disconnected from Control WebSocket.');
-    cleanupSessionsForSocket(ws);
+    const reasonString = reason ? reason.toString() : 'N/A';
+        console.log(`>>> BACKEND: Comm Layer client disconnected from Control WebSocket. Code: ${code}, Reason: ${reasonString}`); // Enhanced log
+        cleanupSessionsForSocket(ws); // Assuming this should run
   });
 
   ws.on('error', (error) => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
-
-    console.error('Comm Layer WebSocket error:', error);
-    cleanupSessionsForSocket(ws);
+    // controlFrontendClients.delete(ws); // If added above, remove here too
+    console.error('!!! BACKEND: Comm Layer WebSocket error:', error); // Enhanced log
+    cleanupSessionsForSocket(ws); // Assuming this should run
   });
 });
 

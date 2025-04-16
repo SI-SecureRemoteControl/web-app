@@ -9,7 +9,10 @@ function generateKey(type = 'registration') {
   }
   return type === 'registration' ? digitPool.slice(0, 10) : digitPool.slice(-10);
 }
-
+function generateRequestId() {
+  return 'req-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+}
 module.exports = {
-  generateKey
+  generateKey,
+  generateRequestId
 };

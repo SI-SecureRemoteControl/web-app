@@ -254,7 +254,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       
       dispatch({
         type: 'ACCEPT_REQUEST',
-        payload: { requestId, deviceId, deviceName }
+        payload: { requestId, deviceId, deviceName, sessionId }
       });
     } else {
       dispatch({

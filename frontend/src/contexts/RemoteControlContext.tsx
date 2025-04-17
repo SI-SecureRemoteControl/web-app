@@ -150,7 +150,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
       else if (action.payload.status === 'failed' || 
                action.payload.status === 'rejected' || 
                action.payload.status === 'timed_out' ||
-               action.payload.status === 'disconnected') {
+               action.payload.status === 'disconnected' ||
+               action.payload.status === 'terminated') { // Added 'terminated' to terminal states
         // Only these specific error statuses should clear the session
         frontendStatus = 'error';
         notificationType = 'error';
@@ -191,6 +192,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
 interface RemoteControlContextType extends RemoteControlState {
   acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
   declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
+  terminateSession: (sessionId: string) => void; // Added this new function
   clearNotification: () => void;
 }
 
@@ -391,6 +393,44 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       });
     }
   };
+
+  // New function to terminate an active session
+  const terminateSession = (sessionId: string) => {
+    console.log('Terminating session:', { sessionId });
+    
+    // Make sure we have an active session
+    if (!state.activeSession || state.activeSession.sessionId !== sessionId) {
+      console.warn('Cannot terminate - no matching active session');
+      return;
+    }
+    
+    const deviceId = state.activeSession.deviceId;
+    
+    const success = sendWebSocketMessage('terminate_session', { 
+      sessionId,
+      deviceId
+    });
+    
+    if (success) {
+      dispatch({
+        type: 'SESSION_STATUS_UPDATE',
+        payload: {
+          sessionId,
+          status: 'terminated',
+          message: 'Session terminated by administrator'
+        }
+      });
+    } else {
+      dispatch({
+        type: 'SESSION_STATUS_UPDATE',
+        payload: {
+          sessionId,
+          status: 'error',
+          message: 'Failed to terminate session. Please check your connection.'
+        }
+      });
+    }
+  };
   
   const clearNotification = () => {
     dispatch({ type: 'CLEAR_NOTIFICATION' });
@@ -401,6 +441,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     ...state,
     acceptRequest,
     declineRequest,
+    terminateSession, // Added this new function
     clearNotification
   };
   

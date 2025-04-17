@@ -15,6 +15,7 @@ export interface ActiveSession {
   deviceId: string;
   deviceName: string;
   status: 'pending' | 'connected' | 'error';
+  sessionId: string; // Added sessionId to match backend data
 }
 
 export interface Notification {
@@ -32,10 +33,10 @@ interface RemoteControlState {
 type RemoteControlAction =
   | { type: 'CONNECTION_CHANGE'; payload: { connected: boolean } }
   | { type: 'NEW_REQUEST'; payload: RemoteRequest }
-  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string } }
+  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string; sessionId: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
-  | { type: 'SESSION_STATUS_UPDATE'; payload: { status: 'pending' | 'connected' | 'error'; message: string } }
+  | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string } }
   | { type: 'CLEAR_NOTIFICATION' };
 
 // Initial state
@@ -48,6 +49,8 @@ const initialState: RemoteControlState = {
 
 // Reducer function
 function reducer(state: RemoteControlState, action: RemoteControlAction): RemoteControlState {
+  // console.log('REDUCER ACTION:', action.type, action.payload);
+  
   switch (action.type) {
     case 'CONNECTION_CHANGE':
       return {
@@ -79,7 +82,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           status: 'pending',
           requestId: action.payload.requestId,
           deviceId: action.payload.deviceId,
-          deviceName: action.payload.deviceName
+          deviceName: action.payload.deviceName,
+          sessionId: action.payload.sessionId // Store sessionId for matching later
         }
       };
     case 'DECLINE_REQUEST':
@@ -101,14 +105,76 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         }
       };
     case 'SESSION_STATUS_UPDATE':
+      console.log('SESSION_STATUS_UPDATE for status:', action.payload.status);
+      
+      // Only update if we have an active session
+      if (!state.activeSession) {
+        console.warn('Received status update but no active session exists');
+        return state;
+      }
+      
+      // Check if we have matching sessionId
+      const sessionMatch = action.payload.sessionId && 
+                          state.activeSession.sessionId === action.payload.sessionId;
+      
+      console.log('Session match check:', {
+        sessionMatch,
+        activeSessionId: state.activeSession.sessionId,
+        payloadSessionId: action.payload.sessionId
+      });
+      
+      if (!sessionMatch) {
+        console.warn('Session ID mismatch, ignoring update');
+        return state;
+      }
+      
+      // Map backend status to frontend status
+      let frontendStatus: 'pending' | 'connected' | 'error' = 'pending';
+      let notificationType: 'success' | 'error' | 'info' = 'info';
+      let notificationMessage = action.payload.message || '';
+      
+      if (action.payload.status === 'connected') {
+        frontendStatus = 'connected';
+        notificationType = 'success';
+        notificationMessage = notificationMessage || `Connected to ${state.activeSession.deviceName}`;
+        console.log('Setting status to connected');
+      } 
+      else if (action.payload.status === 'pending_device_confirmation' || 
+               action.payload.status === 'admin_accepted') {
+        // Keep as pending for intermediate states
+        frontendStatus = 'pending';
+        notificationType = 'info';
+        notificationMessage = notificationMessage || 'Waiting for device confirmation...';
+        console.log('Keeping status as pending (waiting for device)');
+      }
+      else if (action.payload.status === 'failed' || 
+               action.payload.status === 'rejected' || 
+               action.payload.status === 'timed_out' ||
+               action.payload.status === 'disconnected') {
+        // Only these specific error statuses should clear the session
+        frontendStatus = 'error';
+        notificationType = 'error';
+        console.log('Setting status to error and clearing session');
+        return {
+          ...state,
+          activeSession: null,
+          notification: {
+            type: notificationType,
+            message: notificationMessage || `Session ended: ${action.payload.status}`
+          }
+        };
+      }
+      
+      // For all other statuses, maintain the active session with updated status
       return {
         ...state,
-        activeSession: action.payload.status === 'connected' 
-          ? { ...state.activeSession!, status: action.payload.status } 
-          : null,
+        activeSession: {
+          ...state.activeSession,
+          status: frontendStatus
+        },
         notification: {
-          type: action.payload.status === 'connected' ? 'success' : 'error',
-          message: action.payload.message
+          type: notificationType,
+          message: notificationMessage
         }
       };
     case 'CLEAR_NOTIFICATION':
@@ -133,6 +199,14 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  // Use a ref to track the latest state for use in event listeners
+  const stateRef = useRef(state);
+  
+  // Keep stateRef updated with latest state
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+  
   // Use a ref to track timeout IDs for each request
   const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
   
@@ -160,9 +234,12 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   };
   
   useEffect(() => {
+    console.log('Setting up WebSocket listeners');
+    
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
-      console.log(data);
+      console.log('WebSocket message received:', data);
+      
       if (data.type === 'request_control') {
         const request = {
           requestId: data.requestId,
@@ -182,15 +259,47 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         requestTimeoutsRef.current[request.requestId] = setTimeout(() => {
           handleRequestTimeout(request.requestId, request.deviceName);
         }, REQUEST_TIMEOUT_DURATION);
-      } else if (data.type === 'session_status') {
+      } 
+      else if (data.type === 'control_status_update') {
+        console.log('Received control_status_update:', data);
+        
+        // Get current state from ref to ensure we have the latest
+        const currentState = stateRef.current;
+        
+        // Check if we have an active session
+        if (!currentState.activeSession) {
+          console.warn('No active session exists, ignoring status update');
+          return;
+        }
+        
+        const sessionId = data.sessionId;
+        const status = data.status; // Keep the original status from backend
+        const message = data.message || `Session status: ${data.status}`;
+        
+        console.log('Dispatching status update with original backend status:', status);
+        
         dispatch({
           type: 'SESSION_STATUS_UPDATE',
           payload: {
+            sessionId,
+            status, // Pass the original status to let the reducer decide how to handle it
+            message
+          }
+        });
+      }
+      else if (data.type === 'session_status') {
+        console.log('Received session_status (legacy):', data);
+        
+        dispatch({
+          type: 'SESSION_STATUS_UPDATE',
+          payload: {
+            sessionId: data.sessionId || '',
             status: data.status,
             message: data.message
           }
         });
-      } else if (data.type === 'connection_status') {
+      } 
+      else if (data.type === 'connection_status') {
         dispatch({
           type: 'CONNECTION_CHANGE',
           payload: {
@@ -200,6 +309,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       }
     };
     
+    console.log('Connecting to control socket...');
     websocketService.connectControlSocket(); // Connect to the control socket
     websocketService.addControlMessageListener(handleWebSocketMessage); 
     
@@ -214,6 +324,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     
     // Clean up on unmount
     return () => {
+      console.log('Cleaning up WebSocket listeners');
+      
       // Clear all request timeouts
       Object.keys(requestTimeoutsRef.current).forEach(requestId => {
         clearTimeout(requestTimeoutsRef.current[requestId]);
@@ -226,23 +338,32 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   
   // Actions
   const sendWebSocketMessage = (type: string, data: any) => {
+    console.log('Sending WebSocket message:', { type, ...data });
     return websocketService.sendControlMessage({ type, ...data });
   };
   
   const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
-    const success = sendWebSocketMessage('control_response', { sessionId, action: 'accept'});
+    console.log('Accepting request:', { requestId, deviceId, deviceName, sessionId });
+    
+    const success = sendWebSocketMessage('control_response', { 
+      sessionId, 
+      action: 'accept',
+      requestId, // Include requestId for reference
+      deviceId   // Include deviceId for reference
+    });
     
     if (success) {
       clearRequestTimeout(requestId);
       
       dispatch({
         type: 'ACCEPT_REQUEST',
-        payload: { requestId, deviceId, deviceName }
+        payload: { requestId, deviceId, deviceName, sessionId }
       });
     } else {
       dispatch({
         type: 'SESSION_STATUS_UPDATE',
         payload: {
+          sessionId,
           status: 'error',
           message: 'Failed to send accept request. Please check your connection.'
         }
@@ -251,7 +372,14 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   };
   
   const declineRequest = (requestId: string, deviceId: string, sessionId: string) => {
-    const success = sendWebSocketMessage('control_response', { action: 'reject', sessionId, requestId, deviceId});
+    console.log('Declining request:', { requestId, deviceId, sessionId });
+    
+    const success = sendWebSocketMessage('control_response', { 
+      action: 'reject', 
+      sessionId, 
+      requestId, 
+      deviceId 
+    });
     
     if (success) {
       // Clear timeout for this request

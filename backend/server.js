@@ -1,11 +1,12 @@
 const express = require('express');
 const dotenv = require('dotenv').config();
 const { connectDB } = require('./database/db');
-const WebSocket = require('ws');
-const { URL } = require('url');
 const { generateKey, generateRequestId } = require('./utils/keysGenerator');
 const cors = require("cors");
 const mainRouter = require('./routes/index');
+const WebSocket = require('ws');
+
+const { initializeWebSocket, wssDbUpdates, wssControl, wssComm } = require('./websockets/wsManager');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -21,20 +22,12 @@ app.use(express.json());
 
 let db;
 
-// stari ws server za db updates prema frontu
-const wssDbUpdates = new WebSocket.Server({ noServer: true });
 const dbUpdateClients = new Set();
-
-// novi ws server za control requestove sa androida, spomenuta mapa za cache
-const wssControl = new WebSocket.Server({ noServer: true })
-const wssComm = new WebSocket.Server({ noServer: true })
-
-
 const controlFrontendClients = new Set();
 const controlSessions = new Map();
 const commLayerClients = new Set();
 
- const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
+const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
 // prvi server
 wssDbUpdates.on('connection', (ws, req) => {
@@ -388,40 +381,16 @@ connectDB()
         console.log(`Server running on port ${port}`);
       });
 
-      server.on('upgrade', (request, socket, head) => {
+      initializeWebSocket(server);
 
-        const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
-        console.log(`WebSocket upgrade request received for path: ${pathname}`);
-      
-        if(pathname === '/ws/db_updates') {
-      
-          console.log(">>> BACKEND: Path matches /ws/db_updates. Handling upgrade..."); // Added log
-              wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
-                  console.log(">>> BACKEND: wssDbUpdates upgrade successful. Emitting connection..."); // Added log
-                  wssDbUpdates.emit('connection', ws, request);
-          });
+      server.on('error', (error) => {
+        console.error('Server error:', error);
+        // Handle specific errors like EADDRINUSE
+        if (error.code === 'EADDRINUSE') {
+            console.error(`Port ${port} is already in use. Exiting.`);
+            process.exit(1);
         }
-        else if(pathname === '/ws/control/frontend') {
-      
-          console.log(">>> BACKEND: Path matches /ws/control/frontend. Handling upgrade..."); // Added log
-          wssControl.handleUpgrade(request, socket, head, (ws) => {
-              console.log(">>> BACKEND: wssControl upgrade successful. Emitting connection..."); // Added log
-              wssControl.emit('connection', ws, request, 'frontend');
-          });
-        }
-        else if(pathname === '/ws/control/comm') {
-          console.log(">>> BACKEND: Path matches /ws/control/comm. Attempting wssComm.handleUpgrade...");
-              wssComm.handleUpgrade(request, socket, head, (ws) => {
-                  console.log(">>> BACKEND: wssComm.handleUpgrade successful. Emitting 'connection' for Comm Layer.");
-                  wssComm.emit('connection', ws, request, 'comm'); // 'comm' type seems correct
-          });
-        }
-        else {
-          
-          console.log(`WebSocket connection rejected for unknown path: ${pathname}`);
-          socket.destroy();
-        }
-      })
+      });
 
     })
     .catch((err) => {

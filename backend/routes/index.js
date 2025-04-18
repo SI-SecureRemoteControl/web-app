@@ -1,5 +1,5 @@
 const express = require('express');
-const bcrypt = require('brcypt');
+const bcrypt = require('bcrypt');
 const { generateKey } = require('../utils/keysGenerator');
 
 const router = express.Router();

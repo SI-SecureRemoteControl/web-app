@@ -7,11 +7,11 @@ const mainRouter = require('./routes/index');
 const WebSocket = require('ws');
 
 const { initializeWebSocket, wssDbUpdates, wssControl, wssComm } = require('./websockets/wsManager');
-const { initializeDbUpdatesWebSocket } = require('./websockets/dbUpdates.handler');
-const { initializeControlFrontendWebSocket, broadcastControlFrontend: broadcastControlFrontend } = require('./websockets/controlFrontend.handler');
-const { initializeControlCommWebSocket } = require('./websockets/controlComm.handler'); 
+const { initializeDbUpdatesWebSocket } = require('./websockets/dbUpdatesHandler');
+const { initializeControlFrontendWebSocket, broadcastControlFrontend: broadcastControlFrontend } = require('./websockets/controlFrontendHandler');
+const { initializeControlCommWebSocket } = require('./websockets/controlCommHandler'); 
 
-const ControlSessionService = require('./services/controlSession.service');
+const ControlSessionService = require('./services/controlSession');
 
 const app = express();
 const port = process.env.PORT || 5000;

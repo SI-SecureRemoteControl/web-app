@@ -9,6 +9,7 @@ const WebSocket = require('ws');
 const { initializeWebSocket, wssDbUpdates, wssControl, wssComm } = require('./websockets/wsManager');
 const { initializeDbUpdatesWebSocket } = require('./websockets/dbUpdates.handler');
 const { initializeControlFrontendWebSocket, broadcastControlFrontend: broadcastControlFrontend } = require('./websockets/controlFrontend.handler');
+const { initializeControlCommWebSocket } = require('./websockets/controlComm.handler'); 
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -25,50 +26,8 @@ app.use(express.json());
 let db;
 
 const controlSessions = new Map();
-const commLayerClients = new Set();
 
 const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
-
-// -- wssComm -- Comm layer clients --
-wssComm.on('connection', (ws, request) => {
-  console.log(`>>> BACKEND: wssComm 'connection' event fired. Comm Layer client connected.`); // Added log
-
-  commLayerClients.add(ws);
-  console.log(`>>> BACKEND: Attaching message listener to Comm Layer client socket.`); // Added log
-
-  ws.on('message', (message) => {
-    console.log(`>>> BACKEND: Received raw message from Comm Layer: ${message.toString()}`); // Added log
-    try {
-      const parsedMessage = JSON.parse(message);
-      console.log('>>> BACKEND: Parsed message from Comm layer:', parsedMessage); // Existing log + prefix
-      if (parsedMessage.type === 'request_control') {
-        console.log(">>> BACKEND: Handling 'request_control' from Comm Layer..."); // Added log
-        handleCommLayerControlRequest(ws, parsedMessage);
-      } else if (parsedMessage.type === 'control_status') {
-        handleCommLayerStatusUpdate(parsedMessage);
-      } else {
-        console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
-      }
-    } catch (error) {
-      console.error('!!! BACKEND: Failed to parse message from Comm Layer:', error);
-            console.error(`!!! BACKEND: Raw message was: ${message.toString()}`); // Log raw message on error
-    }
-  });
-
-  ws.on('close', (code, reason) => {
-    commLayerClients.delete(ws);
-
-    const reasonString = reason ? reason.toString() : 'N/A';
-        console.log(`>>> BACKEND: Comm Layer client disconnected from Control WebSocket. Code: ${code}, Reason: ${reasonString}`); // Enhanced log
-        cleanupSessionsForSocket(ws); // Assuming this should run
-  });
-
-  ws.on('error', (error) => {
-    commLayerClients.delete(ws);
-    console.error('!!! BACKEND: Comm Layer WebSocket error:', error); // Enhanced log
-    cleanupSessionsForSocket(ws); // Assuming this should run
-  });
-});
 
 // za slanje poruka za sesije
 function sendToCommLayer(sessionId, data) {
@@ -282,6 +241,12 @@ connectDB()
       initializeControlFrontendWebSocket({
         controlSessions: controlSessions, 
         handleFrontendControlResponse: handleFrontendControlResponse 
+      });
+
+      initializeControlCommWebSocket({
+        handleCommLayerControlRequest: handleCommLayerControlRequest,
+        handleCommLayerStatusUpdate: handleCommLayerStatusUpdate,
+        cleanupSessionsForSocket: cleanupSessionsForSocket
       });
 
       const server = app.listen(port, () => {

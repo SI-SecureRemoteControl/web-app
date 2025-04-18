@@ -8,7 +8,7 @@ const WebSocket = require('ws');
 
 const { initializeWebSocket, wssDbUpdates, wssControl, wssComm } = require('./websockets/wsManager');
 const { initializeDbUpdatesWebSocket } = require('./websockets/dbUpdatesHandler');
-const { initializeControlFrontendWebSocket, broadcastControlFrontend: broadcastControlFrontend } = require('./websockets/controlFrontendHandler');
+const { initializeControlFrontendWebSocket, broadcastToControlFrontend: broadcastControlFrontend } = require('./websockets/controlFrontendHandler');
 const { initializeControlCommWebSocket } = require('./websockets/controlCommHandler'); 
 
 const ControlSessionService = require('./services/controlSession');
@@ -38,7 +38,7 @@ connectDB()
 
       app.use('/', mainRouter);
       console.log("Routes mounted.");
-
+      console.log("Instantiating ControlSessionService..."); 
       const controlSessionService = new ControlSessionService({
         db: db,
         broadcastControlFrontend: broadcastControlFrontend, 

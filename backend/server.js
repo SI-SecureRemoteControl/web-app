@@ -7,6 +7,7 @@ const mainRouter = require('./routes/index');
 const WebSocket = require('ws');
 
 const { initializeWebSocket, wssDbUpdates, wssControl, wssComm } = require('./websockets/wsManager');
+const { initializeDbUpdatesWebSocket } = require('./websockets/dbUpdates.handler');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -22,56 +23,11 @@ app.use(express.json());
 
 let db;
 
-const dbUpdateClients = new Set();
 const controlFrontendClients = new Set();
 const controlSessions = new Map();
 const commLayerClients = new Set();
 
 const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
-
-// prvi server
-wssDbUpdates.on('connection', (ws, req) => {
-
-  console.log('Client connected for DB Updates');
-  dbUpdateClients.add(ws);
-
-  ws.on('message', (message) => {
-      console.log('Received message on DB Update socket (unexpected):', message);
-  });
-
-  ws.on('close', () => {
-    console.log("close req");
-      console.log(req);
-      dbUpdateClients.delete(ws);
-      console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
-  });
-
-  ws.on('error', (error) => {
-      console.error('DB Update WebSocket error:', error);
-      dbUpdateClients.delete(ws); 
-  });
-});
-
-function broadcastDbUpdate(data) {
-  const message = JSON.stringify({ type: 'db_change', ...data }); 
-  console.log(`Broadcasting DB update ${message} to clients.`);
-  for (const client of dbUpdateClients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
-    }
-  }
-}
-
-function setupChangeStream() {
-  const devicesCollection = db.collection('devices');
-  const changeStream = devicesCollection.watch();
-
-  changeStream.on('change', (change) => {
-    broadcastDbUpdate({
-      change,
-    });
-  });
-}
 
 // drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
@@ -372,10 +328,7 @@ connectDB()
       app.use('/', mainRouter);
       console.log("Routes mounted.");
 
-      if (process.env.USE_LOCAL_DB !== "true") {
-        setupChangeStream();
-        console.log("setup");
-      }
+      initializeDbUpdatesWebSocket(db);
 
       const server = app.listen(port, () => {
         console.log(`Server running on port ${port}`);

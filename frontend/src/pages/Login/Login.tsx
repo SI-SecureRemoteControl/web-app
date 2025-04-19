@@ -3,6 +3,10 @@ import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {User} from "../../components/types/user";
 
+export interface LoginProps {
+    handleLogin: (loginResponse: LoginResponse) => void;
+}
+
 export interface LoginRequest {
     username: string;
     password: string;
@@ -13,7 +17,7 @@ export interface LoginResponse {
     user: User;
 }
 
-export default function Login() {
+export default function Login({handleLogin}: LoginProps) {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [badLogin, setBadLogin] = useState(false);
@@ -37,9 +41,7 @@ export default function Login() {
 
         if(res.ok) {
             const loginResponse: LoginResponse = await res.json();
-            localStorage.setItem("token", loginResponse.token);
-            localStorage.setItem("username", loginResponse.user.username);
-            navigate("/");
+            handleLogin(loginResponse);
         } else {
             setBadLogin(true);
             setUsername('');

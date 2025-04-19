@@ -1,3 +1,5 @@
+import {User} from "../components/types/user";
+
 let dbSocket: WebSocket | null = null;
 let controlSocket: WebSocket | null = null;
 
@@ -45,7 +47,8 @@ const connectWebSocket = (
   console.log(`Attempting WebSocket (${pathSuffix}) connection to: ${wsUrl}`);
 
   try {
-    const newSocket = new WebSocket(wsUrl);
+    const user: User | null = JSON.parse(localStorage.getItem('user') ?? '');
+    const newSocket = new WebSocket(wsUrl, user?._id);
 
     newSocket.onopen = () => {
       console.log(`WebSocket (${pathSuffix}): Connection established`);

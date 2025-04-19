@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { websocketService } from '../services/webSocketService';
+import {UserContext} from "../contexts/UserContext";
+import {User} from "../components/types/user";
 
 // Types
 export interface RemoteRequest {
@@ -132,6 +134,8 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
+  const userContext: User | null = useContext(UserContext);
+
   const [state, dispatch] = useReducer(reducer, initialState);
   // Use a ref to track timeout IDs for each request
   const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
@@ -160,6 +164,10 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   };
   
   useEffect(() => {
+    if(!userContext && !localStorage.getItem('token')) {
+      console.log("User not logged in");
+      return;
+    }
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
       console.log(data);
@@ -222,7 +230,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       websocketService.removeControlMessageListener(handleWebSocketMessage);
       clearInterval(connectionCheckInterval);
     };
-  }, []);
+  }, [userContext]);
   
   // Actions
   const sendWebSocketMessage = (type: string, data: any) => {

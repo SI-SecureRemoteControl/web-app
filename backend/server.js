@@ -36,7 +36,7 @@ const wssControl = new WebSocket.Server({ noServer: true })
 const wssComm = new WebSocket.Server({ noServer: true })
 
 
-const controlFrontendClients = new Set();
+const controlFrontendClients = new Map();
 const controlSessions = new Map();
 const commLayerClients = new Set();
 
@@ -120,7 +120,7 @@ function setupChangeStream() {
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
 
-  controlFrontendClients.add(ws);
+  controlFrontendClients.set(ws.protocol, ws);
   console.log(`Control Frontend client added. Total control frontend clients: ${controlFrontendClients.size}`);
 
   controlSessions.forEach((session, sessionId) => {
@@ -146,13 +146,13 @@ wssControl.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete(ws.protocol);
     console.log(`Control Frontend client disconnected. Total clients: ${controlFrontendClients.size}`);
   });
 
   ws.on('error', (error) => {
     console.error('Control Frontend WebSocket error:', error);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete(ws.protocol);
   });
 });
 
@@ -161,7 +161,7 @@ wssComm.on('connection', (ws) => {
   console.log('Comm Layer client connected to Control WebSocket.');
 
   commLayerClients.add(ws);
-  controlFrontendClients.add(ws);
+  controlFrontendClients.set('commLayer', ws);
 
   ws.on('message', (message) => {
     try {
@@ -181,7 +181,7 @@ wssComm.on('connection', (ws) => {
 
   ws.on('close', () => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete('commLayer');
 
     console.log('Comm Layer client disconnected from Control WebSocket.');
     cleanupSessionsForSocket(ws);
@@ -189,7 +189,7 @@ wssComm.on('connection', (ws) => {
 
   ws.on('error', (error) => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete('commLayer');
 
     console.error('Comm Layer WebSocket error:', error);
     cleanupSessionsForSocket(ws);

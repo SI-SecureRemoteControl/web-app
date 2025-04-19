@@ -48,7 +48,7 @@ const connectWebSocket = (
 
   try {
     const user: User | null = JSON.parse(localStorage.getItem('user') ?? '');
-    const newSocket = new WebSocket(wsUrl, user?._id);
+    const newSocket = new WebSocket(wsUrl, user?.username);
 
     newSocket.onopen = () => {
       console.log(`WebSocket (${pathSuffix}): Connection established`);

@@ -1,10 +1,16 @@
 import ButtonPrimary from "../../components/ButtonPrimary/ButtonPrimary.tsx";
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
+import {User} from "../../components/types/user";
 
-interface LoginRequest {
+export interface LoginRequest {
     username: string;
     password: string;
+}
+
+export interface LoginResponse {
+    token: string;
+    user: User;
 }
 
 export default function Login() {
@@ -21,7 +27,7 @@ export default function Login() {
 
     async function handleSubmit() {
         const req: LoginRequest = {username: username, password: password};
-        const url: string = import.meta.env.VITE_BASE_URL + '/login';
+        const url: string = import.meta.env.VITE_BASE_URL + '/api/auth/login';
         const headers = new Headers({'Content-Type': 'application/json'});
         const res: Response = await fetch(url, {
             method: 'POST',
@@ -29,8 +35,10 @@ export default function Login() {
             headers: headers
         });
 
-        if(res.status === 200) {
-            localStorage.setItem("token", "This is a temporary login solution");
+        if(res.ok) {
+            const loginResponse: LoginResponse = await res.json();
+            localStorage.setItem("token", loginResponse.token);
+            localStorage.setItem("username", loginResponse.user.username);
             navigate("/");
         } else {
             setBadLogin(true);

@@ -4,7 +4,9 @@ const bcrypt = require('bcrypt');
 const { generateKey, generateRequestId } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
-const { URL } = require('url')
+const { URL } = require('url');
+const jwt = require('jsonwebtoken');
+const authorize = require('./services/authorization');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -403,28 +405,6 @@ async function handleCommLayerControlRequest(ws, message) {
 }
 
 // ---------------------------------------------------------- rute
-app.post('/login', (req, res) => {
-  //THIS IS TEMPORARY, PROPER AUTHENTICATION WILL BE ADDED LATER
-  const loginRequest = req.body;
-  
-  bcrypt.compare(loginRequest.password, '$2a$12$syTr35twcAPPFPr8E1q8RuqzNHd8Bb53w4ZA7D9TNubbVdHS/fxIm', (err, result) => {
-    if(err) {
-      console.error(err);
-      return;
-    }
-
-    if(result) {
-      if(loginRequest.username == 'admin') {
-        res.sendStatus(200);
-      } else {
-        res.sendStatus(400);
-      }
-    } else {
-      res.sendStatus(400);
-    }
-  });
-});
-
 
 app.post('/devices/registration', async (req, res) => {
   const deviceName = req.body.deviceName;
@@ -537,7 +517,39 @@ app.get('/', (req, res) => {
   res.send('Hello, world!');
 });
 
+// ---------------------------------------------------------- auth
 
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { username, password, role } = req.body;
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.collection('web_admin_user').insertOne({ username, password: hashedPassword, role });
+        res.status(201).json({ message: 'User registered successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Registration failed' });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await db.collection('web_admin_user').findOne({ username });
+        if (!user) {
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+        const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
+            expiresIn: '1h',
+        });
+        delete user.password;
+        res.status(200).json({ token, user });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
 
 connectDB()
     .then((database) => {

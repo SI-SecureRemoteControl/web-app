@@ -5,9 +5,11 @@ class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
   private deviceId: string | null = null;
+  private sessionId: string | null = null;
 
-  constructor(deviceId: string) {
+  constructor(deviceId: string, sessionId: string) {
     this.deviceId = deviceId;
+    this.sessionId = sessionId;
     this.initializePeerConnection();
     this.setupWebSocketListeners(); // Dodajte postavljanje WebSocket listenera
   }
@@ -94,7 +96,7 @@ class WebRTCService {
 
   private sendSignalingMessage(type: string, payload: any) {
     if (websocketService.getControlConnectionStatus()) {
-      websocketService.sendControlMessage({ type, payload, deviceId: this.deviceId });
+      websocketService.sendControlMessage({ type, payload, deviceId: this.deviceId, sessionId: this.sessionId });
     } else {
       console.error('WebSocket (control) veza nije otvorena. Ne mogu poslati signalizacijsku poruku:', { type, payload });
     }

@@ -135,7 +135,7 @@ wssControl.on('connection', (ws) => {
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
       } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignaling(parsedMessage)
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage)
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
@@ -547,7 +547,6 @@ app.get('/api/devices', async (req, res) => {
 app.get('/', (req, res) => {
   res.send('Hello, world!');
 });
-
 
 
 connectDB()

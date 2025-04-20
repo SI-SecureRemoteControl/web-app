@@ -29,7 +29,7 @@ const RemoteControlPage: React.FC = () => {
     console.log('Device ID iz URL-a:', deviceId);
     console.log('Session ID iz URL-a:', sessionId);
 
-    const service = new WebRTCService(deviceId ? deviceId : 'test');
+    const service = new WebRTCService(deviceId ? deviceId : 'test', sessionId);
     setWebRTCService(service);
 
     service.setOnRemoteStream((stream) => {

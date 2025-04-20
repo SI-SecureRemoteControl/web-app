@@ -544,10 +544,8 @@ app.get('/', (req, res) => {
   res.send('Hello, world!');
 });
 
-
-/*app.get('/api/devices/:id/session-logs', async (req, res) => {*/
-app.get('/sessionview/:deviceId', async (req, res) => {
-    const { id } = req.params;  // Device ID from the URL parameter
+app.get('/api/devices/sessionview/:deviceId', async (req, res) => {
+    const { deviceId } = req.params;  // Device ID from the URL parameter
     const {
         startDate,
         endDate,
@@ -558,7 +556,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     } = req.query;
 
     try {
-        const query = { deviceId: id };
+        const query = { deviceId };
 
         // Apply date filtering if startDate and/or endDate are provided
         if (startDate) {
@@ -574,7 +572,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
 
         // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const sessionsCollection = db.collection('sessions');
+        const sessionsCollection = db.collection('sessionLogs');
 
         // Fetch session logs from the database
         const sessionLogs = await sessionsCollection.find(query)
@@ -602,8 +600,6 @@ app.get('/sessionview/:deviceId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
-
-
 
 connectDB()
     .then((database) => {

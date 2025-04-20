@@ -1,96 +1,75 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from 'react';
+import { useSessionLogs } from '../../components/hooks/useSessionLogs.ts';
+import { ArrowLeft } from 'lucide-react';
+import SessionFilter from './SessionFilter';
+import SessionLogList from './SessionLogList';
+import SessionPagination from './SessionPagination';
+import LoadingState from './LoadingState';
+import ErrorState from './ErrorState';
 
-interface Event {
-    timestamp: string;
-    type: string;
-    description: string;
-}
-
-interface Session {
-    sessionId: string;
+interface SessionViewerProps {
     deviceId: string;
-    events: Event[];
+    deviceName?: string;
+    onBack?: () => void;
 }
 
-interface ApiResponse {
-    sessions: Session[];
-    total: number;
-    page: number;
-    totalPages: number;
-}
-
-const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
-    const [sessions, setSessions] = useState<Session[]>([]);
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        setLoading(true);
-        axios
-            .get<ApiResponse>(`/api/devices/${deviceId}/sessions?page=${page}&limit=5`)
-            .then((res) => {
-                setSessions(res.data.sessions);
-                setTotalPages(res.data.totalPages);
-            })
-            .catch((err) => {
-                console.error('Error fetching session logs:', err);
-                setSessions([]);
-                setTotalPages(1);
-            })
-            .finally(() => setLoading(false));
-    }, [deviceId, page]);
-
-    if (loading) return <div>Loading session logs...</div>;
-    if (!sessions.length) return <div>No session logs available for this device.</div>;
+const SessionViewer: React.FC<SessionViewerProps> = ({
+                                                         deviceId,
+                                                         deviceName = 'Unknown Device',
+                                                         onBack
+                                                     }) => {
+    const {
+        logs,
+        loading,
+        error,
+        filters,
+        pagination,
+        updateFilters,
+        updatePagination,
+        refetch
+    } = useSessionLogs(deviceId);
 
     return (
-        <div className="space-y-4">
-            {sessions.map((session, i) => {
-                const firstEvent = session.events[0];
-                const lastEvent = session.events.length > 0 ? session.events[session.events.length - 1] : null;
+        <div className="max-w-6xl mx-auto px-4 py-8">
+            <header className="mb-6">
+                <div className="flex items-center mb-2">
+                    {onBack && (
+                        <button
+                            onClick={onBack}
+                            className="mr-3 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                            aria-label="Go back"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                    )}
+                    <h1 className="text-2xl font-bold text-gray-900">Session Logs</h1>
+                </div>
+                <h2 className="text-lg text-gray-600">
+                    Device: <span className="font-medium">{deviceName}</span> ({deviceId})
+                </h2>
+            </header>
 
-                const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-                const end = lastEvent ? new Date(lastEvent.timestamp) : null;
+            <SessionFilter
+                filters={filters}
+                onFilterChange={updateFilters}
+            />
 
-                const duration = start && end ? ((end.getTime() - start.getTime()) / 1000).toFixed(1) : 'N/A';
-
-                return (
-                    <div key={i} className="p-4 border rounded-md shadow-sm bg-white">
-                        <h3 className="font-semibold text-lg">Session {i + 1}</h3>
-                        <p><b>Session ID:</b> {session.sessionId.slice(0, 20)}...</p>
-                        <p><b>Start:</b> {start ? start.toLocaleString() : 'N/A'}</p>
-                        <p><b>Duration:</b> {duration}s</p>
-
-                        <div className="mt-2 space-y-1">
-                            {session.events.map((event, j) => (
-                                <div key={j} className="text-sm text-gray-800">
-                                    <b>{new Date(event.timestamp).toLocaleTimeString()}:</b> {event.type} – {event.description}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            })}
-
-            <div className="flex justify-center items-center gap-4 mt-4">
-                <button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                    className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                    Previous
-                </button>
-                <span>Page {page} of {totalPages}</span>
-                <button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    className="px-3 py-1 border rounded disabled:opacity-50"
-                >
-                    Next
-                </button>
-            </div>
+            <main>
+                {loading ? (
+                    <LoadingState />
+                ) : error ? (
+                    <ErrorState message={error} onRetry={refetch} />
+                ) : (
+                    <>
+                        <SessionLogList logs={logs} />
+                        <SessionPagination
+                            pagination={pagination}
+                            onPageChange={(page) => updatePagination({ page })}
+                            onPageSizeChange={(pageSize) => updatePagination({ pageSize, page: 1 })}
+                        />
+                    </>
+                )}
+            </main>
         </div>
     );
 };

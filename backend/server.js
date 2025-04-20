@@ -9,6 +9,7 @@ const { URL } = require('url')
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const { parse } = require('path');
 
 const corsOptions = {
   origin: '*',
@@ -82,7 +83,6 @@ wssDbUpdates.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log("close req");
-      console.log(req);
       dbUpdateClients.delete(ws);
       console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
   });
@@ -95,7 +95,6 @@ wssDbUpdates.on('connection', (ws, req) => {
 
 function broadcastDbUpdate(data) {
   const message = JSON.stringify({ type: 'db_change', ...data }); 
-  console.log(`Broadcasting DB update ${message} to clients.`);
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -135,6 +134,8 @@ wssControl.on('connection', (ws) => {
       console.log('Received message from Control Frontend:', parsedMessage);
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
+      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignaling(parsedMessage)
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
@@ -169,6 +170,8 @@ wssComm.on('connection', (ws) => {
         handleCommLayerControlRequest(ws, parsedMessage);
       } else if (parsedMessage.type === 'control_status') {
         handleCommLayerStatusUpdate(parsedMessage);
+      } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignalingFromAndroid(message)
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -302,6 +305,10 @@ async function handleCommLayerControlRequest(ws, message) {
   }
 }
 
+function handleWebRTCSignaling(parsedMessage) {
+  sendToCommLayer(parsedMessage);
+}
+
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
  function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);
@@ -359,6 +366,10 @@ async function handleCommLayerControlRequest(ws, message) {
   if (cleanupReason) {
       cleanupSession(sessionId, cleanupReason);
   }
+}
+
+function handleWebRTCSignalingFromAndroid(parsedMessage) {
+  broadcastToControlFrontend(parsedMessage);
 }
 
  function cleanupSession(sessionId, reason) {

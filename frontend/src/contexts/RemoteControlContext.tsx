@@ -30,6 +30,7 @@ interface RemoteControlState {
   isConnected: boolean;
   navigateToWebRTC: boolean;
   currentSessionId?: string;
+  currentDeviceId?: string; 
 }
 
 type RemoteControlAction =
@@ -49,7 +50,8 @@ const initialState: RemoteControlState = {
   notification: null,
   isConnected: false,
   navigateToWebRTC: false,
-  currentSessionId: undefined
+  currentSessionId: undefined,
+  currentDeviceId: undefined
 };
 
 // Reducer function
@@ -89,6 +91,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           sessionId: action.payload.sessionId
         },
         currentSessionId: action.payload.sessionId,
+        currentDeviceId: action.payload.deviceId
       };
     case 'DECLINE_REQUEST':
       return {
@@ -117,6 +120,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           : null,
         navigateToWebRTC: status,
         currentSessionId: state.currentSessionId,
+        currentDeviceId: state.currentDeviceId,
         notification: {
           type: status ? 'success' : 'error',
           message: action.payload.message
@@ -151,7 +155,7 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   // Use a ref to track timeout IDs for each request
-  const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const requestTimeoutsRef = useRef<Record<string, number>>({});
   
   // Timeout duration in milliseconds
   const REQUEST_TIMEOUT_DURATION = 30000; // 30 seconds

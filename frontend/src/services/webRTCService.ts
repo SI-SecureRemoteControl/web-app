@@ -1,115 +1,111 @@
+// src/services/WebRTCService.ts
+import { websocketService } from './webSocketService';
+
 class WebRTCService {
-    private peerConnection: RTCPeerConnection | null = null;
-    private sessionId: string | undefined;// mozda mi nece trebati ovo 
-    private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
-    private onIceCandidateCallback: ((candidate: RTCIceCandidateInit) => void) | null = null;
-    private onSDPCallback: ((sdp: RTCSessionDescriptionInit) => void) | null = null;
-  
-    constructor(sessionId?: string) {
-      this.sessionId = sessionId;
-      this.initializePeerConnection();
-    }
-  
+  private peerConnection: RTCPeerConnection | null = null;
+  private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
+  private deviceId: string | null = null;
 
-    setSessionId(sessionId: string) {
-      this.sessionId = sessionId;
-    }
-  
-    setOnRemoteStream(callback: (stream: MediaStream) => void) {
-      this.onRemoteStreamCallback = callback;
-    }
-  
-    setOnIceCandidate(callback: (candidate: RTCIceCandidateInit) => void) {
-      this.onIceCandidateCallback = callback;
-    }
-  
-    setOnSDP(callback: (sdp: RTCSessionDescriptionInit) => void) {
-      this.onSDPCallback = callback;
-    }
-  
-    private initializePeerConnection() {
-      this.peerConnection = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-        ],
-      });
-  
-      this.peerConnection.onicecandidate = (event) => {
-        if (event.candidate && this.onIceCandidateCallback && this.sessionId) {
-          this.onIceCandidateCallback(event.candidate.toJSON());
-          // You will need to send this via your WebSocket to the backend
-          console.log('Local ICE Candidate:', event.candidate.toJSON());
-        }
-      };
-  
-      this.peerConnection.ontrack = (event) => {
-        if (event.streams && event.streams[0] && this.onRemoteStreamCallback) {
-          this.onRemoteStreamCallback(event.streams[0]);
-        }
-      };
-    }
-  
-    async createOffer() {
-      if (!this.peerConnection) {
-        console.error('Peer connection not initialized.');
-        return null;
-      }
-      try {
-        const offer = await this.peerConnection.createOffer();
-        await this.peerConnection.setLocalDescription(offer);
-        
-        if (this.onSDPCallback && this.peerConnection.localDescription) {
-          this.onSDPCallback(this.peerConnection.localDescription.toJSON());
-          // You will need to send this via your WebSocket to the backend
-          console.log('Local SDP Offer:', this.peerConnection.localDescription.toJSON());
-          return this.peerConnection.localDescription.toJSON();
-        }
-        return null;
-      } catch (error) {
-        console.error('Error creating offer:', error);
-        return null;
-      }
-    }
-  
-    async handleAnswer(answer: RTCSessionDescriptionInit) {
-      if (!this.peerConnection) {
-        console.error('Peer connection not initialized.');
-        return;
-      }
-      try {
-        await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-        console.log('Remote SDP Answer set.');
-      } catch (error) {
-        console.error('Error setting remote description:', error);
-      }
-    }
-  
-    async addIceCandidate(candidate: RTCIceCandidateInit) {
-      if (!this.peerConnection) {
-        console.error('Peer connection not initialized.');
-        return;
-      }
-      try {
-        await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('Remote ICE Candidate added:', candidate);
-      } catch (error) {
-        console.error('Error adding ICE candidate:', error);
-      }
-    }
-  
-    // You might need a method to add tracks (e.g., for local media if you implement two-way communication later)
-    // For now, the Android device will be sending the track.
-  
-    closeConnection() {
-      if (this.peerConnection) {
-        this.peerConnection.close();
-        this.peerConnection = null;
-      }
-    }
+  constructor(deviceId: string) {
+    this.deviceId = deviceId;
+    this.initializePeerConnection();
+    this.setupWebSocketListeners(); // Dodajte postavljanje WebSocket listenera
+  }
 
-    getIceCandidateState() {
-        console.log("state is> ", this.peerConnection?.iceConnectionState);
+  setOnRemoteStream(callback: (stream: MediaStream) => void) {
+    this.onRemoteStreamCallback = callback;
+  }
+
+  private initializePeerConnection() {
+    this.peerConnection = new RTCPeerConnection({
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+      ],
+    });
+
+    this.peerConnection.onicecandidate = (event) => {
+      if (event.candidate) {
+        console.log('Lokalni ICE kandidat:', event.candidate.toJSON());
+        this.sendSignalingMessage('ice-candidate', event.candidate.toJSON());
+      }
+    };
+
+    this.peerConnection.ontrack = (event) => {
+      if (event.streams && event.streams[0] && this.onRemoteStreamCallback) {
+        this.onRemoteStreamCallback(event.streams[0]);
+      }
+    };
+  }
+
+  private setupWebSocketListeners() {
+    websocketService.addControlMessageListener((data) => {
+      if (data.type === 'answer' && data.deviceId === this.deviceId) {
+        console.log('Primljen udaljeni SDP odgovor:', data.payload);
+        this.handleAnswer(data.payload);
+      } else if (data.type === 'ice-candidate' && data.deviceId === this.deviceId) {
+        console.log('Primljen udaljeni ICE kandidat:', data.payload);
+        this.addIceCandidate(data.payload);
+      }
+    });
+  }
+
+  async createOffer() {
+    if (!this.peerConnection) {
+      console.error('Peer veza nije inicijalizirana.');
+      return null;
     }
+    try {
+      const offer = await this.peerConnection.createOffer();
+      await this.peerConnection.setLocalDescription(offer);
+      console.log('Kreiran lokalni SDP offer:', offer.sdp);
+      this.sendSignalingMessage('offer', offer);
+      return offer;
+    } catch (error) {
+      console.error('Greška prilikom kreiranja offera:', error);
+      return null;
+    }
+  }
+
+  async handleAnswer(answer: RTCSessionDescriptionInit) {
+    if (!this.peerConnection) {
+      console.error('Peer veza nije inicijalizirana.');
+      return;
+    }
+    try {
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      console.log('Udaljeni SDP odgovor postavljen.');
+    } catch (error) {
+      console.error('Greška prilikom postavljanja udaljenog opisa:', error);
+    }
+  }
+
+  async addIceCandidate(candidate: RTCIceCandidateInit) {
+    if (!this.peerConnection) {
+      console.error('Peer veza nije inicijalizirana.');
+      return;
+    }
+    try {
+      await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      console.log('Udaljeni ICE kandidat dodan:', candidate);
+    } catch (error) {
+      console.error('Greška prilikom dodavanja ICE kandidata:', error);
+    }
+  }
+
+  private sendSignalingMessage(type: string, payload: any) {
+    if (websocketService.getControlConnectionStatus()) {
+      websocketService.sendControlMessage({ type, payload, deviceId: this.deviceId });
+    } else {
+      console.error('WebSocket (control) veza nije otvorena. Ne mogu poslati signalizacijsku poruku:', { type, payload });
+    }
+  }
+
+  closeConnection() {
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+  }
 }
-  
+
 export default WebRTCService;

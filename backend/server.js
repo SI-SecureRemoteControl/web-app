@@ -306,7 +306,8 @@ async function handleCommLayerControlRequest(ws, message) {
 }
 
 function handleWebRTCSignaling(sessionId, parsedMessage) {
-  sendToCommLayer(sessionId, parsedMessage);
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: 'offer'};
+  sendToCommLayer(sessionId, message);
 }
 
 // za handleanje timeout ako admin ne prihvati za 30 sekundi

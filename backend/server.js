@@ -545,6 +545,65 @@ app.get('/', (req, res) => {
 });
 
 
+/*app.get('/api/devices/:id/session-logs', async (req, res) => {*/
+app.get('/sessionview/:deviceId', async (req, res) => {
+    const { id } = req.params;  // Device ID from the URL parameter
+    const {
+        startDate,
+        endDate,
+        page = 1,
+        limit = 10,
+        sortBy = 'timestamp',
+        sortOrder = 'desc'
+    } = req.query;
+
+    try {
+        const query = { deviceId: id };
+
+        // Apply date filtering if startDate and/or endDate are provided
+        if (startDate) {
+            query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };
+        }
+        if (endDate) {
+            query.timestamp = { ...query.timestamp, $lte: new Date(endDate) };
+        }
+
+        // Sorting configuration
+        const sort = {};
+        sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+        // Pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const sessionsCollection = db.collection('sessions');
+
+        // Fetch session logs from the database
+        const sessionLogs = await sessionsCollection.find(query)
+            .sort(sort)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+
+        const total = await sessionsCollection.countDocuments(query);
+
+        if (sessionLogs.length === 0) {
+            return res.status(404).json({ message: 'No session logs found for this device.' });
+        }
+
+        // Respond with session logs and pagination details
+        res.json({
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            totalPages: Math.ceil(total / limit),
+            sessionLogs
+        });
+    } catch (err) {
+        console.error('Error fetching session logs:', err);
+        res.status(500).json({ error: 'Internal server error', details: err.message });
+    }
+});
+
+
 
 connectDB()
     .then((database) => {

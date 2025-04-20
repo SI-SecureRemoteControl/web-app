@@ -13,12 +13,11 @@ const RemoteControlPage: React.FC = () => {
     websocketService.connectControlSocket();
 
     if (!currentSessionId || !currentDeviceId) {
+      console.log('Device ID iz Context-a:', currentDeviceId);
+      console.log('Session ID iz Context-a:', currentSessionId);
       console.warn('Session ID ili Device ID nisu dostupni.');
       return;
     }
-
-    console.log('Device ID iz Context-a:', currentDeviceId);
-    console.log('Session ID iz Context-a:', currentSessionId);
 
     const service = new WebRTCService(currentDeviceId ? currentDeviceId: 'test');
     setWebRTCService(service);

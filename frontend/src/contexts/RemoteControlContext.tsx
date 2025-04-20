@@ -205,7 +205,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         requestTimeoutsRef.current[request.requestId] = setTimeout(() => {
           handleRequestTimeout(request.requestId, request.deviceName);
         }, REQUEST_TIMEOUT_DURATION);
-      } else if (data.type === 'session_status') {
+      } else if (data.type === 'control_status_update') {
         dispatch({
           type: 'SESSION_STATUS_UPDATE',
           payload: {

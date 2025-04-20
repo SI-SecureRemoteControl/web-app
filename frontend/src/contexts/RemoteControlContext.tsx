@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { websocketService } from '../services/webSocketService';
+import { useNavigate } from 'react-router-dom';
 
 // Types
 export interface RemoteRequest {
@@ -154,6 +155,7 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const navigate = useNavigate(); 
   // Use a ref to track timeout IDs for each request
   const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout | number>>({});
 
@@ -244,6 +246,13 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       clearInterval(connectionCheckInterval);
     };
   }, []);
+
+  useEffect(() => {
+    if (state.navigateToWebRTC) {
+      navigate('/remote-control');
+      dispatch({ type: 'RESET_NAVIGATION' }); 
+    }
+  }, [state.navigateToWebRTC, navigate]);
   
   // Actions
   const sendWebSocketMessage = (type: string, data: any) => {

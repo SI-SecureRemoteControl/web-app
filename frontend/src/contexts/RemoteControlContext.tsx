@@ -253,7 +253,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (state.navigateToWebRTC) {
-      navigate('/remote-control');
+      navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
       dispatch({ type: 'RESET_NAVIGATION' }); 
     }
   }, [state.navigateToWebRTC, navigate]);

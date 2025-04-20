@@ -2,24 +2,34 @@
 import React, { useEffect, useRef, useState } from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
-import { useRemoteControl } from '../../contexts/RemoteControlContext';
+import { useLocation } from 'react-router-dom';
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [webRTCService, setWebRTCService] = useState<WebRTCService | null>(null);
-  const { currentDeviceId, currentSessionId, resetNavigation } = useRemoteControl();
+  const location = useLocation();
+  const [deviceIdFromUrl, setDeviceIdFromUrl] = useState<string | null>(null);
+  const [sessionIdFromUrl, setSessionIdFromUrl] = useState<string | null>(null);
   webRTCService;
   useEffect(() => {
     websocketService.connectControlSocket();
 
-    if (!currentSessionId || !currentDeviceId) {
-      console.log('Device ID iz Context-a:', currentDeviceId);
-      console.log('Session ID iz Context-a:', currentSessionId);
-      console.warn('Session ID ili Device ID nisu dostupni.');
+    const searchParams = new URLSearchParams(location.search);
+    const deviceId = searchParams.get('deviceId');
+    const sessionId = searchParams.get('sessionId');
+
+    if (!sessionId || !deviceId) {
+      console.warn('Session ID ili Device ID nisu pronađeni u URL-u.');
       return;
     }
 
-    const service = new WebRTCService(currentDeviceId ? currentDeviceId: 'test');
+    setDeviceIdFromUrl(deviceId);
+    setSessionIdFromUrl(sessionId);
+
+    console.log('Device ID iz URL-a:', deviceId);
+    console.log('Session ID iz URL-a:', sessionId);
+
+    const service = new WebRTCService(deviceId ? deviceId : 'test');
     setWebRTCService(service);
 
     service.setOnRemoteStream((stream) => {
@@ -33,10 +43,10 @@ const RemoteControlPage: React.FC = () => {
     });
 
     const handleControlMessage = (data: any) => {
-      if (data.type === 'answer' && data.payload?.sessionId === currentSessionId) {
+      if (data.type === 'answer' && data.payload?.sessionId === sessionId) {
         console.log('Primljen SDP odgovor:', data.payload);
         service.handleAnswer(data.payload);
-      } else if (data.type === 'ice-candidate' && data.payload?.sessionId === currentSessionId) {
+      } else if (data.type === 'ice-candidate' && data.payload?.sessionId === sessionId) {
         console.log('Primljen ICE kandidat:', data.payload);
         service.addIceCandidate(data.payload);
       }
@@ -47,15 +57,14 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       service.closeConnection();
       websocketService.removeControlMessageListener(handleControlMessage);
-      resetNavigation();
     };
-  }, []);
+  }, [location.search]);
 
   return (
     <div>
       <h1>Daljinski Prikaz Ekrana</h1>
-      {currentDeviceId && <p>Device ID: {currentDeviceId}</p>}
-      {currentSessionId && <p>Session ID: {currentSessionId}</p>}
+      {deviceIdFromUrl && <p>Device ID: {deviceIdFromUrl}</p>}
+      {sessionIdFromUrl && <p>Session ID: {sessionIdFromUrl}</p>}
       <video ref={videoRef} width="640" height="480" autoPlay playsInline />
     </div>
   );

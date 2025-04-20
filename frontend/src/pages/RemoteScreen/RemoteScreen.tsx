@@ -8,7 +8,7 @@ const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [webRTCService, setWebRTCService] = useState<WebRTCService | null>(null);
   const { currentDeviceId, currentSessionId, resetNavigation } = useRemoteControl();
-
+  webRTCService;
   useEffect(() => {
     websocketService.connectControlSocket();
 

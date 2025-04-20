@@ -155,8 +155,8 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   // Use a ref to track timeout IDs for each request
-  const requestTimeoutsRef = useRef<Record<string, number>>({});
-  
+  const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout | number>>({});
+
   // Timeout duration in milliseconds
   const REQUEST_TIMEOUT_DURATION = 30000; // 30 seconds
   

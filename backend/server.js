@@ -140,7 +140,10 @@ wssControl.on('connection', (ws) => {
       console.log('Received message from Control Frontend:', parsedMessage);
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
-      } else {
+      }else if (parsedMessage.type === 'terminate_session'){
+        handleTerminateSessionRequest(parsedMessage); // dodato za terminiranje sesije
+      }
+      else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {
@@ -275,6 +278,48 @@ async function handleCommLayerControlRequest(ws, message) {
       ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Internal server error handling request' }));
       if (controlSessions.has(sessionId)) { clearTimeout(controlSessions.get(sessionId).timeoutId); controlSessions.delete(sessionId); } 
   }
+}
+
+function handleTerminateSessionRequest(message) {
+
+  const { sessionId } = message; 
+
+  if (!sessionId) {
+      console.error('[Terminate Session] Request missing sessionId');
+      return;
+  }
+
+  const session = controlSessions.get(sessionId);
+
+  if (!session) {
+      console.warn(`[Terminate Session] Session ${sessionId} not found or already terminated.`);
+      broadcastToControlFrontend({
+          type: 'control_status_update',
+          sessionId: sessionId,
+          deviceId: message.deviceId,
+          status: 'terminated_not_found',
+          message: `Control session ${sessionId} was not found or already inactive.`
+      });
+      return;
+  }
+
+  console.log(`Administrator requested termination of control session: ${sessionId}`);
+
+  sendToCommLayer(sessionId, {
+      type: 'session_terminated', 
+      sessionId: sessionId,
+      reason: 'terminated_by_admin'
+  });
+  
+  broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: session.device?.deviceId,
+      status: 'terminated_by_admin',
+      message: `Session ${sessionId} for device ${session.device?.deviceId || 'N/A'} terminated by administrator.`
+  });
+
+  cleanupSession(sessionId, 'TERMINATED_BY_ADMIN');
 }
 
 // za handleanje odgovora admina sa fronta

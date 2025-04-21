@@ -171,7 +171,7 @@ wssComm.on('connection', (ws) => {
       } else if (parsedMessage.type === 'control_status') {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignalingFromAndroid(message)
+        handleWebRTCSignalingFromAndroid(parsedMessage)
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -372,6 +372,7 @@ function handleWebRTCSignaling(sessionId, parsedMessage) {
 function handleWebRTCSignalingFromAndroid(parsedMessage) {
   broadcastToControlFrontend(parsedMessage);
 }
+
 
  function cleanupSession(sessionId, reason) {
   const session = controlSessions.get(sessionId);

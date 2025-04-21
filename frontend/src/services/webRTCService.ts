@@ -75,7 +75,11 @@ class WebRTCService {
       return;
     }
     try {
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+      const answerWithType: RTCSessionDescriptionInit = {
+        sdp: answer.sdp,
+        type: 'answer',
+      };
+      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerWithType));
       console.log('Udaljeni SDP odgovor postavljen.');
     } catch (error) {
       console.error('Greška prilikom postavljanja udaljenog opisa:', error);

@@ -1,4 +1,3 @@
-// src/services/WebRTCService.ts
 import { websocketService } from './webSocketService';
 
 class WebRTCService {
@@ -25,6 +24,9 @@ class WebRTCService {
       ],
     });
 
+    // Dodajte transceiver za video (receive-only)
+    this.peerConnection.addTransceiver('video', { direction: 'recvonly' });
+
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
         console.log('Lokalni ICE kandidat:', event.candidate.toJSON());
@@ -33,7 +35,7 @@ class WebRTCService {
     };
 
     this.peerConnection.ontrack = (event) => {
-      if (event.streams && event.streams[0] && this.onRemoteStreamCallback) {
+      if (event.track.kind === 'video' && event.streams && event.streams[0] && this.onRemoteStreamCallback) {
         this.onRemoteStreamCallback(event.streams[0]);
       }
     };
@@ -41,7 +43,7 @@ class WebRTCService {
 
   private setupWebSocketListeners() {
     websocketService.addControlMessageListener((data) => {
-        console.log("ovaj" + data);
+      console.log("ovaj" + data);
       if (data.type === 'answer') {
         console.log('Primljen udaljeni SDP odgovor:', data.payload);
         this.handleAnswer(data.payload);
@@ -79,7 +81,9 @@ class WebRTCService {
         sdp: answer.sdp,
         type: 'answer',
       };
+      console.log("added type");
       await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerWithType));
+
       console.log('Udaljeni SDP odgovor postavljen.');
     } catch (error) {
       console.error('Greška prilikom postavljanja udaljenog opisa:', error);

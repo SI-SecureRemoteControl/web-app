@@ -41,6 +41,7 @@ class WebRTCService {
 
   private setupWebSocketListeners() {
     websocketService.addControlMessageListener((data) => {
+        console.log(data);
       if (data.type === 'answer' && data.deviceId === this.deviceId) {
         console.log('Primljen udaljeni SDP odgovor:', data.payload);
         this.handleAnswer(data.payload);

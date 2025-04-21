@@ -47,6 +47,7 @@ function App() {
 
 const SessionViewerWrapper = () => {
     const { deviceId } = useParams<{ deviceId: string }>();
+    console.log('Device ID:', deviceId);
 
     if (!deviceId) {
         return <div>Device ID nije pronađen.</div>;

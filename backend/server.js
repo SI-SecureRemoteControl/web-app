@@ -547,7 +547,8 @@ app.get('/', (req, res) => {
 
 /*app.get('/api/devices/:id/session-logs', async (req, res) => {*/
 app.get('/sessionview/:deviceId', async (req, res) => {
-    const { id } = req.params;  // Device ID from the URL parameter
+    const { deviceId } = req.params;  // Device ID from the URL parameter
+    console.log("Prije .. id je :", deviceId);
     const {
         startDate,
         endDate,
@@ -558,7 +559,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     } = req.query;
 
     try {
-        const query = { deviceId: id };
+        const query = { deviceId: deviceId };
 
         // Apply date filtering if startDate and/or endDate are provided
         if (startDate) {
@@ -574,7 +575,9 @@ app.get('/sessionview/:deviceId', async (req, res) => {
 
         // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
-        const sessionsCollection = db.collection('sessions');
+        const sessionsCollection = db.collection('sessionLogs');
+
+        console.log("kolekcija:", sessionsCollection);
 
         // Fetch session logs from the database
         const sessionLogs = await sessionsCollection.find(query)
@@ -584,6 +587,8 @@ app.get('/sessionview/:deviceId', async (req, res) => {
             .toArray();
 
         const total = await sessionsCollection.countDocuments(query);
+
+        console.log("query:", query);
 
         if (sessionLogs.length === 0) {
             return res.status(404).json({ message: 'No session logs found for this device.' });

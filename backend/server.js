@@ -306,7 +306,8 @@ async function handleCommLayerControlRequest(ws, message) {
 }
 
 function handleWebRTCSignaling(sessionId, parsedMessage) {
-  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: 'offer'};
+  
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: parsedMessage.type};
   sendToCommLayer(sessionId, message);
 }
 

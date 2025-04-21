@@ -11,6 +11,7 @@ import { RequestManager } from './components/RemoteControl/RequestManager.tsx';
 import { ConnectionStatus } from './components/RemoteControl/ConnectionStatus.tsx';
 import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
 import { useParams } from 'react-router-dom';
+import DeviceList from "./pages/Devices/DeviceList.tsx";
 
 function App() {
     const location = useLocation();
@@ -39,6 +40,7 @@ function App() {
                     <Route path="/dashboard" element={<DeviceDashboard />} />
                     <Route path="/registration" element={<Registration />} />
                     <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
+                    <Route path="/sessionview" element={<DeviceList />} />
                 </Route>
             </Routes>
         </RemoteControlProvider>

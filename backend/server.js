@@ -545,10 +545,10 @@ app.get('/', (req, res) => {
 });
 
 
-/*app.get('/api/devices/:id/session-logs', async (req, res) => {*/
 app.get('/sessionview/:deviceId', async (req, res) => {
-    const { deviceId } = req.params;  // Device ID from the URL parameter
+    const { deviceId } = req.params;
     console.log("Prije .. id je :", deviceId);
+
     const {
         startDate,
         endDate,
@@ -561,7 +561,6 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     try {
         const query = { deviceId: deviceId };
 
-        // Apply date filtering if startDate and/or endDate are provided
         if (startDate) {
             query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };
         }
@@ -569,17 +568,16 @@ app.get('/sessionview/:deviceId', async (req, res) => {
             query.timestamp = { ...query.timestamp, $lte: new Date(endDate) };
         }
 
-        // Sorting configuration
         const sort = {};
         sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
-        // Pagination
         const skip = (parseInt(page) - 1) * parseInt(limit);
         const sessionsCollection = db.collection('sessionLogs');
+        const devicesCollection = db.collection('devices');
 
         console.log("kolekcija:", sessionsCollection);
 
-        // Fetch session logs from the database
+        // Fetch session logs
         const sessionLogs = await sessionsCollection.find(query)
             .sort(sort)
             .skip(skip)
@@ -590,12 +588,28 @@ app.get('/sessionview/:deviceId', async (req, res) => {
 
         console.log("query:", query);
 
-        if (sessionLogs.length === 0) {
-            return res.status(404).json({ message: 'No session logs found for this device.' });
+        // Fetch device info
+        const device = await devicesCollection.findOne({ deviceId: deviceId });
+
+        if (!device) {
+            return res.status(404).json({ message: 'Device not found.' });
         }
 
-        // Respond with session logs and pagination details
+        if (sessionLogs.length === 0) {
+
+            return res.status(200).json({
+                sessionLogs: [],
+                deviceName: device.name || device.deviceName || 'Unknown',
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: 0,
+                totalPages: 1
+            });
+        }
+
+        // Return device name along with session logs
         res.json({
+            deviceName: device.name || device.deviceName || 'Unknown',
             page: parseInt(page),
             limit: parseInt(limit),
             total,
@@ -607,7 +621,6 @@ app.get('/sessionview/:deviceId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
-
 
 
 connectDB()

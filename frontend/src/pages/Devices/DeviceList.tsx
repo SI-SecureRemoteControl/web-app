@@ -4,15 +4,18 @@ import DeviceCard from './DeviceCard';
 import LoadingState from '../Sessions/LoadingState.tsx';
 import ErrorState from '../Sessions/ErrorState.tsx';
 import { Device } from '../../components/types/device.ts';
+import { useDebounce } from '../../components/hooks/useDebounce.ts';
 
 const DeviceList: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
+    const debouncedSearchQuery = useDebounce(searchQuery, 800); // ⏳ debounce delay here
+
     const [statusFilter, setStatusFilter] = useState('all');
     const [networkTypeFilter, setNetworkTypeFilter] = useState('all');
     const [page, setPage] = useState(1);
 
     const { devices, loading, error, totalPages } = useDevices({
-        searchQuery,
+        searchQuery: debouncedSearchQuery,
         statusFilter,
         networkTypeFilter,
         page,
@@ -20,17 +23,17 @@ const DeviceList: React.FC = () => {
 
     const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(event.target.value);
-        setPage(1);  // Reset to first page when search query changes
+        setPage(1);
     };
 
     const handleStatusChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setStatusFilter(event.target.value);
-        setPage(1);  // Reset to first page when status changes
+        setPage(1);
     };
 
     const handleNetworkTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         setNetworkTypeFilter(event.target.value);
-        setPage(1);  // Reset to first page when network type changes
+        setPage(1);
     };
 
     const handlePageChange = (newPage: number) => {
@@ -44,22 +47,22 @@ const DeviceList: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 py-8">
             <h1 className="text-2xl font-bold text-gray-900 mb-6">Devices</h1>
 
-            <div>
+            <div className="flex flex-wrap gap-4 mb-6">
                 <input
                     type="text"
                     value={searchQuery}
                     onChange={handleSearchChange}
                     placeholder="Search by device name"
-                    className="mb-4 p-2 border rounded"
+                    className="p-2 border rounded"
                 />
 
-                <select onChange={handleStatusChange} value={statusFilter} className="mb-4 p-2 border rounded">
+                <select onChange={handleStatusChange} value={statusFilter} className="p-2 border rounded">
                     <option value="all">All statuses</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                 </select>
 
-                <select onChange={handleNetworkTypeChange} value={networkTypeFilter} className="mb-4 p-2 border rounded">
+                <select onChange={handleNetworkTypeChange} value={networkTypeFilter} className="p-2 border rounded">
                     <option value="all">All network types</option>
                     <option value="wifi">Wi-Fi</option>
                     <option value="ethernet">Ethernet</option>

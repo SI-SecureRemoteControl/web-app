@@ -57,9 +57,6 @@ const initialState: RemoteControlState = {
 
 // Reducer function
 function reducer(state: RemoteControlState, action: RemoteControlAction): RemoteControlState {
-  console.log(action.type);
-  console.log(action);
-  console.log(state);
   switch (action.type) {
     case 'CONNECTION_CHANGE':
       return {
@@ -116,7 +113,6 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         }
       };
     case 'SESSION_STATUS_UPDATE':
-      console.log("tu sam");
       let status: boolean = action.payload.status === 'connected';
       return {
         ...state,

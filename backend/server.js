@@ -160,7 +160,7 @@ wssComm.on('connection', (ws) => {
   console.log('Comm Layer client connected to Control WebSocket.');
 
   commLayerClients.add(ws);
-  controlFrontendClients.add(ws);
+  //controlFrontendClients.add(ws);
 
   ws.on('message', (message) => {
     try {

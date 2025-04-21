@@ -29,7 +29,11 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
   useEffect(() => {
     setLoading(true);
     // axios.get<ApiResponse>(`/sessionview/${deviceId}?page=${page}&limit=5`)
-     axios.get<ApiResponse>(`http://localhost:8080/sessionview/${deviceId}?page=${page}&limit=5`) // 
+
+    //axios.get<ApiResponse>(`http://localhost:8080/sessionview/${deviceId}?page=${page}&limit=5`) ///////////////////////////////////////// 
+    
+    axios.get<ApiResponse>(`${import.meta.env.VITE_BASE_URL}/sessionview/${deviceId}?page=${page}&limit=5`)
+
 
       .then((res) => {
         setSessionLogs(res.data.sessionLogs);

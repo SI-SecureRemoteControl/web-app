@@ -10,7 +10,6 @@ class WebRTCService {
     this.deviceId = deviceId;
     this.sessionId = sessionId;
     this.initializePeerConnection();
-    this.setupWebSocketListeners(); // Dodajte postavljanje WebSocket listenera
   }
 
   setOnRemoteStream(callback: (stream: MediaStream) => void) {
@@ -39,6 +38,8 @@ class WebRTCService {
         this.onRemoteStreamCallback(event.streams[0]);
       }
     };
+
+    this.setupWebSocketListeners();
   }
 
   private setupWebSocketListeners() {
@@ -72,22 +73,23 @@ class WebRTCService {
   }
 
   async handleAnswer(answer: RTCSessionDescriptionInit) {
-    if (!this.peerConnection) {
-      console.error('Peer veza nije inicijalizirana.');
-      return;
-    }
-    try {
-      const answerWithType: RTCSessionDescriptionInit = {
-        sdp: answer.sdp,
-        type: 'answer',
-      };
-      console.log("added type");
-      await this.peerConnection.setRemoteDescription(new RTCSessionDescription(answerWithType));
-
-      console.log('Udaljeni SDP odgovor postavljen.');
-    } catch (error) {
-      console.error('Greška prilikom postavljanja udaljenog opisa:', error);
-    }
+    console.log('handleAnswer pozvan s odgovorom:', answer);
+  
+    setTimeout(async () => {
+    
+      try {
+        const answerWithType: RTCSessionDescriptionInit = {
+          sdp: answer.sdp,
+          type: 'answer',
+        };
+        console.log("Dodajem tip (nakon delay-a)");
+        await this.peerConnection?.setRemoteDescription(new RTCSessionDescription(answerWithType));
+  
+        console.log('Udaljeni SDP odgovor postavljen (nakon delay-a).');
+      } catch (error) {
+        console.error('Greška prilikom postavljanja udaljenog opisa (nakon delay-a):', error);
+      }
+    }, 1000); // Čekaj 1 sekundu
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {

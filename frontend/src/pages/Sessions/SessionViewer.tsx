@@ -73,7 +73,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
 
             {sessionLogs.map((session, i) => {
                 const firstEvent = session.events[0];
-                const lastEvent = session.events.length > 0 ? session.events[session.events.length - 1] : null;
+                // const lastEvent = session.events.length > 0 ? session.events[session.events.length - 1] : null;
 
                 const start = firstEvent ? new Date(firstEvent.timestamp) : null;
                 //const end = lastEvent ? new Date(lastEvent.timestamp) : null;

@@ -10,6 +10,9 @@ import { NotificationToast } from './components/Notifications/NotificationToast.
 import { RequestManager } from './components/RemoteControl/RequestManager.tsx';
 import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx'; // Import the new component
 import { ConnectionStatus } from './components/RemoteControl/ConnectionStatus.tsx';
+import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
+import { useParams } from 'react-router-dom';
+import DeviceList from "./pages/Devices/DeviceList.tsx";
 
 function App() {
     const location = useLocation();
@@ -37,6 +40,8 @@ function App() {
                     <Route path="/" element={<Home />} />
                     <Route path="/dashboard" element={<DeviceDashboard />} />
                     <Route path="/registration" element={<Registration />} />
+                    <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
+                    <Route path="/sessionview" element={<DeviceList />} />
                     <Route path="/remote-control" element={<RemoteControlPage />} /> 
                 </Route>
             </Routes>
@@ -45,4 +50,14 @@ function App() {
 }
 
 
+const SessionViewerWrapper = () => {
+    const { deviceId } = useParams<{ deviceId: string }>();
+    console.log('Device ID:', deviceId);
+
+    if (!deviceId) {
+        return <div>Device ID nije pronađen.</div>;
+    }
+
+    return <SessionViewer deviceId={deviceId} />;
+};
 export default App;

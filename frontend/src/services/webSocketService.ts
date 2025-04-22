@@ -26,9 +26,7 @@ const connectWebSocket = (
   }
 
   if (currentSocket && (currentSocket.readyState === WebSocket.OPEN || currentSocket.readyState === WebSocket.CONNECTING)) {
-    if (import.meta.env.MODE !== 'production') {
-      console.log(`WebSocket (${pathSuffix}) connection already exists or is connecting.`);
-    }
+    console.log(`WebSocket (${pathSuffix}) connection already exists or is connecting. ReadyState: ${currentSocket.readyState}`);
     return currentSocket.readyState;
   }
 
@@ -48,7 +46,7 @@ const connectWebSocket = (
     const newSocket = new WebSocket(wsUrl);
 
     newSocket.onopen = () => {
-      console.log(`WebSocket (${pathSuffix}): Connection established`);
+      console.log(`WebSocket (${pathSuffix}): Connection established successfully`);
       if (socketVar === 'dbSocket') {
         dbReconnectAttempt = 0;
         if (dbReconnectTimer) {
@@ -74,7 +72,10 @@ const connectWebSocket = (
 
     newSocket.onmessage = (event) => {
       try {
+        console.log(`WebSocket (${pathSuffix}) raw message:`, event.data);
         const data = JSON.parse(event.data);
+        console.log(`WebSocket (${pathSuffix}) parsed message:`, data);
+        
         listeners.forEach(listener => {
           try {
             listener(data);
@@ -83,7 +84,7 @@ const connectWebSocket = (
           }
         });
       } catch (err) {
-        console.error(`WebSocket (${pathSuffix}): Error parsing message`, err);
+        console.error(`WebSocket (${pathSuffix}): Error parsing message`, err, 'Raw data:', event.data);
       }
     };
 
@@ -160,46 +161,65 @@ const disconnectControlSocket = () => {
 };
 
 const addDbMessageListener = (callback: (data: any) => void) => {
+  console.log("Adding DB message listener");
   dbMessageListeners.push(callback);
 };
 
 const removeDbMessageListener = () => {
+  console.log("Removing all DB message listeners");
   dbMessageListeners = [];
 };
 
 const addControlMessageListener = (callback: (data: any) => void) => {
+  console.log("Adding control message listener");
   controlMessageListeners.push(callback);
 };
 
 const removeControlMessageListener = (callback: (data: any) => void) => {
+  console.log("Removing specific control message listener");
   controlMessageListeners = controlMessageListeners.filter(listener => listener !== callback);
 };
 
 const sendDbMessage = (data: any) => {
   if (dbSocket && dbSocket.readyState === WebSocket.OPEN) {
-    dbSocket.send(JSON.stringify(data));
+    const message = JSON.stringify(data);
+    console.log("Sending DB message:", message);
+    dbSocket.send(message);
     return true;
   }
-  console.error("WebSocket (db): Cannot send message, connection not open");
+  console.error("WebSocket (db): Cannot send message, connection not open. ReadyState:", dbSocket?.readyState || "socket is null");
   return false;
 };
 
 const sendControlMessage = (data: any) => {
-    console.log(data);
+  console.log("Attempting to send control message:", data);
+  
   if (controlSocket && controlSocket.readyState === WebSocket.OPEN) {
-    controlSocket.send(JSON.stringify(data));
+    const message = JSON.stringify(data);
+    console.log("Sending control message:", message);
+    controlSocket.send(message);
     return true;
   }
-  console.error("WebSocket (control): Cannot send message, connection not open");
+  
+  console.error("WebSocket (control): Cannot send message, connection not open. ReadyState:", 
+    controlSocket ? 
+      controlSocket.readyState === 0 ? "CONNECTING" :
+      controlSocket.readyState === 1 ? "OPEN" :
+      controlSocket.readyState === 2 ? "CLOSING" :
+      controlSocket.readyState === 3 ? "CLOSED" : "UNKNOWN" 
+    : "socket is null");
+  
   return false;
 };
 
 const getDbConnectionStatus = () => {
-  return dbSocket && dbSocket.readyState === WebSocket.OPEN;
+  const isOpen = dbSocket && dbSocket.readyState === WebSocket.OPEN;
+  return isOpen;
 };
 
 const getControlConnectionStatus = () => {
-  return controlSocket && controlSocket.readyState === WebSocket.OPEN;
+  const isOpen = controlSocket && controlSocket.readyState === WebSocket.OPEN;
+  return isOpen;
 };
 
 export const websocketService = {

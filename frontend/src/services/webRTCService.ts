@@ -65,20 +65,22 @@ class WebRTCService {
   }
 
   async createOffer() {
-    if (!this.peerConnection) {
-      console.error('Peer veza nije inicijalizirana.');
-      return null;
-    }
-    try {
-      const offer = await this.peerConnection.createOffer();
-      await this.peerConnection.setLocalDescription(offer);
-      console.log('Kreiran lokalni SDP offer:', offer.sdp);
-      this.sendSignalingMessage('offer', offer);
-      return offer;
-    } catch (error) {
-      console.error('Greška prilikom kreiranja offera:', error);
-      return null;
-    }
+    console.log('createOffer pozvan.');
+  
+    return new Promise((resolve, reject) => {
+      setTimeout(async () => {
+        try {
+          const offer = await this.peerConnection?.createOffer();
+          await this.peerConnection?.setLocalDescription(offer);
+          console.log('Kreiran lokalni SDP offer (nakon delay-a):', offer?.sdp);
+          this.sendSignalingMessage('offer', offer);
+          resolve(offer);
+        } catch (error) {
+          console.error('Greška prilikom kreiranja offera (nakon delay-a):', error);
+          reject(error);
+        }
+      }, 500);
+    });
   }
 
   async handleAnswer(answer: RTCSessionDescriptionInit) {

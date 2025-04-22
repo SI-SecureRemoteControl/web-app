@@ -65,7 +65,7 @@ const RemoteControlPage: React.FC = () => {
       <h1>Daljinski Prikaz Ekrana</h1>
       {deviceIdFromUrl && <p>Device ID: {deviceIdFromUrl}</p>}
       {sessionIdFromUrl && <p>Session ID: {sessionIdFromUrl}</p>}
-      <video ref={videoRef} width="640" height="480" autoPlay playsInline />
+      <video ref={videoRef} width="640" height="480" autoPlay playsInline controls/>
     </div>
   );
 };

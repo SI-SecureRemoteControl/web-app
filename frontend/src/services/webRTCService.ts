@@ -35,6 +35,9 @@ class WebRTCService {
     };
 
     this.peerConnection.ontrack = (event) => {
+      if (event.track.kind === 'video'){
+        console.log('Primljen video stream:', event.track);
+      }
       if (event.track.kind === 'video' && event.streams && event.streams[0] && this.onRemoteStreamCallback) {
         this.onRemoteStreamCallback(event.streams[0]);
       }

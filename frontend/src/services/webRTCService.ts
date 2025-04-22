@@ -47,7 +47,7 @@ class WebRTCService {
       if (data.type === 'answer') {
         console.log('Primljen udaljeni SDP odgovor:', data.payload);
         this.handleAnswer(data.payload);
-      } else if (data.type === 'ice-candidate' && data.deviceId === this.deviceId) {
+      } else if (data.type === 'ice-candidate') {
         console.log('Primljen udaljeni ICE kandidat:', data.payload);
         this.addIceCandidate(data.payload);
       }

@@ -76,7 +76,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
                 const lastEvent = session.events.length > 0 ? session.events[session.events.length - 1] : null;
 
                 const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-                const end = lastEvent ? new Date(lastEvent.timestamp) : null;
+                //const end = lastEvent ? new Date(lastEvent.timestamp) : null;
 
                 //const duration = start && end ? ((end.getTime() - start.getTime()) / 1000).toFixed(1) : 'N/A';
 

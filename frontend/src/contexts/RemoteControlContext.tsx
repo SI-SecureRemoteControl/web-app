@@ -324,7 +324,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
             console.log(`Received ${data.type}:`, data);
 
             // Get current state from ref to ensure we have the latest
-            const currentState = stateRef.current;
+            // const currentState = stateRef.current;
 
             // Basic validation: ensure necessary fields exist
             if (!data.sessionId || typeof data.status !== 'string') {

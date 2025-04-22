@@ -89,20 +89,20 @@ class WebRTCService {
       } catch (error) {
         console.error('Greška prilikom postavljanja udaljenog opisa (nakon delay-a):', error);
       }
-    }, 1000); // Čekaj 1 sekundu
+    }, 1000);
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
-    if (!this.peerConnection) {
-      console.error('Peer veza nije inicijalizirana.');
-      return;
-    }
-    try {
-      await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      console.log('Udaljeni ICE kandidat dodan:', candidate);
-    } catch (error) {
-      console.error('Greška prilikom dodavanja ICE kandidata:', error);
-    }
+    console.log('addIceCandidate pozvan s kandidatom:', candidate);
+  
+    setTimeout(async () => {
+      try {
+        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('Udaljeni ICE kandidat dodan (nakon delay-a):', candidate);
+      } catch (error) {
+        console.error('Greška prilikom dodavanja ICE kandidata (nakon delay-a):', error);
+      }
+    }, 2000); 
   }
 
   private sendSignalingMessage(type: string, payload: any) {

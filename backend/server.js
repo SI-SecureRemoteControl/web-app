@@ -521,9 +521,9 @@ app.get('/', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { username, password, role } = req.body;
+        const { username, password } = req.body;
         const hashedPassword = await bcrypt.hash(password, 10);
-        await db.collection('web_admin_user').insertOne({ username, password: hashedPassword, role });
+        await db.collection('web_admin_user').insertOne({ username, password: hashedPassword });
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
         res.status(500).json({ error: 'Registration failed' });

@@ -10,6 +10,7 @@ class WebRTCService {
     this.deviceId = deviceId;
     this.sessionId = sessionId;
     this.initializePeerConnection();
+    this.setupWebSocketListeners();
   }
 
   setOnRemoteStream(callback: (stream: MediaStream) => void) {
@@ -47,8 +48,6 @@ class WebRTCService {
           console.error('ICE veza prekinuta ili nije uspjela.');
         }
       };
-
-    this.setupWebSocketListeners();
   }
 
   private setupWebSocketListeners() {

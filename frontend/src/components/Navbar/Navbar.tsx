@@ -14,6 +14,7 @@ const Navbar = () => {
                 <div className="flex space-x-6">
                     <Link to="/dashboard" className="hover:text-gray-300 transition">Dashboard</Link>
                     <Link to="/registration" className="hover:text-gray-300 transition">Device Registration</Link>
+                    <Link to="/sessionview" className="hover:text-gray-300 transition">Sessions View</Link>
                 </div>
                 <button
                     onClick={handleLogout}

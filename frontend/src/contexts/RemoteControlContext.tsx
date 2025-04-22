@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { websocketService } from '../services/webSocketService';
+import { useNavigate } from 'react-router-dom';
 
 // Types
 export interface RemoteRequest {
@@ -16,6 +17,7 @@ export interface ActiveSession {
   deviceName: string;
   status: 'pending' | 'connected' | 'error';
   sessionId: string; // Added sessionId to match backend data
+  sessionId: string;
 }
 
 export interface Notification {
@@ -28,6 +30,9 @@ interface RemoteControlState {
   activeSession: ActiveSession | null;
   notification: Notification | null;
   isConnected: boolean;
+  navigateToWebRTC: boolean;
+  currentSessionId?: string;
+  currentDeviceId?: string; 
 }
 
 type RemoteControlAction =
@@ -38,13 +43,22 @@ type RemoteControlAction =
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
   | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string } }
   | { type: 'CLEAR_NOTIFICATION' };
+  | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string, sessionId: string } }
+  | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
+  | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
+  | { type: 'SESSION_STATUS_UPDATE'; payload: { status: 'pending' | 'connected' | 'error'; message: string } }
+  | { type: 'CLEAR_NOTIFICATION' }
+  | { type: 'RESET_NAVIGATION' };
 
 // Initial state
 const initialState: RemoteControlState = {
   requests: [],
   activeSession: null,
   notification: null,
-  isConnected: false
+  isConnected: false,
+  navigateToWebRTC: false,
+  currentSessionId: undefined,
+  currentDeviceId: undefined
 };
 
 // Reducer function
@@ -85,6 +99,11 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           deviceName: action.payload.deviceName,
           sessionId: action.payload.sessionId // Store sessionId for matching later
         }
+
+          sessionId: action.payload.sessionId
+        },
+        currentSessionId: action.payload.sessionId,
+        currentDeviceId: action.payload.deviceId
       };
     case 'DECLINE_REQUEST':
       return {
@@ -176,6 +195,19 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         notification: {
           type: notificationType,
           message: notificationMessage
+
+      let status: boolean = action.payload.status === 'connected';
+      return {
+        ...state,
+        activeSession: status 
+          ? { ...state.activeSession!, status: action.payload.status } 
+          : null,
+        navigateToWebRTC: status,
+        currentSessionId: state.currentSessionId,
+        currentDeviceId: state.currentDeviceId,
+        notification: {
+          type: status ? 'success' : 'error',
+          message: action.payload.message
         }
       };
     case 'CLEAR_NOTIFICATION':
@@ -183,6 +215,11 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         ...state,
         notification: null
       };
+      case 'RESET_NAVIGATION':
+        return {
+          ...state,
+          navigateToWebRTC: false,
+        };
     default:
       return state;
   }
@@ -194,6 +231,7 @@ interface RemoteControlContextType extends RemoteControlState {
   declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
   terminateSession: (sessionId: string) => void; // Added this new function
   clearNotification: () => void;
+  resetNavigation: () => void;
 }
 
 const RemoteControlContext = createContext<RemoteControlContextType | undefined>(undefined);
@@ -201,6 +239,7 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
   // Use a ref to track the latest state for use in event listeners
   const stateRef = useRef(state);
   
@@ -209,9 +248,12 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     stateRef.current = state;
   }, [state]);
   
+
+  const navigate = useNavigate(); 
+
   // Use a ref to track timeout IDs for each request
-  const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout>>({});
-  
+  const requestTimeoutsRef = useRef<Record<string, NodeJS.Timeout | number>>({});
+
   // Timeout duration in milliseconds
   const REQUEST_TIMEOUT_DURATION = 30000; // 30 seconds
   
@@ -261,6 +303,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         requestTimeoutsRef.current[request.requestId] = setTimeout(() => {
           handleRequestTimeout(request.requestId, request.deviceName);
         }, REQUEST_TIMEOUT_DURATION);
+
       } 
       else if (data.type === 'control_status_update') {
         console.log('Received control_status_update:', data);
@@ -280,6 +323,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         
         console.log('Dispatching status update with original backend status:', status);
         
+
+      } else if (data.type === 'control_status_update') {
         dispatch({
           type: 'SESSION_STATUS_UPDATE',
           payload: {
@@ -337,6 +382,13 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       clearInterval(connectionCheckInterval);
     };
   }, []);
+
+  useEffect(() => {
+    if (state.navigateToWebRTC) {
+      navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
+      dispatch({ type: 'RESET_NAVIGATION' }); 
+    }
+  }, [state.navigateToWebRTC, navigate]);
   
   // Actions
   const sendWebSocketMessage = (type: string, data: any) => {
@@ -435,6 +487,10 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   const clearNotification = () => {
     dispatch({ type: 'CLEAR_NOTIFICATION' });
   };
+
+  const resetNavigation = () => {
+    dispatch({ type: 'RESET_NAVIGATION' });
+  };
   
   // Context value
   const value = {
@@ -443,6 +499,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     declineRequest,
     terminateSession, // Added this new function
     clearNotification
+    clearNotification,
+    resetNavigation
   };
   
   return (

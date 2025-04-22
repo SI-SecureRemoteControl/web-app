@@ -9,6 +9,7 @@ const { URL } = require('url')
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const { parse } = require('path');
 
 const corsOptions = {
   origin: '*',
@@ -87,7 +88,6 @@ wssDbUpdates.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log("close req");
-      console.log(req);
       dbUpdateClients.delete(ws);
       console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
   });
@@ -100,7 +100,6 @@ wssDbUpdates.on('connection', (ws, req) => {
 
 function broadcastDbUpdate(data) {
   const message = JSON.stringify({ type: 'db_change', ...data }); 
-  console.log(`Broadcasting DB update ${message} to clients.`);
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -140,6 +139,8 @@ wssControl.on('connection', (ws) => {
       console.log('Received message from Control Frontend:', parsedMessage);
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
+      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage)
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
@@ -165,6 +166,8 @@ wssComm.on('connection', (ws, request) => {
 
   commLayerClients.add(ws);
   console.log(`>>> BACKEND: Attaching message listener to Comm Layer client socket.`); // Added log
+  //controlFrontendClients.add(ws);
+
 
   ws.on('message', (message) => {
     console.log(`>>> BACKEND: Received raw message from Comm Layer: ${message.toString()}`); // Added log
@@ -176,6 +179,8 @@ wssComm.on('connection', (ws, request) => {
         handleCommLayerControlRequest(ws, parsedMessage);
       } else if (parsedMessage.type === 'control_status') {
         handleCommLayerStatusUpdate(parsedMessage);
+      } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignalingFromAndroid(parsedMessage)
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -221,11 +226,7 @@ function sendToCommLayer(sessionId, data) {
   }
   if (session.commLayerWs.readyState === WebSocket.OPEN) {
     console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-
-    // Log the WebSocket connection details
-    console.log(`WebSocket URL or details for session ${sessionId}:`, session.commLayerWs.url || 'No URL available');
-    console.log("Send to comm layer", session.commLayerWs);
-
+    
     session.commLayerWs.send(JSON.stringify(data));
   } else {
     console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
@@ -309,6 +310,12 @@ async function handleCommLayerControlRequest(ws, message) {
   }
 }
 
+function handleWebRTCSignaling(sessionId, parsedMessage) {
+  
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: parsedMessage.type};
+  sendToCommLayer(sessionId, message);
+}
+
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
  function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);
@@ -367,6 +374,11 @@ async function handleCommLayerControlRequest(ws, message) {
       cleanupSession(sessionId, cleanupReason);
   }
 }
+
+function handleWebRTCSignalingFromAndroid(parsedMessage) {
+  broadcastToControlFrontend(parsedMessage);
+}
+
 
  function cleanupSession(sessionId, reason) {
   const session = controlSessions.get(sessionId);
@@ -545,6 +557,7 @@ app.get('/', (req, res) => {
 });
 
 
+
 app.get('/sessionview/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
     console.log("Prije .. id je :", deviceId);
@@ -621,8 +634,6 @@ app.get('/sessionview/:deviceId', async (req, res) => {
         res.status(500).json({ error: 'Internal server error', details: err.message });
     }
 });
-
-
 connectDB()
     .then((database) => {
       db = database;

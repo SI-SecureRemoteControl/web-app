@@ -39,6 +39,15 @@ class WebRTCService {
       }
     };
 
+    this.peerConnection.oniceconnectionstatechange = () => {
+        console.log('ICE Connection State:', this.peerConnection?.iceConnectionState);
+        if (this.peerConnection?.iceConnectionState === 'connected' || this.peerConnection?.iceConnectionState === 'completed') {
+          console.log('WebRTC veza (ICE) uspješno uspostavljena!');
+        } else if (this.peerConnection?.iceConnectionState === 'failed' || this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'closed') {
+          console.error('ICE veza prekinuta ili nije uspjela.');
+        }
+      };
+
     this.setupWebSocketListeners();
   }
 

@@ -73,10 +73,7 @@ class WebRTCService {
   }
 
   async handleAnswer(answer: RTCSessionDescriptionInit) {
-    console.log('handleAnswer pozvan s odgovorom:', answer);
-  
-    setTimeout(async () => {
-    
+    console.log('handleAnswer pozvan s odgovorom:', answer);  
       try {
         const answerWithType: RTCSessionDescriptionInit = {
           sdp: answer.sdp,
@@ -89,20 +86,19 @@ class WebRTCService {
       } catch (error) {
         console.error('Greška prilikom postavljanja udaljenog opisa (nakon delay-a):', error);
       }
-    }, 1000);
+    
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
     console.log('addIceCandidate pozvan s kandidatom:', candidate);
-  
-    setTimeout(async () => {
+
       try {
         await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
         console.log('Udaljeni ICE kandidat dodan (nakon delay-a):', candidate);
       } catch (error) {
         console.error('Greška prilikom dodavanja ICE kandidata (nakon delay-a):', error);
       }
-    }, 2000); 
+
   }
 
   private sendSignalingMessage(type: string, payload: any) {

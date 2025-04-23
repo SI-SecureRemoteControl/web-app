@@ -135,8 +135,12 @@ wssControl.on('connection', (ws) => {
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
       } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage)
-      } else {
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
+      } 
+      else if(parsedMessage.type==='terminate_session'){
+           handleTerminateSessionRequest(parsedMessage);
+      }
+      else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {

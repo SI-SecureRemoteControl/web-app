@@ -61,26 +61,26 @@ const RemoteControlPage: React.FC = () => {
   }, [location.search]);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-6 max-w-3xl w-full space-y-4">
-        <h1 className="text-2xl font-bold text-center text-gray-800">Daljinski Prikaz Ekrana</h1>
-        <div className="text-sm text-gray-600 text-center">
-          {deviceIdFromUrl && <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>}
-          {sessionIdFromUrl && <p><span className="font-medium">Session ID:</span> {sessionIdFromUrl}</p>}
-        </div>
-        <div className="flex justify-center">
-          <video
-            ref={videoRef}
-            className="rounded-xl shadow-lg border border-gray-300"
-            width="640"
-            height="480"
-            autoPlay
-            playsInline
-            controls
-          />
-        </div>
+    <div className="min-h-screen bg-gray-100 flex items-end justify-center p-4 pb-8">
+    <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">
+      <h1 className="text-2xl font-bold text-center text-gray-800">Daljinski Prikaz Ekrana</h1>
+      <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
+        {deviceIdFromUrl && <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>}
+        {sessionIdFromUrl && <p><span className="font-medium">Session ID:</span> {sessionIdFromUrl}</p>}
+      </div>
+      <div className="flex justify-center">
+        <video
+          ref={videoRef}
+          className="rounded-xl shadow-lg border border-gray-300"
+          width="640"
+          height="480"
+          autoPlay
+          playsInline
+          controls
+        />
       </div>
     </div>
+  </div>
   );
 };
 

@@ -11,6 +11,7 @@ const authorize = require('./services/authorization');
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
+const { parse } = require('path');
 
 const corsOptions = {
   origin: '*',
@@ -42,7 +43,7 @@ const commLayerClients = new Set();
 
  const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
-server.on('upgrade', (request, socket, head) => {
+ server.on('upgrade', (request, socket, head) => {
 
   const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
   console.log(`WebSocket upgrade request received for path: ${pathname}`);
@@ -84,7 +85,6 @@ wssDbUpdates.on('connection', (ws, req) => {
 
   ws.on('close', () => {
     console.log("close req");
-      console.log(req);
       dbUpdateClients.delete(ws);
       console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
   });
@@ -96,8 +96,7 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
-  const message = JSON.stringify({ type: 'db_change', ...data }); 
-  console.log(`Broadcasting DB update ${message} to clients.`);
+  const message = JSON.stringify({ type: 'db_change', ...data });
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -116,7 +115,7 @@ function setupChangeStream() {
   });
 }
 
-// drugi server, "type" je da razlikujemo odakle dolazi konekcija
+/// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
 
@@ -137,6 +136,8 @@ wssControl.on('connection', (ws) => {
       console.log('Received message from Control Frontend:', parsedMessage);
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
+      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage)
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
@@ -162,6 +163,7 @@ wssComm.on('connection', (ws) => {
 
   commLayerClients.add(ws);
   controlFrontendClients.set('commLayer', ws);
+  //controlFrontendClients.add(ws);
 
   ws.on('message', (message) => {
     try {
@@ -171,6 +173,8 @@ wssComm.on('connection', (ws) => {
         handleCommLayerControlRequest(ws, parsedMessage);
       } else if (parsedMessage.type === 'control_status') {
         handleCommLayerStatusUpdate(parsedMessage);
+      } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignalingFromAndroid(parsedMessage)
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -216,10 +220,6 @@ function sendToCommLayer(sessionId, data) {
   }
   if (session.commLayerWs.readyState === WebSocket.OPEN) {
     console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-
-    // Log the WebSocket connection details
-    console.log(`WebSocket URL or details for session ${sessionId}:`, session.commLayerWs.url || 'No URL available');
-    console.log("Send to comm layer", session.commLayerWs);
 
     session.commLayerWs.send(JSON.stringify(data));
   } else {
@@ -272,6 +272,48 @@ async function handleCommLayerControlRequest(ws, message) {
   }
 }
 
+function handleTerminateSessionRequest(message) {
+
+  const { sessionId } = message;
+
+  if (!sessionId) {
+      console.error('[Terminate Session] Request missing sessionId');
+      return;
+  }
+
+  const session = controlSessions.get(sessionId);
+
+  if (!session) {
+      console.warn(`[Terminate Session] Session ${sessionId} not found or already terminated.`);
+      broadcastToControlFrontend({
+          type: 'control_status_update',
+          sessionId: sessionId,
+          deviceId: message.deviceId,
+          status: 'terminated_not_found',
+          message: `Control session ${sessionId} was not found or already inactive.`
+      });
+      return;
+  }
+
+  console.log(`Administrator requested termination of control session: ${sessionId}`);
+
+  sendToCommLayer(sessionId, {
+      type: 'session_terminated',
+      sessionId: sessionId,
+      reason: 'terminated_by_admin'
+  });
+
+  broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: session.device?.deviceId,
+      status: 'terminated_by_admin',
+      message: `Session ${sessionId} for device ${session.device?.deviceId || 'N/A'} terminated by administrator.`
+  });
+
+  cleanupSession(sessionId, 'TERMINATED_BY_ADMIN');
+}
+
 // za handleanje odgovora admina sa fronta
  function handleFrontendControlResponse(message) {
   const { sessionId, action } = message;
@@ -302,6 +344,12 @@ async function handleCommLayerControlRequest(ws, message) {
   } else {
       console.warn(`Unknown action '${action}' from Control Frontend for session ${sessionId}`);
   }
+}
+
+function handleWebRTCSignaling(sessionId, parsedMessage) {
+
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: parsedMessage.type};
+  sendToCommLayer(sessionId, message);
 }
 
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
@@ -362,6 +410,11 @@ async function handleCommLayerControlRequest(ws, message) {
       cleanupSession(sessionId, cleanupReason);
   }
 }
+
+function handleWebRTCSignalingFromAndroid(parsedMessage) {
+  broadcastToControlFrontend(parsedMessage);
+}
+
 
  function cleanupSession(sessionId, reason) {
   const session = controlSessions.get(sessionId);
@@ -551,6 +604,82 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+app.get('/sessionview/:deviceId', async (req, res) => {
+    const { deviceId } = req.params;
+    console.log("Prije .. id je :", deviceId);
+
+    const {
+        startDate,
+        endDate,
+        page = 1,
+        limit = 10,
+        sortBy = 'timestamp',
+        sortOrder = 'desc'
+    } = req.query;
+
+    try {
+        const query = { deviceId: deviceId };
+
+        if (startDate) {
+            query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };
+        }
+        if (endDate) {
+            query.timestamp = { ...query.timestamp, $lte: new Date(endDate) };
+        }
+
+        const sort = {};
+        sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const sessionsCollection = db.collection('sessionLogs');
+        const devicesCollection = db.collection('devices');
+
+        console.log("kolekcija:", sessionsCollection);
+
+        // Fetch session logs
+        const sessionLogs = await sessionsCollection.find(query)
+            .sort(sort)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .toArray();
+
+        const total = await sessionsCollection.countDocuments(query);
+
+        console.log("query:", query);
+
+        // Fetch device info
+        const device = await devicesCollection.findOne({ deviceId: deviceId });
+
+        if (!device) {
+            return res.status(404).json({ message: 'Device not found.' });
+        }
+
+        if (sessionLogs.length === 0) {
+
+            return res.status(200).json({
+                sessionLogs: [],
+                deviceName: device.name || device.deviceName || 'Unknown',
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: 0,
+                totalPages: 1
+            });
+        }
+
+        // Return device name along with session logs
+        res.json({
+            deviceName: device.name || device.deviceName || 'Unknown',
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            totalPages: Math.ceil(total / limit),
+            sessionLogs
+        });
+    } catch (err) {
+        console.error('Error fetching session logs:', err);
+        res.status(500).json({ error: 'Internal server error', details: err.message });
+    }
+});
 connectDB()
     .then((database) => {
       db = database;

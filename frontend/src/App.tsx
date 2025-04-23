@@ -9,6 +9,10 @@ import {Layout} from "./Layout";
 import {useState} from "react";
 import {UserContext} from "./contexts/UserContext";
 import {User} from "./components/types/user";
+import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx';
+import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
+import { useParams } from 'react-router-dom';
+import DeviceList from "./pages/Devices/DeviceList.tsx";
 
 function App() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -38,6 +42,9 @@ function App() {
                             <Route path="/" element={<Home />} />
                             <Route path="/dashboard" element={<DeviceDashboard />} />
                             <Route path="/registration" element={<Registration />} />
+                            <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
+                            <Route path="/sessionview" element={<DeviceList />} />
+                            <Route path="/remote-control" element={<RemoteControlPage />} />
                         </Route>
                     </Route>
                 </Routes>
@@ -46,4 +53,15 @@ function App() {
     );
 }
 
+
+const SessionViewerWrapper = () => {
+    const { deviceId } = useParams<{ deviceId: string }>();
+    console.log('Device ID:', deviceId);
+
+    if (!deviceId) {
+        return <div>Device ID nije pronađen.</div>;
+    }
+
+    return <SessionViewer deviceId={deviceId} />;
+};
 export default App;

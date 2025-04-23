@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { websocketService } from '../services/webSocketService';
 import { useNavigate } from 'react-router-dom';
+import {UserContext} from "../contexts/UserContext";
+import {User} from "../components/types/user";
 
 // Types
 export interface RemoteRequest {
@@ -246,6 +248,7 @@ const RemoteControlContext = createContext<RemoteControlContextType | undefined>
 // Provider component
 export function RemoteControlProvider({ children }: { children: React.ReactNode }) {
     const [state, dispatch] = useReducer(reducer, initialState);
+    const userContext: User | null = useContext(UserContext);
 
     // Use a ref to track the latest state for use in event listeners
     const stateRef = useRef(state);
@@ -291,6 +294,10 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
 
 
     useEffect(() => {
+      if(!userContext && !localStorage.getItem("token")) {
+        console.log('User not logged in');
+        return;
+      }
       console.log('Setting up WebSocket listeners');
 
       // Set up WebSocket listener for remote control requests
@@ -390,7 +397,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         // websocketService.disconnectControlSocket();
       };
 
-    }, []);
+    }, [userContext]);
 
     // Navigation Effect
     useEffect(() => {

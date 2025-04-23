@@ -1,12 +1,10 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-const Navbar = () => {
-    const navigate = useNavigate();
+export interface navbarProps {
+    handleLogout: () => void;
+}
 
-    const handleLogout = () => {
-        localStorage.removeItem('token'); 
-        navigate('/login');
-    };
+const Navbar = ({handleLogout}: navbarProps) => {
 
     return (
         <nav className="bg-gray-800 text-white px-6 py-4 shadow-md">

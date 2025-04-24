@@ -17,6 +17,8 @@ logs/
 .DS_Store
 Thumbs.db
 
+.vite/
+
 # Build directories
 /dist
 /build

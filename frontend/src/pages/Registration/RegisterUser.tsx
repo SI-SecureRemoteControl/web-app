@@ -20,42 +20,44 @@ const AdminRegisterForm: React.FC = () => {
         setError(null); 
         setSuccessMessage(null); 
         setIsLoading(true);
-
+    
         if (!username.trim() || !password.trim()) {
             setError('Korisničko ime i lozinka su obavezni.');
             setIsLoading(false);
             return;
         }
-
+    
         const adminData = { username, password };
+        const token = localStorage.getItem('token'); 
+    
         try {
             const response = await fetch(`${API_URL}/api/auth/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(adminData),
             });
-
+    
             const result: AdminRegistrationResponse = await response.json();
-
+    
             if (response.status === 404) {
                 setError(result.message || result.error || 'Korisničko ime već postoji.');
                 return;
-            }
-            else if( response.status === 400) {
+            } else if (response.status === 400) {
                 setError(result.message || result.error || 'Moraš unijeti korisničko ime i lozinku.');
             }
-
+    
             if (!response.ok) {
                 setError(result.message || result.error || `Greška: ${response.statusText} (${response.status})`);
                 return;
             }
-
+    
             setSuccessMessage(result.message || 'Admin uspješno registrovan!');
             setUsername('');
             setPassword('');
-
+    
         } catch (err) {
             if (err instanceof Error) {
                 setError(err.message);

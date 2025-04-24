@@ -625,7 +625,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     } = req.query;
 
     try {
-        const query = { deviceId: deviceId };
+      const query = { deviceId: deviceId, status: { $ne: 'pending' } }; // Exclude devices with status 'pending'
 
         if (startDate) {
             query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };

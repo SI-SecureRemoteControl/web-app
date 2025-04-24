@@ -13,6 +13,7 @@ const Navbar = ({handleLogout}: navbarProps) => {
                     <Link to="/dashboard" className="hover:text-gray-300 transition">Dashboard</Link>
                     <Link to="/registration" className="hover:text-gray-300 transition">Device Registration</Link>
                     <Link to="/sessionview" className="hover:text-gray-300 transition">Sessions View</Link>
+                    <Link to="/register-user" className="hover:text-gray-300 transition">Register Admin</Link>
                 </div>
                 <button
                     onClick={handleLogout}

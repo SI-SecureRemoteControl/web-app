@@ -13,6 +13,8 @@ import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx';
 import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
 import { useParams } from 'react-router-dom';
 import DeviceList from "./pages/Devices/DeviceList.tsx";
+import RegisterUser from "./pages/Registration/RegisterUser.tsx";
+
 
 function App() {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -45,6 +47,7 @@ function App() {
                             <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
                             <Route path="/sessionview" element={<DeviceList />} />
                             <Route path="/remote-control" element={<RemoteControlPage />} />
+                            <Route path="/register-user" element={<RegisterUser />} />
                         </Route>
                     </Route>
                 </Routes>

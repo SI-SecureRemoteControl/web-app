@@ -7,6 +7,8 @@ const WebSocket = require('ws');
 const { URL } = require('url');
 const jwt = require('jsonwebtoken');
 const authorize = require('./services/authorization');
+const authenticateToken = require('./services/authenticateToken');
+const requireAdmin = require('./services/requireAdmin');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -576,7 +578,7 @@ app.get('/', (req, res) => {
 
 // ---------------------------------------------------------- auth
 
-app.post('/api/auth/register', async (req, res) => {
+/*app.post('/api/auth/register', async (req, res) => {
     try {
         const userId = Math.random().toString(36).substring(2, 10);
         const { username, password } = req.body;
@@ -586,7 +588,41 @@ app.post('/api/auth/register', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Registration failed' });
     }
+});*/
+
+app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res) => {
+  console.log(`Admin registration endpoint accessed by: ${req.user.username}`);
+
+  try {
+      const { username: newUsername, password: newPassword } = req.body; 
+
+      if (!newUsername || !newPassword) {
+          return res.status(400).json({ error: 'Username and password are required for the new user' });
+      }
+
+      const existingUser = await db.collection('web_admin_user').findOne({ username: newUsername });
+      if (existingUser) {
+          console.log(`Attempt to register existing username: ${newUsername}`);
+          return res.status(404).json({ error: 'Username already exists' });
+       }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const newUser = {
+          userId: Math.random().toString(36).substring(2, 10),
+          username: newUsername,
+          password: hashedPassword
+      };
+
+      await db.collection('web_admin_user').insertOne(newUser);
+      console.log(`Successfully registered new user: ${newUsername} by admin: ${req.user.username}`);
+
+      res.status(201).json({ message: `User '${newUsername}' registered successfully.` });
+  } catch (error) {
+      console.error("Admin Registration Error:", error);
+      res.status(500).json({ error: 'Registration failed' });
+  }
 });
+
 
 app.post('/api/auth/login', async (req, res) => {
     try {

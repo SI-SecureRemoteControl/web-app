@@ -578,18 +578,6 @@ app.get('/', (req, res) => {
 
 // ---------------------------------------------------------- auth
 
-/*app.post('/api/auth/register', async (req, res) => {
-    try {
-        const userId = Math.random().toString(36).substring(2, 10);
-        const { username, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await db.collection('web_admin_user').insertOne({userId, username, password: hashedPassword });
-        res.status(201).json({ message: 'User registered successfully' });
-    } catch (error) {
-        res.status(500).json({ error: 'Registration failed' });
-    }
-});*/
-
 app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res) => {
   console.log(`Admin registration endpoint accessed by: ${req.user.username}`);
 

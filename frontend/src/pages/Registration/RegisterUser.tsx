@@ -22,7 +22,7 @@ const AdminRegisterForm: React.FC = () => {
         setIsLoading(true);
     
         if (!username.trim() || !password.trim()) {
-            setError('Korisničko ime i lozinka su obavezni.');
+            setError('Username and password are required.');
             setIsLoading(false);
             return;
         }
@@ -43,18 +43,18 @@ const AdminRegisterForm: React.FC = () => {
             const result: AdminRegistrationResponse = await response.json();
     
             if (response.status === 404) {
-                setError(result.message || result.error || 'Korisničko ime već postoji.');
+                setError(result.message || result.error || 'Username already exists.');
                 return;
             } else if (response.status === 400) {
-                setError(result.message || result.error || 'Moraš unijeti korisničko ime i lozinku.');
+                setError(result.message || result.error || 'You need to input username and password.');
             }
     
             if (!response.ok) {
-                setError(result.message || result.error || `Greška: ${response.statusText} (${response.status})`);
+                setError(result.message || result.error || `Error: ${response.statusText} (${response.status})`);
                 return;
             }
     
-            setSuccessMessage(result.message || 'Admin uspješno registrovan!');
+            setSuccessMessage(result.message || `Admin ${adminData.username} sucessfuly registered!`);
             setUsername('');
             setPassword('');
     
@@ -62,9 +62,9 @@ const AdminRegisterForm: React.FC = () => {
             if (err instanceof Error) {
                 setError(err.message);
             } else {
-                setError('Došlo je do nepoznate greške prilikom registracije.');
+                setError('Unknown error occurred.');
             }
-            console.error('Greška prilikom registracije admina:', err);
+            console.error('Error registering admin:', err);
         } finally {
             setIsLoading(false);
         }
@@ -82,7 +82,7 @@ const AdminRegisterForm: React.FC = () => {
             <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
                 <div className="flex items-center space-x-3 mb-6">
                     <UserPlus className="w-7 h-7 text-blue-600" />
-                    <h1 className="text-xl font-bold text-gray-900">Registracija Admina</h1>
+                    <h1 className="text-xl font-bold text-gray-900">Register new Admin</h1>
                 </div>
 
                 {successMessage ? (
@@ -102,7 +102,7 @@ const AdminRegisterForm: React.FC = () => {
                             onClick={handleRegisterAnother}
                             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
-                            Registruj Novog Admina
+                            Register new Admin
                         </button>
                     </div>
                 ) : (
@@ -122,7 +122,7 @@ const AdminRegisterForm: React.FC = () => {
 
                         <div>
                             <label htmlFor="adminUsername" className="block text-sm font-medium text-gray-700">
-                                Korisničko ime
+                                Username
                             </label>
                             <input
                                 type="text"
@@ -137,7 +137,7 @@ const AdminRegisterForm: React.FC = () => {
 
                         <div>
                             <label htmlFor="adminPassword" className="block text-sm font-medium text-gray-700">
-                                Lozinka
+                                Password
                             </label>
                             <input
                                 type="password"
@@ -162,10 +162,10 @@ const AdminRegisterForm: React.FC = () => {
                             {isLoading ? (
                                 <>
                                     <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" aria-hidden="true" />
-                                    Registrujem...
+                                    Registering...
                                 </>
                             ) : (
-                                'Registruj Admina'
+                                'Register'
                             )}
                         </button>
                     </form>

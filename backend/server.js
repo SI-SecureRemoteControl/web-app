@@ -637,7 +637,7 @@ app.post('/api/auth/login', async (req, res) => {
             console.log("Password not match:", password);
             return res.status(401).json({ error: 'Authentication failed' });
         }
-        const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
+        const token = jwt.sign({ userId: user._id, username: user.username }, process.env.SECRET_KEY, {
             expiresIn: '1h',
         });
         delete user.password;

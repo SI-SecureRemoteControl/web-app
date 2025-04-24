@@ -70,7 +70,9 @@ const DeviceList: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {devices.map((device: Device) => (
+                {devices
+                .filter((device: Device) => device.status !== 'pending')
+                .map((device: Device) => (
                     <DeviceCard key={device._id} device={device} />
                 ))}
             </div>

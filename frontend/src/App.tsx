@@ -1,51 +1,58 @@
-import { Route, Routes, useLocation } from 'react-router-dom';
-import Login from './pages/Login/Login.tsx';
+import {Route, Routes, useNavigate} from 'react-router-dom';
+import Login, {LoginResponse} from './pages/Login/Login.tsx';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute.tsx';
 import DeviceDashboard from './pages/Dashboard/DashboardPage.tsx';
 import Registration from "./pages/Registration/Registration.tsx";
 import Home from "./pages/Home/Home.tsx";
-import Navbar from "./components/Navbar/Navbar.tsx";
 import { RemoteControlProvider } from './contexts/RemoteControlContext.tsx';
-import { NotificationToast } from './components/Notifications/NotificationToast.tsx';
-import { RequestManager } from './components/RemoteControl/RequestManager.tsx';
-import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx'; 
-import { ConnectionStatus } from './components/RemoteControl/ConnectionStatus.tsx';
+import {Layout} from "./Layout";
+import {useState} from "react";
+import {UserContext} from "./contexts/UserContext";
+import {User} from "./components/types/user";
+import RemoteControlPage from './pages/RemoteScreen/RemoteScreen.tsx';
 import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
 import { useParams } from 'react-router-dom';
 import DeviceList from "./pages/Devices/DeviceList.tsx";
+import RegisterUser from "./pages/Registration/RegisterUser.tsx";
+
 
 function App() {
-    const location = useLocation();
-    const isAuthenticated = !!localStorage.getItem('token');
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const navigate = useNavigate();
 
-    const hideNavbarOnRoutes = ['/login'];
-    const shouldShowNavbar = isAuthenticated && !hideNavbarOnRoutes.includes(location.pathname);
+    function handleLogin(loginResponse: LoginResponse) {
+        setCurrentUser(loginResponse.user);
+        localStorage.setItem("token", loginResponse.token);
+        localStorage.setItem("user", JSON.stringify(loginResponse.user));
+        navigate("/");
+    }
+
+    function handleLogout() {
+        setCurrentUser(null);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        navigate("/login");
+    }
 
     return (
-        <RemoteControlProvider>
-            {shouldShowNavbar && (
-                <>
-                    <Navbar />
-                    <div className="fixed top-16 right-4 z-50">
-                        <ConnectionStatus />
-                    </div>
-                </>
-            )}
-            <NotificationToast />
-            {isAuthenticated && <RequestManager />}
-
-            <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route element={<ProtectedRoute />}>
-                    <Route path="/" element={<Home />} />
-                    <Route path="/dashboard" element={<DeviceDashboard />} />
-                    <Route path="/registration" element={<Registration />} />
-                    <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
-                    <Route path="/sessionview" element={<DeviceList />} />
-                    <Route path="/remote-control" element={<RemoteControlPage />} /> 
-                </Route>
-            </Routes>
-        </RemoteControlProvider>
+        <UserContext.Provider value={currentUser}>
+            <RemoteControlProvider>
+                <Routes>
+                    <Route path="/login" element={<Login handleLogin={handleLogin}/>} />
+                    <Route element={<ProtectedRoute />}>
+                        <Route element={<Layout handleLogout={handleLogout}/>}>
+                            <Route path="/" element={<Home />} />
+                            <Route path="/dashboard" element={<DeviceDashboard />} />
+                            <Route path="/registration" element={<Registration />} />
+                            <Route path="/sessionview/:deviceId" element={<SessionViewerWrapper />} />
+                            <Route path="/sessionview" element={<DeviceList />} />
+                            <Route path="/remote-control" element={<RemoteControlPage />} />
+                            <Route path="/register-user" element={<RegisterUser />} />
+                        </Route>
+                    </Route>
+                </Routes>
+            </RemoteControlProvider>
+        </UserContext.Provider>
     );
 }
 

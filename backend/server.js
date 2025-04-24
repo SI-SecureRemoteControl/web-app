@@ -4,7 +4,11 @@ const bcrypt = require('bcrypt');
 const { generateKey, generateRequestId } = require('./utils/keysGenerator');
 const { connectDB } = require('./database/db');
 const WebSocket = require('ws');
-const { URL } = require('url')
+const { URL } = require('url');
+const jwt = require('jsonwebtoken');
+const authorize = require('./services/authorization');
+const authenticateToken = require('./services/authenticateToken');
+const requireAdmin = require('./services/requireAdmin');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -35,7 +39,7 @@ const wssControl = new WebSocket.Server({ noServer: true })
 const wssComm = new WebSocket.Server({ noServer: true })
 
 
-const controlFrontendClients = new Set();
+const controlFrontendClients = new Map();
 const controlSessions = new Map();
 const commLayerClients = new Set();
 
@@ -94,7 +98,7 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
-  const message = JSON.stringify({ type: 'db_change', ...data }); 
+  const message = JSON.stringify({ type: 'db_change', ...data });
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
@@ -117,7 +121,7 @@ function setupChangeStream() {
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
 
-  controlFrontendClients.add(ws);
+  controlFrontendClients.set(ws.protocol, ws);
   console.log(`Control Frontend client added. Total control frontend clients: ${controlFrontendClients.size}`);
 
   controlSessions.forEach((session, sessionId) => {
@@ -135,8 +139,12 @@ wssControl.on('connection', (ws) => {
       if (parsedMessage.type === 'control_response') {
         handleFrontendControlResponse(parsedMessage);
       } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage)
-      } else {
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
+      } 
+      else if(parsedMessage.type==='terminate_session'){
+           handleTerminateSessionRequest(parsedMessage);
+      }
+      else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {
@@ -145,13 +153,13 @@ wssControl.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete(ws.protocol);
     console.log(`Control Frontend client disconnected. Total clients: ${controlFrontendClients.size}`);
   });
 
   ws.on('error', (error) => {
     console.error('Control Frontend WebSocket error:', error);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete(ws.protocol);
   });
 });
 
@@ -160,6 +168,7 @@ wssComm.on('connection', (ws) => {
   console.log('Comm Layer client connected to Control WebSocket.');
 
   commLayerClients.add(ws);
+  controlFrontendClients.set('commLayer', ws);
   //controlFrontendClients.add(ws);
 
   ws.on('message', (message) => {
@@ -182,7 +191,7 @@ wssComm.on('connection', (ws) => {
 
   ws.on('close', () => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete('commLayer');
 
     console.log('Comm Layer client disconnected from Control WebSocket.');
     cleanupSessionsForSocket(ws);
@@ -190,7 +199,7 @@ wssComm.on('connection', (ws) => {
 
   ws.on('error', (error) => {
     commLayerClients.delete(ws);
-    controlFrontendClients.delete(ws);
+    controlFrontendClients.delete('commLayer');
 
     console.error('Comm Layer WebSocket error:', error);
     cleanupSessionsForSocket(ws);
@@ -217,7 +226,7 @@ function sendToCommLayer(sessionId, data) {
   }
   if (session.commLayerWs.readyState === WebSocket.OPEN) {
     console.log(`Sending to Comm Layer for session ${sessionId}:`, data);
-    
+
     session.commLayerWs.send(JSON.stringify(data));
   } else {
     console.error(`[Comm Send Error] Socket for session ${sessionId} is not open (state: ${session.commLayerWs.readyState}).`);
@@ -271,7 +280,7 @@ async function handleCommLayerControlRequest(ws, message) {
 
 function handleTerminateSessionRequest(message) {
 
-  const { sessionId } = message; 
+  const { sessionId } = message;
 
   if (!sessionId) {
       console.error('[Terminate Session] Request missing sessionId');
@@ -295,11 +304,11 @@ function handleTerminateSessionRequest(message) {
   console.log(`Administrator requested termination of control session: ${sessionId}`);
 
   sendToCommLayer(sessionId, {
-      type: 'session_terminated', 
+      type: 'session_terminated',
       sessionId: sessionId,
       reason: 'terminated_by_admin'
   });
-  
+
   broadcastToControlFrontend({
       type: 'control_status_update',
       sessionId: sessionId,
@@ -344,7 +353,7 @@ function handleTerminateSessionRequest(message) {
 }
 
 function handleWebRTCSignaling(sessionId, parsedMessage) {
-  
+
   var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: parsedMessage.type};
   sendToCommLayer(sessionId, message);
 }
@@ -455,28 +464,6 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
 }
 
 // ---------------------------------------------------------- rute
-app.post('/login', (req, res) => {
-  //THIS IS TEMPORARY, PROPER AUTHENTICATION WILL BE ADDED LATER
-  const loginRequest = req.body;
-  
-  bcrypt.compare(loginRequest.password, '$2a$12$syTr35twcAPPFPr8E1q8RuqzNHd8Bb53w4ZA7D9TNubbVdHS/fxIm', (err, result) => {
-    if(err) {
-      console.error(err);
-      return;
-    }
-
-    if(result) {
-      if(loginRequest.username == 'admin') {
-        res.sendStatus(200);
-      } else {
-        res.sendStatus(400);
-      }
-    } else {
-      res.sendStatus(400);
-    }
-  });
-});
-
 
 app.post('/devices/registration', async (req, res) => {
   const deviceName = req.body.deviceName;
@@ -589,7 +576,64 @@ app.get('/', (req, res) => {
   res.send('Hello, world!');
 });
 
+// ---------------------------------------------------------- auth
 
+app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res) => {
+  console.log(`Admin registration endpoint accessed by: ${req.user.username}`);
+
+  try {
+      const { username: newUsername, password: newPassword } = req.body; 
+
+      if (!newUsername || !newPassword) {
+          return res.status(400).json({ error: 'Username and password are required for the new user' });
+      }
+
+      const existingUser = await db.collection('web_admin_user').findOne({ username: newUsername });
+      if (existingUser) {
+          console.log(`Attempt to register existing username: ${newUsername}`);
+          return res.status(404).json({ error: 'Username already exists' });
+       }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const newUser = {
+          userId: Math.random().toString(36).substring(2, 10),
+          username: newUsername,
+          password: hashedPassword
+      };
+
+      await db.collection('web_admin_user').insertOne(newUser);
+      console.log(`Successfully registered new user: ${newUsername} by admin: ${req.user.username}`);
+
+      res.status(201).json({ message: `User '${newUsername}' registered successfully.` });
+  } catch (error) {
+      console.error("Admin Registration Error:", error);
+      res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const user = await db.collection('web_admin_user').findOne({ username });
+        if (!user) {
+          console.log("User not found:", username);
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (!passwordMatch) {
+            console.log("Password not match:", password);
+            return res.status(401).json({ error: 'Authentication failed' });
+        }
+        const token = jwt.sign({ userId: user._id, username: user.username }, process.env.SECRET_KEY, {
+            expiresIn: '1h',
+        });
+        delete user.password;
+        res.status(200).json({ token, user });
+    } catch (error) {
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
 
 app.get('/sessionview/:deviceId', async (req, res) => {
     const { deviceId } = req.params;
@@ -605,7 +649,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     } = req.query;
 
     try {
-        const query = { deviceId: deviceId };
+      const query = { deviceId: deviceId, status: { $ne: 'pending' } }; // Exclude devices with status 'pending'
 
         if (startDate) {
             query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };

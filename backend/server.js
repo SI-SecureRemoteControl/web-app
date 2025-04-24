@@ -592,10 +592,12 @@ app.post('/api/auth/login', async (req, res) => {
         const { username, password } = req.body;
         const user = await db.collection('web_admin_user').findOne({ username });
         if (!user) {
+          console.log("User not found:", username);
             return res.status(401).json({ error: 'Authentication failed' });
         }
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
+            console.log("Password not match:", password);
             return res.status(401).json({ error: 'Authentication failed' });
         }
         const token = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {

@@ -6,10 +6,9 @@ import { useLocation } from 'react-router-dom';
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [webRTCService, setWebRTCService] = useState<WebRTCService | null>(null);
-  const location = useLocation();
   const [deviceIdFromUrl, setDeviceIdFromUrl] = useState<string | null>(null);
   const [sessionIdFromUrl, setSessionIdFromUrl] = useState<string | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -30,7 +29,6 @@ const RemoteControlPage: React.FC = () => {
     console.log('Session ID iz URL-a:', sessionId);
 
     const service = new WebRTCService(deviceId, sessionId);
-    setWebRTCService(service);
 
     service.setOnRemoteStream((stream) => {
       if (videoRef.current) {
@@ -54,7 +52,6 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.addControlMessageListener(handleControlMessage);
 
-    
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
 

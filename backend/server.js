@@ -13,7 +13,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
-const robot = require('robotjs');
+
 
 
 const corsOptions = {
@@ -119,32 +119,6 @@ function setupChangeStream() {
 }
 
 
-function handleInputEventFromFrontend(message) {
-    const sessionId = message.sessionId;
-    const session = controlSessions.get(sessionId);
-
-    if (!session) {
-        console.error(`Session not found for sessionId: ${sessionId}`);
-        return;
-    }
-
-    const deviceSocket = deviceSockets.get(session.device?.deviceId);
-
-    if (!deviceSocket || deviceSocket.readyState !== WebSocket.OPEN) {
-        console.error(`Device socket not available for deviceId: ${session.device?.deviceId}`);
-        return;
-    }
-
-    // Forward event to device agent
-    deviceSocket.send(JSON.stringify({
-        type: message.type, // "mouse_click" ili "keyboard"
-        sessionId: sessionId,
-        ...message // sve ostalo prosljeđujemo direktno (x, y, button, key, code, eventType)
-    }));
-
-    console.log(`Forwarded ${message.type} event to device for session ${sessionId}`);
-}
-
 
 /// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
@@ -173,9 +147,17 @@ wssControl.on('connection', (ws) => {
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
             } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard') {
-                handleInputEventFromFrontend(parsedMessage);
+
+                const sessionId = parsedMessage.sessionId;
+                const session = controlSessions.get(sessionId);
+                if (!session) {
+                    console.error(`Session not found for sessionId: ${sessionId}`);
+                    return;
+                }
+
+                sendToCommLayer(sessionId, parsedMessage);
             }
-             else {
+            else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
             }
         } catch (error) {

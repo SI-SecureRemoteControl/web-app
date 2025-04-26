@@ -9,11 +9,12 @@ const jwt = require('jsonwebtoken');
 const authorize = require('./services/authorization');
 const authenticateToken = require('./services/authenticateToken');
 const requireAdmin = require('./services/requireAdmin');
-
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
+const robot = require('robotjs');
+
 
 const corsOptions = {
   origin: '*',
@@ -117,6 +118,19 @@ function setupChangeStream() {
   });
 }
 
+function handleRemoteControlEvent(event) {
+    // Depending on the type of event, you could perform actions such as moving the mouse or simulating a keypress
+    if (event.type === 'mouse_click') {
+        const mousePosition = { x: event.x, y: event.y };
+        robot.moveMouse(mousePosition.x, mousePosition.y);
+        robot.mouseClick(event.button);
+        console.log(`Simulating mouse click at: ${mousePosition.x}, ${mousePosition.y} - Button: ${event.button}`);
+    } else if (event.type === 'keyboard_input') {
+        robot.keyTap(event.key);
+        console.log(`Simulating key press: ${event.key}`);
+    }
+}
+
 /// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
@@ -132,25 +146,27 @@ wssControl.on('connection', (ws) => {
     }
   });
 
-  ws.on('message', (message) => {
-    try {
-      const parsedMessage = JSON.parse(message);
-      console.log('Received message from Control Frontend:', parsedMessage);
-      if (parsedMessage.type === 'control_response') {
-        handleFrontendControlResponse(parsedMessage);
-      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
-      } 
-      else if(parsedMessage.type==='terminate_session'){
-           handleTerminateSessionRequest(parsedMessage);
-      }
-      else {
-        console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
-      }
-    } catch (error) {
-      console.error('Failed to parse message from Control Frontend:', error);
-    }
-  });
+    ws.on('message', (message) => {
+        try {
+            const parsedMessage = JSON.parse(message);
+            console.log('Received message from Control Frontend:', parsedMessage);
+
+            if (parsedMessage.type === 'control_response') {
+                handleFrontendControlResponse(parsedMessage);
+            } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+                handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
+            } else if (parsedMessage.type === 'terminate_session') {
+                handleTerminateSessionRequest(parsedMessage);
+            } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard_input') {
+                // Handle mouse click or keyboard input control
+                handleRemoteControlEvent(parsedMessage);
+            } else {
+                console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
+            }
+        } catch (error) {
+            console.error('Failed to parse message from Control Frontend:', error);
+        }
+    });
 
   ws.on('close', () => {
     controlFrontendClients.delete(ws.protocol);
@@ -462,6 +478,10 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
       });
   }
 }
+
+
+
+
 
 // ---------------------------------------------------------- rute
 

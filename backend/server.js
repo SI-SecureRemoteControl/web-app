@@ -119,6 +119,33 @@ function setupChangeStream() {
 }
 
 
+function handleInputEventFromFrontend(message) {
+    const sessionId = message.sessionId;
+    const session = controlSessions.get(sessionId);
+
+    if (!session) {
+        console.error(`Session not found for sessionId: ${sessionId}`);
+        return;
+    }
+
+    const deviceSocket = deviceSockets.get(session.device?.deviceId);
+
+    if (!deviceSocket || deviceSocket.readyState !== WebSocket.OPEN) {
+        console.error(`Device socket not available for deviceId: ${session.device?.deviceId}`);
+        return;
+    }
+
+    // Forward event to device agent
+    deviceSocket.send(JSON.stringify({
+        type: message.type, // "mouse_click" ili "keyboard"
+        sessionId: sessionId,
+        ...message // sve ostalo prosljeđujemo direktno (x, y, button, key, code, eventType)
+    }));
+
+    console.log(`Forwarded ${message.type} event to device for session ${sessionId}`);
+}
+
+
 /// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
@@ -145,15 +172,8 @@ wssControl.on('connection', (ws) => {
                 handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
-            } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard_input') {
-                // Forward the control command to the Android device
-                const session = controlSessions.get(parsedMessage.sessionId);
-                if (session && session.deviceSocket) {
-                    session.deviceSocket.send(JSON.stringify(parsedMessage));
-                    console.log(`Forwarded ${parsedMessage.type} to device for session ${parsedMessage.sessionId}`);
-                } else {
-                    console.log(`No connected device for session ${parsedMessage.sessionId}`);
-                }
+            } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard') {
+                handleInputEventFromFrontend(parsedMessage);
             }
              else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);

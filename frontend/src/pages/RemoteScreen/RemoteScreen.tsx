@@ -10,7 +10,7 @@ const RemoteControlPage: React.FC = () => {
   const location = useLocation();
   const [deviceIdFromUrl, setDeviceIdFromUrl] = useState<string | null>(null);
   const [sessionIdFromUrl, setSessionIdFromUrl] = useState<string | null>(null);
-  webRTCService;
+
   useEffect(() => {
     websocketService.connectControlSocket();
 
@@ -29,7 +29,7 @@ const RemoteControlPage: React.FC = () => {
     console.log('Device ID iz URL-a:', deviceId);
     console.log('Session ID iz URL-a:', sessionId);
 
-    const service = new WebRTCService(deviceId ? deviceId : 'test', sessionId);
+    const service = new WebRTCService(deviceId, sessionId);
     setWebRTCService(service);
 
     service.setOnRemoteStream((stream) => {
@@ -54,11 +54,68 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.addControlMessageListener(handleControlMessage);
 
+    
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+
     return () => {
       service.closeConnection();
       websocketService.removeControlMessageListener(handleControlMessage);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
   }, [location.search]);
+
+  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl) {
+      return;
+    }
+
+    const rect = videoRef.current.getBoundingClientRect();
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+
+    const relativeX = clickX / rect.width;
+    const relativeY = clickY / rect.height;
+
+    console.log('Kliknuto na relativne koordinate:', relativeX, relativeY);
+
+    websocketService.sendControlMessage({
+      action: 'mouse_click',
+      sessionId: sessionIdFromUrl,
+      x: relativeX,
+      y: relativeY,
+      button: 'left'
+    });
+  };
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      sessionId: sessionIdFromUrl,
+      key: event.key,
+      code: event.code,
+      type: 'keydown'
+    });
+  };
+
+  const handleKeyUp = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      sessionId: sessionIdFromUrl,
+      key: event.key,
+      code: event.code,
+      type: 'keyup'
+    });
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -71,7 +128,8 @@ const RemoteControlPage: React.FC = () => {
         <div className="flex justify-center">
           <video
             ref={videoRef}
-            className="rounded-xl shadow-lg border border-gray-300"
+            onClick={handleVideoClick}
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             width="640"
             height="480"
             autoPlay

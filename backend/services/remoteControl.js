@@ -5,19 +5,22 @@ const socket = io(import.meta.env.VITE_WS_URL); // Use the VITE_WS_URL environme
 
 // Function to send mouse click events to the server
 function handleMouseClick(event) {
-    const mousePosition = { x: event.clientX, y: event.clientY }; // Get mouse position from event
+    const mousePosition = robot.getMousePos();
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
     const message = {
         action: 'mouse_click',
-        x: mousePosition.x,
-        y: mousePosition.y,
-        button: event.button, // 'left', 'right', or 'middle'
+        x: mousePosition.x / screenWidth,  // relative X (0 to 1)
+        y: mousePosition.y / screenHeight, // relative Y (0 to 1)
+        button: event.button,
     };
 
-    // Send the mouse click command to the WebSocket server
     socket.emit('command', message);
 
-    console.log(`Mouse clicked at: ${mousePosition.x}, ${mousePosition.y} - Button: ${event.button}`);
+    console.log(`Mouse clicked at relative: (${message.x}, ${message.y})`);
 }
+
 
 // Function to send keyboard input events to the server
 function handleKeyboardInput(event) {

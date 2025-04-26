@@ -118,18 +118,6 @@ function setupChangeStream() {
   });
 }
 
-function handleRemoteControlEvent(event) {
-    // Depending on the type of event, you could perform actions such as moving the mouse or simulating a keypress
-    if (event.type === 'mouse_click') {
-        const mousePosition = { x: event.x, y: event.y };
-        robot.moveMouse(mousePosition.x, mousePosition.y);
-        robot.mouseClick(event.button);
-        console.log(`Simulating mouse click at: ${mousePosition.x}, ${mousePosition.y} - Button: ${event.button}`);
-    } else if (event.type === 'keyboard_input') {
-        robot.keyTap(event.key);
-        console.log(`Simulating key press: ${event.key}`);
-    }
-}
 
 /// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
@@ -158,9 +146,16 @@ wssControl.on('connection', (ws) => {
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
             } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard_input') {
-                // Handle mouse click or keyboard input control
-                handleRemoteControlEvent(parsedMessage);
-            } else {
+                // Forward the control command to the Android device
+                const session = controlSessions.get(parsedMessage.sessionId);
+                if (session && session.deviceSocket) {
+                    session.deviceSocket.send(JSON.stringify(parsedMessage));
+                    console.log(`Forwarded ${parsedMessage.type} to device for session ${parsedMessage.sessionId}`);
+                } else {
+                    console.log(`No connected device for session ${parsedMessage.sessionId}`);
+                }
+            }
+             else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
             }
         } catch (error) {

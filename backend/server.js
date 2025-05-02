@@ -146,7 +146,7 @@ wssControl.on('connection', (ws) => {
                 handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
-            } else if (parsedMessage.type === 'mouse_click' || parsedMessage.type === 'keyboard') {
+            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard') {
 
                 const sessionId = parsedMessage.sessionId;
                 const session = controlSessions.get(sessionId);

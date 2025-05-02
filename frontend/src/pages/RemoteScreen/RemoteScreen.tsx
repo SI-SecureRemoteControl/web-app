@@ -78,7 +78,7 @@ const RemoteControlPage: React.FC = () => {
     console.log('Kliknuto na relativne koordinate:', relativeX, relativeY);
 
     websocketService.sendControlMessage({
-      type: 'mouse_click',
+      action: 'mouse_click',
       sessionId: sessionIdFromUrl,
       x: relativeX,
       y: relativeY,
@@ -92,7 +92,7 @@ const RemoteControlPage: React.FC = () => {
     }
 
     websocketService.sendControlMessage({
-      type: 'keyboard',
+      action: 'keyboard',
       sessionId: sessionIdFromUrl,
       key: event.key,
       code: event.code,

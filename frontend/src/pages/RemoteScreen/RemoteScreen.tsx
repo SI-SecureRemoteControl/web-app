@@ -33,6 +33,20 @@ const RemoteControlPage: React.FC = () => {
     service.setOnRemoteStream((stream) => {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+
+        const videoTrack = stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+
+        if (settings.width && settings.height) {
+          videoRef.current.width = settings.width;
+          videoRef.current.height = settings.height;
+        }
+
+        // Alternativno (ako `settings` ne daje tačne dimenzije odmah), koristi `loadedmetadata`:
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current!.width = videoRef.current!.videoWidth;
+          videoRef.current!.height = videoRef.current!.videoHeight;
+        };
       }
     });
 
@@ -119,7 +133,7 @@ const RemoteControlPage: React.FC = () => {
         key: event.key,
         code: event.code,
         type: 'keyup'
-      } 
+      }
     });
   };
 
@@ -136,10 +150,9 @@ const RemoteControlPage: React.FC = () => {
             ref={videoRef}
             onClick={handleVideoClick}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
-            width="640"
-            height="480"
             autoPlay
             playsInline
+            style={{ maxWidth: '100%', height: 'auto', aspectRatio: '9 / 16' }} 
           />
         </div>
       </div>

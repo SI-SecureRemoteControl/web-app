@@ -77,7 +77,7 @@ const RemoteControlPage: React.FC = () => {
     };
   }, [location.search]);
 
-  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+  /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
       return;
     }
@@ -102,6 +102,47 @@ const RemoteControlPage: React.FC = () => {
       }
     });
   };
+  */
+  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl) {
+      return;
+    }
+  
+    const videoElement = videoRef.current;
+  
+    const boundingRect = videoElement.getBoundingClientRect();
+    const clickX = event.clientX - boundingRect.left;
+    const clickY = event.clientY - boundingRect.top;
+  
+    const displayedWidth = boundingRect.width;
+    const displayedHeight = boundingRect.height;
+  
+    const naturalWidth = videoElement.videoWidth;
+    const naturalHeight = videoElement.videoHeight;
+  
+    const scaleX = naturalWidth / displayedWidth;
+    const scaleY = naturalHeight / displayedHeight;
+  
+    const correctedX = clickX * scaleX;
+    const correctedY = clickY * scaleY;
+  
+    const relativeX = correctedX / naturalWidth;
+    const relativeY = correctedY / naturalHeight;
+  
+    console.log('Kliknuto na korigirane relativne koordinate:', relativeX, relativeY);
+  
+    websocketService.sendControlMessage({
+      action: 'mouse_click',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        x: relativeX,
+        y: relativeY,
+        button: 'left'
+      }
+    });
+  };
+  
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
@@ -152,8 +193,8 @@ const RemoteControlPage: React.FC = () => {
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
-            style={{ maxWidth: 'auto', height: 'auto', aspectRatio: '9 / 16' }} 
-          />
+            style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+            />
         </div>
       </div>
     </div>

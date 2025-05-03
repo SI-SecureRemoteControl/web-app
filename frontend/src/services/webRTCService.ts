@@ -105,11 +105,9 @@ class WebRTCService {
   async addIceCandidate(candidate: RTCIceCandidateInit) {
     console.log('addIceCandidate pozvan s kandidatom:', candidate);
   
-    // Čekaj dok se ne postavi remoteDescription
     if (!this.peerConnection?.remoteDescription) {
       console.warn('Remote description nije postavljen, pokušavam ponovo nakon 500ms...');
       
-      // Čekaj dok se remoteDescription ne postavi (timeout sa ponovnim pokušajem)
       setTimeout(async () => {
         if (this.peerConnection?.remoteDescription) {
           try {
@@ -121,9 +119,8 @@ class WebRTCService {
         } else {
           console.error('Nije moguće dodati ICE kandidat, remoteDescription nije postavljen.');
         }
-      }, 500); // Pokušaj ponovo nakon 500ms
+      }, 500); 
     } else {
-      // Ako je remoteDescription već postavljen, odmah dodaj ICE kandidat
       try {
         await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
         console.log('Udaljeni ICE kandidat dodan:', candidate);

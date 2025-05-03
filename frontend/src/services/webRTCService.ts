@@ -48,6 +48,7 @@ class WebRTCService {
         if (this.peerConnection?.iceConnectionState === 'connected' || this.peerConnection?.iceConnectionState === 'completed') {
           console.log('WebRTC veza (ICE) uspješno uspostavljena!');
         } else if (this.peerConnection?.iceConnectionState === 'failed' || this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'closed') {
+          console.log('ICE Connection if not connected or completed:', this.peerConnection?.iceConnectionState);
           console.error('ICE veza prekinuta ili nije uspjela.');
         }
       };

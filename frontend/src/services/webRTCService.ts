@@ -104,14 +104,33 @@ class WebRTCService {
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
     console.log('addIceCandidate pozvan s kandidatom:', candidate);
-
+  
+    // Čekaj dok se ne postavi remoteDescription
+    if (!this.peerConnection?.remoteDescription) {
+      console.warn('Remote description nije postavljen, pokušavam ponovo nakon 500ms...');
+      
+      // Čekaj dok se remoteDescription ne postavi (timeout sa ponovnim pokušajem)
+      setTimeout(async () => {
+        if (this.peerConnection?.remoteDescription) {
+          try {
+            await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+            console.log('Udaljeni ICE kandidat dodan (nakon delay-a):', candidate);
+          } catch (error) {
+            console.error('Greška prilikom dodavanja ICE kandidata (nakon delay-a):', error);
+          }
+        } else {
+          console.error('Nije moguće dodati ICE kandidat, remoteDescription nije postavljen.');
+        }
+      }, 500); // Pokušaj ponovo nakon 500ms
+    } else {
+      // Ako je remoteDescription već postavljen, odmah dodaj ICE kandidat
       try {
         await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('Udaljeni ICE kandidat dodan (nakon delay-a):', candidate);
+        console.log('Udaljeni ICE kandidat dodan:', candidate);
       } catch (error) {
-        console.error('Greška prilikom dodavanja ICE kandidata (nakon delay-a):', error);
+        console.error('Greška prilikom dodavanja ICE kandidata:', error);
       }
-
+    }
   }
 
   private sendSignalingMessage(type: string, payload: any) {

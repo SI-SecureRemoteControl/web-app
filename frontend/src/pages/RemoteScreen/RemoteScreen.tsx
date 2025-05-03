@@ -152,7 +152,7 @@ const RemoteControlPage: React.FC = () => {
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
-            style={{ maxWidth: '100%', height: 'auto', aspectRatio: '9 / 16' }} 
+            style={{ maxWidth: 'auto', height: 'auto', aspectRatio: '9 / 16' }} 
           />
         </div>
       </div>

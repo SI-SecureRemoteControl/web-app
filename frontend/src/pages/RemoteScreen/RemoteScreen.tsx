@@ -79,10 +79,13 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.sendControlMessage({
       action: 'mouse_click',
+      deviceId: deviceIdFromUrl,
       sessionId: sessionIdFromUrl,
-      x: relativeX,
-      y: relativeY,
-      button: 'left'
+      payload: {
+        x: relativeX,
+        y: relativeY,
+        button: 'left'
+      }
     });
   };
 
@@ -93,10 +96,13 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.sendControlMessage({
       action: 'keyboard',
+      deviceId: deviceIdFromUrl,
       sessionId: sessionIdFromUrl,
-      key: event.key,
-      code: event.code,
-      type: 'keydown'
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keydown'
+      }
     });
   };
 
@@ -107,10 +113,13 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.sendControlMessage({
       action: 'keyboard',
+      deviceId: deviceIdFromUrl,
       sessionId: sessionIdFromUrl,
-      key: event.key,
-      code: event.code,
-      type: 'keyup'
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keyup'
+      } 
     });
   };
 

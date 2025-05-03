@@ -147,15 +147,7 @@ wssControl.on('connection', (ws) => {
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
             } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard') {
-
-                const sessionId = parsedMessage.sessionId;
-                const session = controlSessions.get(sessionId);
-                if (!session) {
-                    console.error(`Session not found for sessionId: ${sessionId}`);
-                    return;
-                }
-
-                sendToCommLayer(sessionId, parsedMessage);
+                handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
             }
             else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
@@ -371,6 +363,10 @@ function handleWebRTCSignaling(sessionId, parsedMessage) {
   sendToCommLayer(sessionId, message);
 }
 
+function handleRemoteClicks(sessionId, parsedMessage) {
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: parsedMessage.payload, type: parsedMessage.action};
+  sendToCommLayer(sessionId, message);
+}
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
  function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);

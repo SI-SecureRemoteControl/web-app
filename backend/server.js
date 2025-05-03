@@ -364,7 +364,7 @@ function handleWebRTCSignaling(sessionId, parsedMessage) {
 }
 
 function handleRemoteClicks(sessionId, parsedMessage) {
-  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: parsedMessage.payload, type: parsedMessage.action};
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, sessionId: sessionId, payload: parsedMessage.payload, type: parsedMessage.action};
   sendToCommLayer(sessionId, message);
 }
 // za handleanje timeout ako admin ne prihvati za 30 sekundi

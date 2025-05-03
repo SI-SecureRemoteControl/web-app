@@ -69,8 +69,8 @@ class WebRTCService {
   async createOffer() {
     console.log('createOffer pozvan.');
   
-    return new Promise(async (resolve, reject) => {
-     // setTimeout(async () => {
+    return new Promise( (resolve, reject) => {
+      setTimeout(async () => {
         try {
           const offer = await this.peerConnection?.createOffer();
           await this.peerConnection?.setLocalDescription(offer);
@@ -81,7 +81,7 @@ class WebRTCService {
           console.error('Greška prilikom kreiranja offera (nakon delay-a):', error);
           reject(error);
         }
-     // }, 500);
+      }, 500);
     });
   }
 

@@ -119,12 +119,7 @@ class WebRTCService {
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
-    if (!this.peerConnection) {
-        console.error('PeerConnection nije inicijalizovan.');
-        return;
-    }
-
-    if (!this.peerConnection.remoteDescription || !this.isRemoteDescriptionSet) {
+    if (!this.isRemoteDescriptionSet) {
       console.log('Remote description nije postavljen. Sačuvam ICE kandidata u buffer.', candidate);
       this.iceCandidateBuffer.push(candidate);
       return;
@@ -133,7 +128,7 @@ class WebRTCService {
     console.log('Remote description je postavljen. Dodajem ICE kandidata direktno.', candidate);
     try {
       if (candidate) {
-         await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+         await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
          console.log('Udaljeni ICE kandidat dodan:', candidate);
       } else {
          console.log('Primljen null ICE kandidat, preskačem dodavanje.');

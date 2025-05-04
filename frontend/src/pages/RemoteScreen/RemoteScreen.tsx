@@ -66,14 +66,14 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.addControlMessageListener(handleControlMessage);
 
-    //document.addEventListener('keydown', handleKeyDown);
-    //document.addEventListener('keyup', handleKeyUp);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
 
     return () => {
       service.closeConnection();
       websocketService.removeControlMessageListener(handleControlMessage);
-      //document.removeEventListener('keydown', handleKeyDown);
-      //document.removeEventListener('keyup', handleKeyUp);
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
     };
   }, [location.search]);
 
@@ -144,7 +144,7 @@ const RemoteControlPage: React.FC = () => {
   };
 
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLVideoElement>) => {
+  const handleKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
       return;
     }
@@ -161,7 +161,7 @@ const RemoteControlPage: React.FC = () => {
     });
   };
 
-  const handleKeyUp = (event: React.KeyboardEvent<HTMLVideoElement>) => {
+  const handleKeyUp = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
       return;
     }
@@ -190,8 +190,8 @@ const RemoteControlPage: React.FC = () => {
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            onKeyDown={handleKeyDown}
-            onKeyUp={handleKeyUp}
+            //onKeyDown={handleKeyDown}
+            //onKeyUp={handleKeyUp}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline

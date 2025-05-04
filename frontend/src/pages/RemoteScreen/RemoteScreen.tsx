@@ -190,7 +190,7 @@ const RemoteControlPage: React.FC = () => {
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer w-[640px] h-auto"
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer w-[360px] h-[240px]"
             autoPlay
             playsInline
           />

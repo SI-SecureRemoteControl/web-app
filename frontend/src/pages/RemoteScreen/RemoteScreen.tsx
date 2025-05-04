@@ -192,7 +192,6 @@ const RemoteControlPage: React.FC = () => {
             onClick={handleVideoClick}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
-            tabIndex={0} 
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline

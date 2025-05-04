@@ -107,30 +107,30 @@ const RemoteControlPage: React.FC = () => {
     if (!videoRef.current || !sessionIdFromUrl) {
       return;
     }
-  
+
     const videoElement = videoRef.current;
-  
+
     const boundingRect = videoElement.getBoundingClientRect();
     const clickX = event.clientX - boundingRect.left;
     const clickY = event.clientY - boundingRect.top;
-  
+
     const displayedWidth = boundingRect.width;
     const displayedHeight = boundingRect.height;
-  
+
     const naturalWidth = videoElement.videoWidth;
     const naturalHeight = videoElement.videoHeight;
-  
+
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
-  
+
     const correctedX = clickX * scaleX;
     const correctedY = clickY * scaleY;
-  
+
     const relativeX = correctedX / naturalWidth;
     const relativeY = correctedY / naturalHeight;
-  
+
     console.log('Kliknuto na korigirane relativne koordinate:', relativeX, relativeY);
-  
+
     websocketService.sendControlMessage({
       action: 'mouse_click',
       deviceId: deviceIdFromUrl,
@@ -142,7 +142,7 @@ const RemoteControlPage: React.FC = () => {
       }
     });
   };
-  
+
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
@@ -190,11 +190,10 @@ const RemoteControlPage: React.FC = () => {
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer w-[640px] h-auto"
             autoPlay
             playsInline
-            style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
-            />
+          />
         </div>
       </div>
     </div>

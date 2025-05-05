@@ -9,11 +9,12 @@ const jwt = require('jsonwebtoken');
 const authorize = require('./services/authorization');
 const authenticateToken = require('./services/authenticateToken');
 const requireAdmin = require('./services/requireAdmin');
-
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
+
+
 
 const corsOptions = {
   origin: '*',
@@ -117,6 +118,8 @@ function setupChangeStream() {
   });
 }
 
+
+
 /// drugi server, "type" je da razlikujemo odakle dolazi konekcija
 wssControl.on('connection', (ws) => {
   console.log(`Client connected to Control WebSocket (type: frontend)`);
@@ -132,25 +135,27 @@ wssControl.on('connection', (ws) => {
     }
   });
 
-  ws.on('message', (message) => {
-    try {
-      const parsedMessage = JSON.parse(message);
-      console.log('Received message from Control Frontend:', parsedMessage);
-      if (parsedMessage.type === 'control_response') {
-        handleFrontendControlResponse(parsedMessage);
-      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
-      } 
-      else if(parsedMessage.type==='terminate_session'){
-           handleTerminateSessionRequest(parsedMessage);
-      }
-      else {
-        console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
-      }
-    } catch (error) {
-      console.error('Failed to parse message from Control Frontend:', error);
-    }
-  });
+    ws.on('message', (message) => {
+        try {
+            const parsedMessage = JSON.parse(message);
+            console.log('Received message from Control Frontend:', parsedMessage);
+
+            if (parsedMessage.type === 'control_response') {
+                handleFrontendControlResponse(parsedMessage);
+            } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+                handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
+            } else if (parsedMessage.type === 'terminate_session') {
+                handleTerminateSessionRequest(parsedMessage);
+            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard') {
+                handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
+            }
+            else {
+                console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
+            }
+        } catch (error) {
+            console.error('Failed to parse message from Control Frontend:', error);
+        }
+    });
 
   ws.on('close', () => {
     controlFrontendClients.delete(ws.protocol);
@@ -358,6 +363,10 @@ function handleWebRTCSignaling(sessionId, parsedMessage) {
   sendToCommLayer(sessionId, message);
 }
 
+function handleRemoteClicks(sessionId, parsedMessage) {
+  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, sessionId: sessionId, payload: parsedMessage.payload, type: parsedMessage.action};
+  sendToCommLayer(sessionId, message);
+}
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
  function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);
@@ -462,6 +471,10 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
       });
   }
 }
+
+
+
+
 
 // ---------------------------------------------------------- rute
 

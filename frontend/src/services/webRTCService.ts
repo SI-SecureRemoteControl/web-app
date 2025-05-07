@@ -6,6 +6,10 @@ class WebRTCService {
   private deviceId: string | null = null;
   private sessionId: string | null = null;
 
+  private iceCandidateBuffer: RTCIceCandidateInit[] = [];
+  private isRemoteDescriptionSet: boolean = false;
+
+
   constructor(deviceId: string, sessionId: string) {
     this.deviceId = deviceId;
     this.sessionId = sessionId;
@@ -48,6 +52,7 @@ class WebRTCService {
         if (this.peerConnection?.iceConnectionState === 'connected' || this.peerConnection?.iceConnectionState === 'completed') {
           console.log('WebRTC veza (ICE) uspješno uspostavljena!');
         } else if (this.peerConnection?.iceConnectionState === 'failed' || this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'closed') {
+          console.log('ICE Connection if not connected or completed:', this.peerConnection?.iceConnectionState);
           console.error('ICE veza prekinuta ili nije uspjela.');
         }
       };
@@ -69,7 +74,7 @@ class WebRTCService {
   async createOffer() {
     console.log('createOffer pozvan.');
   
-    return new Promise((resolve, reject) => {
+    return new Promise( (resolve, reject) => {
       setTimeout(async () => {
         try {
           const offer = await this.peerConnection?.createOffer();
@@ -94,7 +99,18 @@ class WebRTCService {
         };
         console.log("Dodajem tip (nakon delay-a)");
         await this.peerConnection?.setRemoteDescription(new RTCSessionDescription(answerWithType));
-  
+        this.isRemoteDescriptionSet = true; 
+        while (this.iceCandidateBuffer.length > 0) {
+            const candidate = this.iceCandidateBuffer.shift(); 
+            if (candidate && this.peerConnection?.remoteDescription) {
+                 try {
+                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    console.log('Sačuvani ICE kandidat dodan:', candidate);
+                 } catch (error) {
+                    console.error('Greška prilikom dodavanja sačuvanog ICE kandidata:', error);
+                 }
+            }
+        }
         console.log('Udaljeni SDP odgovor postavljen (nakon delay-a).');
       } catch (error) {
         console.error('Greška prilikom postavljanja udaljenog opisa (nakon delay-a):', error);
@@ -103,15 +119,23 @@ class WebRTCService {
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit) {
-    console.log('addIceCandidate pozvan s kandidatom:', candidate);
+    if (!this.isRemoteDescriptionSet) {
+      console.log('Remote description nije postavljen. Sačuvam ICE kandidata u buffer.', candidate);
+      this.iceCandidateBuffer.push(candidate);
+      return;
+    }
 
-      try {
-        await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('Udaljeni ICE kandidat dodan (nakon delay-a):', candidate);
-      } catch (error) {
-        console.error('Greška prilikom dodavanja ICE kandidata (nakon delay-a):', error);
+    console.log('Remote description je postavljen. Dodajem ICE kandidata direktno.', candidate);
+    try {
+      if (candidate) {
+         await this.peerConnection?.addIceCandidate(new RTCIceCandidate(candidate));
+         console.log('Udaljeni ICE kandidat dodan:', candidate);
+      } else {
+         console.log('Primljen null ICE kandidat, preskačem dodavanje.');
       }
-
+    } catch (error) {
+      console.error('Greška prilikom dodavanja ICE kandidata:', error);
+    }
   }
 
   private sendSignalingMessage(type: string, payload: any) {

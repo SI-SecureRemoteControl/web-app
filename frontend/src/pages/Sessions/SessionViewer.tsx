@@ -10,6 +10,7 @@ interface Event {
 interface SessionLog {
     sessionId: string;
     deviceId: string;
+    status: string;
     events: Event[];
 }
 
@@ -36,7 +37,10 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
                 `${import.meta.env.VITE_BASE_URL}/sessionview/${deviceId}?page=${page}&limit=1`
             )
             .then((res) => {
-                setSessionLogs(res.data.sessionLogs);
+                const filtered = res.data.sessionLogs.filter(
+                    (log) => log.status !== 'pending'
+                );
+                setSessionLogs(filtered);
                 setTotalPages(res.data.totalPages);
                 setDeviceName(res.data.deviceName || 'Unknown Device');
             })

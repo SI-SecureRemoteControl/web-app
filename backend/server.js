@@ -146,7 +146,7 @@ wssControl.on('connection', (ws) => {
                 handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
-            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard') {
+            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard' || parsedMessage.action == 'swipe') {
                 handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
             }
             else {

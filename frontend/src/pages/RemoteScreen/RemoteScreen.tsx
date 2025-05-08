@@ -10,6 +10,12 @@ const RemoteControlPage: React.FC = () => {
   const [sessionIdFromUrl, setSessionIdFromUrl] = useState<string | null>(null);
   const location = useLocation();
 
+  // States for gesture tracking
+  const [isGestureActive, setIsGestureActive] = useState(false);
+  const [gestureStartTime, setGestureStartTime] = useState(0);
+  const [gestureStartX, setGestureStartX] = useState(0);
+  const [gestureStartY, setGestureStartY] = useState(0);
+
   useEffect(() => {
     websocketService.connectControlSocket();
 
@@ -74,45 +80,19 @@ const RemoteControlPage: React.FC = () => {
       websocketService.removeControlMessageListener(handleControlMessage);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      cleanupMouseEvents();
     };
   }, [location.search]);
 
-  /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl) {
-      return;
-    }
-
-    const rect = videoRef.current.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    const relativeX = clickX / rect.width;
-    const relativeY = clickY / rect.height;
-
-    console.log('Kliknuto na relativne koordinate:', relativeX, relativeY);
-
-    websocketService.sendControlMessage({
-      action: 'mouse_click',
-      deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
-      payload: {
-        x: relativeX,
-        y: relativeY,
-        button: 'left'
-      }
-    });
-  };
-  */
-  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl) {
-      return;
-    }
+  // Convert client coordinates to relative coordinates
+  const getRelativeCoordinates = (clientX: number, clientY: number) => {
+    if (!videoRef.current) return { relativeX: 0, relativeY: 0 };
 
     const videoElement = videoRef.current;
-
     const boundingRect = videoElement.getBoundingClientRect();
-    const clickX = event.clientX - boundingRect.left;
-    const clickY = event.clientY - boundingRect.top;
+    
+    const clickX = clientX - boundingRect.left;
+    const clickY = clientY - boundingRect.top;
 
     const displayedWidth = boundingRect.width;
     const displayedHeight = boundingRect.height;
@@ -129,6 +109,16 @@ const RemoteControlPage: React.FC = () => {
     const relativeX = correctedX / naturalWidth;
     const relativeY = correctedY / naturalHeight;
 
+    return { relativeX, relativeY };
+  };
+
+  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl || isGestureActive) {
+      return;
+    }
+
+    const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
+
     console.log('Kliknuto na korigirane relativne koordinate:', relativeX, relativeY);
 
     websocketService.sendControlMessage({
@@ -143,6 +133,181 @@ const RemoteControlPage: React.FC = () => {
     });
   };
 
+  // Handle mouse down to start gesture tracking
+  const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl) {
+      return;
+    }
+
+    setIsGestureActive(true);
+    setGestureStartTime(Date.now());
+    setGestureStartX(event.clientX);
+    setGestureStartY(event.clientY);
+
+    // Add event listeners for mouse move and mouse up
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    // Prevent default to avoid text selection
+    event.preventDefault();
+  };
+
+  // Handle mouse move during gesture
+  const handleMouseMove = (_event: MouseEvent) => {
+    // Just track movement, no action needed until mouse up
+  };
+
+  // Handle mouse up to complete the gesture
+  const handleMouseUp = (event: MouseEvent) => {
+    if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
+      cleanupMouseEvents();
+      return;
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - gestureStartTime;
+    const distanceX = event.clientX - gestureStartX;
+    const distanceY = event.clientY - gestureStartY;
+    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+    // If movement is small and quick, treat as a click
+    if (distance < 10 && duration < 300) {
+      // We'll let the click handler manage this
+      cleanupMouseEvents();
+      return;
+    }
+
+    // Get relative coordinates for start and end points
+    const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+    const endCoords = getRelativeCoordinates(event.clientX, event.clientY);
+
+    // Calculate velocity based on distance and duration (pixels per millisecond)
+    const velocity = distance / duration;
+
+    console.log('Swipe detected:', {
+      start: startCoords,
+      end: endCoords,
+      distance,
+      duration,
+      velocity
+    });
+
+    // Send swipe event
+    websocketService.sendControlMessage({
+      action: 'swipe',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        startX: startCoords.relativeX,
+        startY: startCoords.relativeY,
+        endX: endCoords.relativeX,
+        endY: endCoords.relativeY,
+        velocity: velocity
+      }
+    });
+
+    // Clean up
+    cleanupMouseEvents();
+  };
+
+  // Helper to clean up mouse events
+  const cleanupMouseEvents = () => {
+    setIsGestureActive(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
+  // Handle touch start
+  const handleTouchStart = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl || event.touches.length !== 1) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    setIsGestureActive(true);
+    setGestureStartTime(Date.now());
+    setGestureStartX(touch.clientX);
+    setGestureStartY(touch.clientY);
+
+    // Prevent default to avoid scrolling
+    event.preventDefault();
+  };
+
+  // Handle touch move
+  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+    // Just track movement, action happens on touch end
+    if (isGestureActive) {
+      event.preventDefault(); // Prevent scrolling while swiping
+    }
+  };
+
+  // Handle touch end
+  const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
+      setIsGestureActive(false);
+      return;
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - gestureStartTime;
+    
+    // Use the last known position if there are no touches left
+    const touch = event.changedTouches[0];
+    const distanceX = touch.clientX - gestureStartX;
+    const distanceY = touch.clientY - gestureStartY;
+    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+    // If movement is small and quick, treat as a click
+    if (distance < 10 && duration < 300) {
+      // Handle as a click instead
+      const { relativeX, relativeY } = getRelativeCoordinates(touch.clientX, touch.clientY);
+      
+      websocketService.sendControlMessage({
+        action: 'mouse_click',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          x: relativeX,
+          y: relativeY,
+          button: 'left'
+        }
+      });
+      
+      setIsGestureActive(false);
+      return;
+    }
+
+    // Get relative coordinates for start and end points
+    const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+    const endCoords = getRelativeCoordinates(touch.clientX, touch.clientY);
+
+    // Calculate velocity based on distance and duration
+    const velocity = distance / duration;
+
+    console.log('Swipe detected (touch):', {
+      start: startCoords,
+      end: endCoords,
+      distance,
+      duration,
+      velocity
+    });
+
+    // Send swipe event
+    websocketService.sendControlMessage({
+      action: 'swipe',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        startX: startCoords.relativeX,
+        startY: startCoords.relativeY,
+        endX: endCoords.relativeX,
+        endY: endCoords.relativeY,
+        velocity: velocity
+      }
+    });
+
+    setIsGestureActive(false);
+  };
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
@@ -190,8 +355,10 @@ const RemoteControlPage: React.FC = () => {
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            //onKeyDown={handleKeyDown}
-            //onKeyUp={handleKeyUp}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline

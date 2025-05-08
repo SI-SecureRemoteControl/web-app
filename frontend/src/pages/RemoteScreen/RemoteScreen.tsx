@@ -160,8 +160,8 @@ const RemoteControlPage: React.FC = () => {
   // Handle mouse up to complete the gesture
   const handleMouseUp = (event: MouseEvent) => {
     if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
-      cleanupMouseEvents();
-      return;
+        cleanupMouseEvents();
+        return;
     }
 
     const endTime = Date.now();
@@ -172,9 +172,22 @@ const RemoteControlPage: React.FC = () => {
 
     // If movement is small and quick, treat as a click
     if (distance < 10 && duration < 300) {
-      // We'll let the click handler manage this
-      cleanupMouseEvents();
-      return;
+        // IMPORTANT: Handle this as a click directly here instead of letting another handler manage it
+        const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
+        
+        websocketService.sendControlMessage({
+            action: 'mouse_click',
+            deviceId: deviceIdFromUrl,
+            sessionId: sessionIdFromUrl,
+            payload: {
+                x: relativeX,
+                y: relativeY,
+                button: 'left'
+            }
+        });
+        
+        cleanupMouseEvents();
+        return;
     }
 
     // Get relative coordinates for start and end points

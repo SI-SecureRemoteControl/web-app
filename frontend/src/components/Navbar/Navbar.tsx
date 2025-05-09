@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
-import { jwtDecode } from 'jwt-decode';
+import { jwtDecode, JwtPayload } from 'jwt-decode';
+
+interface MyTokenPayload extends JwtPayload {
+    username: string;
+
+}
 
 export interface navbarProps {
     handleLogout: () => void;
@@ -9,9 +14,18 @@ export interface navbarProps {
 const Navbar = ({ handleLogout }: navbarProps) => {
     const token = localStorage.getItem('token'); 
     let username = '';
-    if (token) {
-        const decoded: any = jwtDecode(token); 
-        username = decoded?.username; 
+    if (token && typeof token === 'string') {
+        try{
+        const decoded = jwtDecode<MyTokenPayload>(token); 
+        username = decoded?.username;
+    }catch (error) {
+        console.error("Failed to decode JWT or token is invalid:", error);
+        localStorage.removeItem('token');
+        }
+    }else {
+        if (token !== null) { 
+            console.warn("Token from localStorage is not a string:", token);
+        }
     }
     return (
         <nav className="bg-gray-800 text-white px-6 py-4 shadow-md">

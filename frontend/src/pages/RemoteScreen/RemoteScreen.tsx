@@ -90,7 +90,9 @@ const RemoteControlPage: React.FC = () => {
 
     const videoElement = videoRef.current;
     const boundingRect = videoElement.getBoundingClientRect();
-    
+    console.log('Bounding rect:', boundingRect);
+
+
     const clickX = clientX - boundingRect.left;
     const clickY = clientY - boundingRect.top;
 
@@ -99,6 +101,7 @@ const RemoteControlPage: React.FC = () => {
 
     const naturalWidth = videoElement.videoWidth;
     const naturalHeight = videoElement.videoHeight;
+
 
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
@@ -160,8 +163,8 @@ const RemoteControlPage: React.FC = () => {
   // Handle mouse up to complete the gesture
   const handleMouseUp = (event: MouseEvent) => {
     if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
-        cleanupMouseEvents();
-        return;
+      cleanupMouseEvents();
+      return;
     }
 
     const endTime = Date.now();
@@ -172,22 +175,22 @@ const RemoteControlPage: React.FC = () => {
 
     // If movement is small and quick, treat as a click
     if (distance < 10 && duration < 300) {
-        // IMPORTANT: Handle this as a click directly here instead of letting another handler manage it
-        const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
-        
-        websocketService.sendControlMessage({
-            action: 'mouse_click',
-            deviceId: deviceIdFromUrl,
-            sessionId: sessionIdFromUrl,
-            payload: {
-                x: relativeX,
-                y: relativeY,
-                button: 'left'
-            }
-        });
-        
-        cleanupMouseEvents();
-        return;
+      // IMPORTANT: Handle this as a click directly here instead of letting another handler manage it
+      const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
+
+      websocketService.sendControlMessage({
+        action: 'mouse_click',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          x: relativeX,
+          y: relativeY,
+          button: 'left'
+        }
+      });
+
+      cleanupMouseEvents();
+      return;
     }
 
     // Get relative coordinates for start and end points
@@ -232,6 +235,8 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle touch start
   const handleTouchStart = (event: React.TouchEvent<HTMLVideoElement>) => {
+    console.log('handleTouchStart triggered');
+
     if (!videoRef.current || !sessionIdFromUrl || event.touches.length !== 1) {
       return;
     }
@@ -248,6 +253,7 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle touch move
   const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+    console.log('handleTouchMove triggered');
     // Just track movement, action happens on touch end
     if (isGestureActive) {
       event.preventDefault(); // Prevent scrolling while swiping
@@ -256,6 +262,8 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle touch end
   const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
+    console.log('handleTouchEnd triggered');
+    // Check if the gesture is active and if the session ID is available
     if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
       setIsGestureActive(false);
       return;
@@ -263,7 +271,7 @@ const RemoteControlPage: React.FC = () => {
 
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
-    
+
     // Use the last known position if there are no touches left
     const touch = event.changedTouches[0];
     const distanceX = touch.clientX - gestureStartX;
@@ -274,7 +282,7 @@ const RemoteControlPage: React.FC = () => {
     if (distance < 10 && duration < 300) {
       // Handle as a click instead
       const { relativeX, relativeY } = getRelativeCoordinates(touch.clientX, touch.clientY);
-      
+
       websocketService.sendControlMessage({
         action: 'mouse_click',
         deviceId: deviceIdFromUrl,
@@ -285,7 +293,7 @@ const RemoteControlPage: React.FC = () => {
           button: 'left'
         }
       });
-      
+
       setIsGestureActive(false);
       return;
     }
@@ -375,8 +383,16 @@ const RemoteControlPage: React.FC = () => {
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
-            style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+            style={{
+              display: 'block',
+              maxWidth: '100%',
+              height: 'auto',
+              touchAction: 'none',
+              pointerEvents: 'auto',
+              userSelect: 'none',
+            }}
           />
+
         </div>
       </div>
     </div>

@@ -387,9 +387,9 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              touchAction: 'none',
-              pointerEvents: 'auto',
-              userSelect: 'none',
+              //touchAction: 'none',
+              //pointerEvents: 'auto',
+              //userSelect: 'none',
             }}
           />
 

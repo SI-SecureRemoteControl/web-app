@@ -156,8 +156,13 @@ const RemoteControlPage: React.FC = () => {
       payload: {
         key: event.key,
         code: event.code,
-        type: 'keydown'
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
+
     });
   };
 
@@ -173,8 +178,13 @@ const RemoteControlPage: React.FC = () => {
       payload: {
         key: event.key,
         code: event.code,
-        type: 'keyup'
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
+
     });
   };
 

@@ -248,18 +248,18 @@ const RemoteControlPage: React.FC = () => {
     setGestureStartY(touch.clientY);
 
     // Prevent default to avoid scrolling
-    event.preventDefault();
+    //event.preventDefault();
   };
 
   // Handle touch move
-  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+ /* const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
     console.log('handleTouchMove triggered');
     // Just track movement, action happens on touch end
-    if (isGestureActive) {
-      event.preventDefault(); // Prevent scrolling while swiping
-    }
+    //if (isGestureActive) {
+      //event.preventDefault(); // Prevent scrolling while swiping
+    //}
   };
-
+*/
   // Handle touch end
   const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
     console.log('handleTouchEnd triggered');
@@ -378,7 +378,7 @@ const RemoteControlPage: React.FC = () => {
             onClick={handleVideoClick}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
+           // onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
@@ -387,9 +387,9 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              //touchAction: 'none',
-              //pointerEvents: 'auto',
-              //userSelect: 'none',
+              touchAction: 'none',
+              pointerEvents: 'auto',
+              userSelect: 'none',
             }}
           />
 

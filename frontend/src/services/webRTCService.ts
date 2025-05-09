@@ -8,7 +8,7 @@ class WebRTCService {
 
   private iceCandidateBuffer: RTCIceCandidateInit[] = [];
   private isRemoteDescriptionSet: boolean = false;
-  private webSocketMessageHandler: ((data: any) => void) | null = null;
+
 
   constructor(deviceId: string, sessionId: string) {
     this.deviceId = deviceId;

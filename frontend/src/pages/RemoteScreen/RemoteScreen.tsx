@@ -1,5 +1,5 @@
 // src/pages/RemoteControlPage.tsx
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState} from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -218,6 +218,7 @@ const RemoteControlPage: React.FC = () => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           {deviceIdFromUrl && <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>}
           {pageSessionId && <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>}
+          {statusMessage && <p><span className="font-medium">Status:</span> {statusMessage}</p>}
         </div>
         <div className="flex justify-center">
           <video

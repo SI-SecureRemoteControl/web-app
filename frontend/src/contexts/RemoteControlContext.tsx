@@ -120,28 +120,14 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         }
       };
 
-    // --- CORRECTION 2: SESSION_STATUS_UPDATE Reducer Logic ---
     case 'SESSION_STATUS_UPDATE': {
       console.log('SESSION_STATUS_UPDATE received:', action.payload);
+      const { sessionId: payloadSessionId, status: backendStatus } = action.payload;
+      // Check if the update is for the current active session
 
       // Only update if we have an active session
-      if (!state.activeSession) {
-        console.warn('Received status update but no active session exists');
-        return state;
-      }
-
-      // Check if the update is for the current active session
-      const sessionMatch = action.payload.sessionId &&
-                          state.activeSession.sessionId === action.payload.sessionId;
-
-      console.log('Session match check:', {
-        sessionMatch,
-        activeSessionId: state.activeSession.sessionId,
-        payloadSessionId: action.payload.sessionId
-      });
-
-      if (!sessionMatch) {
-        console.warn('Session ID mismatch, ignoring update');
+      if (!state.activeSession || state.activeSession.sessionId !== payloadSessionId) {
+        console.warn(`SESSION_STATUS_UPDATE: No active session or session ID mismatch. Context active: ${state.activeSession?.sessionId}, Update for: ${payloadSessionId}. Ignoring for now.`);
         return state;
       }
 
@@ -149,10 +135,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
       let frontendStatus: 'pending' | 'connected' | 'error' = state.activeSession.status; // Default to current
       let notificationType: 'success' | 'error' | 'info' = 'info';
       let notificationMessage = action.payload.message || '';
-      let shouldNavigate = false;
+      let shouldNavigate = state.navigateToWebRTC;
       let shouldClearSession = false;
-
-      const backendStatus = action.payload.status;
 
       if (backendStatus === 'connected') {
         frontendStatus = 'connected';
@@ -174,6 +158,10 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
                backendStatus === 'timed_out' ||
                backendStatus === 'disconnected' ||
                backendStatus === 'terminated' ||
+               backendStatus === 'terminated_by_admin' || 
+               backendStatus === 'terminated_not_found' || 
+              backendStatus === 'comm_disconnected' || 
+               backendStatus === 'comm_disconnected_while_connected' || 
                backendStatus === 'error') { // Explicitly handle 'error'
         frontendStatus = 'error';
         notificationType = 'error';

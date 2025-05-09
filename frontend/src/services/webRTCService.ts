@@ -8,7 +8,7 @@ class WebRTCService {
 
   private iceCandidateBuffer: RTCIceCandidateInit[] = [];
   private isRemoteDescriptionSet: boolean = false;
-
+  private webSocketMessageHandler: ((data: any) => void) | null = null;
 
   constructor(deviceId: string, sessionId: string) {
     this.deviceId = deviceId;
@@ -19,6 +19,16 @@ class WebRTCService {
 
   setOnRemoteStream(callback: (stream: MediaStream) => void) {
     this.onRemoteStreamCallback = callback;
+  }
+
+  public isConnectionActive(): boolean { 
+    return this.peerConnection !== null &&
+           (this.peerConnection.iceConnectionState === 'connected' ||
+            this.peerConnection.iceConnectionState === 'completed');
+  }
+
+  public getSessionId(): string | null { // Public getter for sessionId
+    return this.sessionId;
   }
 
   private initializePeerConnection() {
@@ -147,10 +157,32 @@ class WebRTCService {
   }
 
   closeConnection() {
+    console.log(`WebRTCService [${this.sessionId}]: closeConnection() called.`);
     if (this.peerConnection) {
+      this.peerConnection.onicecandidate = null;
+      this.peerConnection.ontrack = null;
+      this.peerConnection.oniceconnectionstatechange = null;
+      this.peerConnection.onnegotiationneeded = null;
+
+      this.peerConnection.getTransceivers().forEach(transceiver => {
+        if (transceiver.stop) { // Check if stop method exists
+            transceiver.stop();
+        }
+      });
+
       this.peerConnection.close();
       this.peerConnection = null;
+      console.log(`WebRTCService [${this.sessionId}]: Peer connection closed and nulled.`);
     }
+    this.isRemoteDescriptionSet = false;
+    this.iceCandidateBuffer = []; 
+
+    // If you had a specific listener added by this service instance:
+    // if (this.webSocketMessageHandler && websocketService.removeControlMessageListener) {
+    //   websocketService.removeControlMessageListener(this.webSocketMessageHandler);
+    //   this.webSocketMessageHandler = null;
+    // }
+    console.log(`WebRTCService [${this.sessionId}]: Cleanup finished.`);
   }
 }
 

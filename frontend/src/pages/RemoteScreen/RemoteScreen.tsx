@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState, useCallback} from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useRemoteControl } from '../../contexts/RemoteControlContext';
 import { WifiOff } from 'lucide-react'; 
 
 const RemoteControlPage: React.FC = () => {
@@ -20,7 +19,6 @@ const RemoteControlPage: React.FC = () => {
   const deviceIdFromUrl = queryParams.get('deviceId');
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
 
-  const { activeSession } = useRemoteControl(); // Get 
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!isStreamActuallyPlaying || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;

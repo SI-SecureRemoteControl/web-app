@@ -207,8 +207,11 @@ const RemoteControlPage: React.FC = () => {
   };
 
   // Handle mouse move during gesture
-  const handleMouseMove = (_event: MouseEvent) => {
-    // Just track movement, no action needed until mouse up
+  const handleMouseMove = (event: MouseEvent) => {
+    // Prevent default to avoid text selection during swipe
+    if (isGestureActive) {
+      event.preventDefault();
+    }
   };
 
   // Handle mouse up to complete the gesture
@@ -295,26 +298,24 @@ const RemoteControlPage: React.FC = () => {
     if (!videoRef.current || !sessionIdFromUrl || event.touches.length !== 1) {
       return;
     }
+    
+    // Prevent default browser behavior to avoid scrolling
+    event.preventDefault();
 
     const touch = event.touches[0];
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
     setGestureStartX(touch.clientX);
     setGestureStartY(touch.clientY);
-
-    // Prevent default to avoid scrolling
-    //event.preventDefault();
   };
 
-  // Handle touch move
- /* const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
-    console.log('handleTouchMove triggered');
-    // Just track movement, action happens on touch end
-    //if (isGestureActive) {
-      //event.preventDefault(); // Prevent scrolling while swiping
-    //}
+  // Handle touch move - important to prevent default scrolling behavior
+  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (isGestureActive) {
+      // Prevent default scrolling behavior while swiping
+      event.preventDefault();
+    }
   };
-*/
   // Handle touch end
   const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
     console.log('handleTouchEnd triggered');
@@ -323,7 +324,10 @@ const RemoteControlPage: React.FC = () => {
       setIsGestureActive(false);
       return;
     }
-
+    
+    // Prevent default browser behavior
+    event.preventDefault();
+    
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
 
@@ -455,9 +459,9 @@ const RemoteControlPage: React.FC = () => {
             onKeyUp={handleKeyUp}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-           // onTouchMove={handleTouchMove}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-
+            tabIndex={0}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
@@ -465,9 +469,12 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              touchAction: 'none',
+              touchAction: 'none',  /* Disable browser touch actions */
               pointerEvents: 'auto',
               userSelect: 'none',
+              WebkitUserSelect: 'none',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)', /* Remove tap highlight on mobile */
+              outline: 'none' /* Remove focus outline */
             }}
           />
 

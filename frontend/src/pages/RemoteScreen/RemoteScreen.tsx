@@ -22,9 +22,9 @@ const RemoteControlPage: React.FC = () => {
 
   const { activeSession } = useRemoteControl(); // Get 
 
-  const closeAndCleanupWebRTC = useCallback(() => {
+  const closeAndCleanupWebRTC = useCallback((reason?: string) => {
     if (webRTCServiceRef.current) {
-      console.log(`RemoteControlPage [${pageSessionId}]: Closing WebRTC connection explicitly.`);
+      console.log(`RemoteControlPage [${pageSessionId}]: Closing WebRTC. Reason: ${reason || 'N/A'}`);
       webRTCServiceRef.current.closeConnection();
       // webRTCServiceRef.current = null; // Clearing ref here might be too early if other effects depend on it momentarily
     }
@@ -33,6 +33,22 @@ const RemoteControlPage: React.FC = () => {
     }
     setIsStreamActive(false); // Update UI state
   }, [pageSessionId]);
+
+    const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!isStreamActive || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
+    websocketService.sendControlMessage({
+      action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
+      payload: { key: event.key, code: event.code, type: 'keydown' }
+    });
+  }, [isStreamActive, pageSessionId, deviceIdFromUrl]);
+
+  const handleKeyUp = useCallback((event: KeyboardEvent) => {
+    if (!isStreamActive || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
+    websocketService.sendControlMessage({
+      action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
+      payload: { key: event.key, code: event.code, type: 'keyup' }
+    });
+  }, [isStreamActive, pageSessionId, deviceIdFromUrl]);
 
   useEffect(() => {
 
@@ -50,9 +66,10 @@ const RemoteControlPage: React.FC = () => {
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
+    let isMounted = true;
 
     service.setOnRemoteStream((stream) => {
-      if (videoRef.current) {
+      if (isMounted && videoRef.current) {
         videoRef.current.srcObject = stream;
         setUserMessage("Video stream aktivan.");
         setIsStreamActive(true); // Stream is now active
@@ -68,7 +85,7 @@ const RemoteControlPage: React.FC = () => {
 
         // Alternativno (ako `settings` ne daje tačne dimenzije odmah), koristi `loadedmetadata`:
         videoRef.current.onloadedmetadata = () => {
-          if(videoRef.current){
+          if(videoRef.current && isMounted){
            videoRef.current!.width = videoRef.current!.videoWidth;
             videoRef.current!.height = videoRef.current!.videoHeight;
           }
@@ -78,17 +95,17 @@ const RemoteControlPage: React.FC = () => {
 
       service.createOffer()
         .then(() => {
-          setUserMessage("WebRTC ponuda poslana. Čekanje odgovora...");
+          if (isMounted) setUserMessage("WebRTC ponuda poslana. Čekanje odgovora...");
           console.log(`RemoteControlPage [${pageSessionId}]: Offer created and sent.`);
         })
         .catch(error => {
-          setUserMessage("Greška pri kreiranju WebRTC ponude.");
+          if (isMounted) setUserMessage("Greška pri kreiranju WebRTC ponude.");
           console.error(`RemoteControlPage [${pageSessionId}]: Failed to create offer:`, error);
-          closeAndCleanupWebRTC();
+          if (isMounted) closeAndCleanupWebRTC('offer failed');
         });
 
     const handleWebSocketMessagesForThisSession = (data: any) => {
-      if (data.sessionId !== pageSessionId) return; // Only process messages for this page's session
+      if (!isMounted || data.sessionId !== pageSessionId) return; // Only process messages for this page's session
 
       if (data.type === 'answer') {
         webRTCServiceRef.current?.handleAnswer(data.payload);
@@ -103,6 +120,7 @@ const RemoteControlPage: React.FC = () => {
     document.addEventListener('keyup', handleKeyUp);
 
     return () => {
+      isMounted = false;
       console.log(`RemoteControlPage [${pageSessionId}]: Cleaning up WebRTC service and listeners due to unmount or param change.`);
       closeAndCleanupWebRTC();
        if (webRTCServiceRef.current) {
@@ -116,16 +134,13 @@ const RemoteControlPage: React.FC = () => {
   }, [location.search, closeAndCleanupWebRTC]);
 
 useEffect(() => {
-    if (!pageSessionId) return;
-    if (!activeSession || activeSession.sessionId !== pageSessionId) {
-      // Check if a stream was supposed to be active for this page
-      if (webRTCServiceRef.current || isStreamActive) { // If service existed or stream was active
-        console.log(`RemoteControlPage [${pageSessionId}]: Context indicates session is no longer active or is different. Closing local WebRTC.`);
-        setUserMessage(`Sesija ${pageSessionId} je prekinuta ili više nije aktivna.`);
-        closeAndCleanupWebRTC(); 
-      }
-    }
-  }, [activeSession, pageSessionId, navigate, closeAndCleanupWebRTC, isStreamActive]); // Added closeAndCleanupWebRTC & isStreamActive
+  if (!pageSessionId) return;
+  if ((!activeSession || activeSession.sessionId !== pageSessionId) && (webRTCServiceRef.current || isStreamActive) ) {
+    console.log(`RemoteControlPage [${pageSessionId}]: Context indicates session is no longer active or is different. Closing local WebRTC.`);
+    setUserMessage(`Sesija ${pageSessionId} je prekinuta ili više nije aktivna.`);
+    closeAndCleanupWebRTC();
+  }
+}, [activeSession, pageSessionId, navigate, closeAndCleanupWebRTC, isStreamActive]);
 
 
   /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
@@ -190,41 +205,6 @@ useEffect(() => {
         x: relativeX,
         y: relativeY,
         button: 'left'
-      }
-    });
-  };
-
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (!pageSessionId) {
-      return;
-    }
-
-    websocketService.sendControlMessage({
-      action: 'keyboard',
-      deviceId: deviceIdFromUrl,
-      sessionId: pageSessionId,
-      payload: {
-        key: event.key,
-        code: event.code,
-        type: 'keydown'
-      }
-    });
-  };
-
-  const handleKeyUp = (event: KeyboardEvent) => {
-    if (!pageSessionId) {
-      return;
-    }
-
-    websocketService.sendControlMessage({
-      action: 'keyboard',
-      deviceId: deviceIdFromUrl,
-      sessionId: pageSessionId,
-      payload: {
-        key: event.key,
-        code: event.code,
-        type: 'keyup'
       }
     });
   };

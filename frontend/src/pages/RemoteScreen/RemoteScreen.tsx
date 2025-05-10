@@ -21,6 +21,7 @@ const RemoteControlPage: React.FC = () => {
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
 
   const { activeSession } = useRemoteControl(); // Get 
+  const hasInitializedRef = useRef(false);
 
   const closeAndCleanupWebRTC = useCallback((reason?: string) => {
     if (webRTCServiceRef.current) {
@@ -60,22 +61,23 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
-    console.log(`RemoteControlPage: Setting up WebRTC for session ${pageSessionId}, device ${deviceIdFromUrl}`);
+    console.log(`%cRemoteControlPage [${pageSessionId}]: MAIN useEffect RUNNING (location.search changed or initial mount)`, "color: blue; font-weight: bold;");
     setUserMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
     setIsStreamActive(false);
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
-    let isMounted = true;
+    hasInitializedRef.current = true;
+    let isEffectMounted = true;
+
+    console.log(`%cRemoteControlPage [${pageSessionId}]: WebRTCService INSTANTIATED. Setting onRemoteStream callback.`, "color: green;");
 
     service.setOnRemoteStream((stream) => {
-      if (isMounted && videoRef.current) {
-        console.log(`RemoteControlPage [${pageSessionId}]: setOnRemoteStream CALLBACK FIRED. Stream object:`, stream);
-        console.log(`RemoteControlPage [${pageSessionId}]: Stream tracks:`, stream.getTracks());
-        console.log(`RemoteControlPage [${pageSessionId}]: Stream video tracks:`, stream.getVideoTracks());
-        console.log(`RemoteControlPage [${pageSessionId}]: setOnRemoteStream CALLBACK FIRED. Attaching stream.`);
+      if (isEffectMounted && videoRef.current) {
+        console.log(`%cRemoteControlPage [${pageSessionId}]: <<<>>> setOnRemoteStream CALLBACK EXECUTED <<<>>>`, "color: red; font-size: 1.2em; font-weight: bold;");
+        console.log(`%cRemoteControlPage [${pageSessionId}]: Stream object:`, "color: red;", stream);
         videoRef.current.srcObject = stream;
-        setUserMessage("Video stream aktivan.");
+        console.log(`%cRemoteControlPage [${pageSessionId}]: UI state UPDATED. isStreamActive: true, userMessage: "Video stream aktivan."`, "color: red;");
         setIsStreamActive(true); // Stream is now active
         console.log(`RemoteControlPage [${pageSessionId}]: Remote stream attached. isStreamActive: true, userMessage: "Video stream aktivan."`);
 
@@ -89,27 +91,29 @@ const RemoteControlPage: React.FC = () => {
 
         // Alternativno (ako `settings` ne daje tačne dimenzije odmah), koristi `loadedmetadata`:
         videoRef.current.onloadedmetadata = () => {
-          if(videoRef.current && isMounted){
+          if(videoRef.current && isEffectMounted){
            videoRef.current!.width = videoRef.current!.videoWidth;
             videoRef.current!.height = videoRef.current!.videoHeight;
           }
         };
+      } else {
+        console.warn(`%cRemoteControlPage [${pageSessionId}]: setOnRemoteStream callback conditions NOT MET. isEffectMounted: ${isEffectMounted}, videoRef.current: ${!!videoRef.current}`, "color: orange;");
       }
     });
 
       service.createOffer()
         .then(() => {
-          if (isMounted) setUserMessage("WebRTC ponuda poslana. Čekanje odgovora...");
-          console.log(`RemoteControlPage [${pageSessionId}]: Offer created and sent.`);
+          if (isEffectMounted) console.log(`%cRemoteControlPage [${pageSessionId}]: Offer CREATED successfully. Current userMessage: "${userMessage}"`, "color: green;"); //
+            setUserMessage("WebRTC ponuda poslana. Čekanje odgovora...");
         })
         .catch(error => {
-          if (isMounted) setUserMessage("Greška pri kreiranju WebRTC ponude.");
+          if (isEffectMounted) setUserMessage("Greška pri kreiranju WebRTC ponude.");
           console.error(`RemoteControlPage [${pageSessionId}]: Failed to create offer:`, error);
-          if (isMounted) closeAndCleanupWebRTC('offer failed');
+          if (isEffectMounted) closeAndCleanupWebRTC('offer failed');
         });
 
     const handleWebSocketMessagesForThisSession = (data: any) => {
-      if (!isMounted || data.sessionId !== pageSessionId) return; // Only process messages for this page's session
+      if (!isEffectMounted || data.sessionId !== pageSessionId) return; // Only process messages for this page's session
 
       if (data.type === 'answer') {
         webRTCServiceRef.current?.handleAnswer(data.payload);
@@ -124,8 +128,8 @@ const RemoteControlPage: React.FC = () => {
     document.addEventListener('keyup', handleKeyUp);
 
     return () => {
-      isMounted = false;
-      console.log(`RemoteControlPage [${pageSessionId}]: Cleaning up WebRTC service and listeners due to unmount or param change.`);
+      isEffectMounted = false;
+      console.log(`%cRemoteControlPage [${pageSessionId}]: Main useEffect CLEANUP.`, "color: blue; font-weight: bold;");
       closeAndCleanupWebRTC();
        if (webRTCServiceRef.current) {
         webRTCServiceRef.current.closeConnection();

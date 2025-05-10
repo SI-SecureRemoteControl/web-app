@@ -18,6 +18,7 @@ class WebRTCService {
   }
 
   setOnRemoteStream(callback: (stream: MediaStream) => void) {
+    console.log(`%cWebRTCService [${this.sessionId}]: setOnRemoteStream CALLED BY PAGE. Callback function stored.`, "color: purple;");
     this.onRemoteStreamCallback = callback;
   }
 
@@ -49,19 +50,15 @@ class WebRTCService {
     };
 
     this.peerConnection.ontrack = (event) => {
+      console.log(`%cWebRTCService [${this.sessionId}]: ONTRACK event fired. Track kind: ${event.track.kind}. Number of streams: ${event.streams?.length}`, "color: purple; font-weight: bold;");
       if (event.track.kind === 'video'){
         console.log('Primljen video stream:', event.track);
       }
       if (event.track.kind === 'video' && event.streams && event.streams[0] && this.onRemoteStreamCallback) {
-        console.log('WebRTCService: Calling onRemoteStreamCallback with stream:', event.streams[0]);
+        console.log(`%cWebRTCService [${this.sessionId}]: --->>> INVOKING onRemoteStreamCallback with stream ID: ${event.streams[0].id}`, "color: purple; font-size: 1.2em;");
         this.onRemoteStreamCallback(event.streams[0]);
       } else {
-          if (!event.streams || !event.streams[0]) {
-            console.warn('WebRTCService: ontrack event fired, but event.streams[0] is missing.');
-          }
-          if (!this.onRemoteStreamCallback) {
-            console.warn('WebRTCService: ontrack event fired, but onRemoteStreamCallback is not set.');
-          }
+          console.warn(`%cWebRTCService [${this.sessionId}]: ONTRACK - Conditions to call onRemoteStreamCallback NOT MET. Has streams[0]: ${!!(event.streams && event.streams[0])}, Has callback: ${!!this.onRemoteStreamCallback}`, "color: orange;");
         }
     };
 

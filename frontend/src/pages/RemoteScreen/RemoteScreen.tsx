@@ -66,43 +66,64 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.addControlMessageListener(handleControlMessage);
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
     return () => {
       service.closeConnection();
       websocketService.removeControlMessageListener(handleControlMessage);
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
     };
   }, [location.search]);
 
-  /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl) {
+  const handleDocumentKeyDown = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
       return;
     }
 
-    const rect = videoRef.current.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-
-    const relativeX = clickX / rect.width;
-    const relativeY = clickY / rect.height;
-
-    console.log('Kliknuto na relativne koordinate:', relativeX, relativeY);
-
     websocketService.sendControlMessage({
-      action: 'mouse_click',
+      action: 'keyboard',
       deviceId: deviceIdFromUrl,
       sessionId: sessionIdFromUrl,
       payload: {
-        x: relativeX,
-        y: relativeY,
-        button: 'left'
+        key: event.key,
+        code: event.code,
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
     });
   };
-  */
+
+  const handleDocumentKeyUp = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    document.addEventListener('keyup', handleDocumentKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+      document.removeEventListener('keyup', handleDocumentKeyUp);
+    };
+  }, [sessionIdFromUrl]);
+
   const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
       return;
@@ -143,8 +164,7 @@ const RemoteControlPage: React.FC = () => {
     });
   };
 
-
-  const handleKeyDown = (event: KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLVideoElement>) => {
     if (!sessionIdFromUrl) {
       return;
     }
@@ -156,12 +176,17 @@ const RemoteControlPage: React.FC = () => {
       payload: {
         key: event.key,
         code: event.code,
-        type: 'keydown'
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
+
     });
   };
 
-  const handleKeyUp = (event: KeyboardEvent) => {
+  const handleKeyUp = (event: React.KeyboardEvent<HTMLVideoElement>) => {
     if (!sessionIdFromUrl) {
       return;
     }
@@ -173,8 +198,13 @@ const RemoteControlPage: React.FC = () => {
       payload: {
         key: event.key,
         code: event.code,
-        type: 'keyup'
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
+
     });
   };
 
@@ -190,8 +220,8 @@ const RemoteControlPage: React.FC = () => {
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            //onKeyDown={handleKeyDown}
-            //onKeyUp={handleKeyUp}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline

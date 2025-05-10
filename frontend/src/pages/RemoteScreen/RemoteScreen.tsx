@@ -28,7 +28,7 @@ const RemoteControlPage: React.FC = () => {
       action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
       payload: { key: event.key, code: event.code, type: 'keydown' }
     });
-  }, [showVideo , pageSessionId, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
     if (!showVideo  || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
@@ -36,7 +36,7 @@ const RemoteControlPage: React.FC = () => {
       action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
       payload: { key: event.key, code: event.code, type: 'keyup' }
     });
-  }, [showVideo , pageSessionId, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl]);
 
   useEffect(() => {
 

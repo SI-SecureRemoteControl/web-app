@@ -19,6 +19,9 @@ const RemoteControlPage: React.FC = () => {
   
   // Toggle for mouse mode (standard vs toggle mode)
   const [isToggleMode, setIsToggleMode] = useState(false);
+  
+  // State for touch emulation mode (similar to Chrome DevTools)
+  const [isTouchEmulationEnabled, setIsTouchEmulationEnabled] = useState(false);
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -155,6 +158,19 @@ const RemoteControlPage: React.FC = () => {
     return { relativeX, relativeY };
   };
 
+  // For emulating Chrome's device toolbar behavior
+  useEffect(() => {
+    if (isTouchEmulationEnabled) {
+      // Apply CSS to the body to make everything behave more like touch device
+      document.body.style.touchAction = 'manipulation';
+      document.body.style.overscrollBehavior = 'contain';
+    } else {
+      // Reset CSS when not in emulation mode
+      document.body.style.touchAction = '';
+      document.body.style.overscrollBehavior = '';
+    }
+  }, [isTouchEmulationEnabled]);
+  
   useEffect(() => {
     document.addEventListener('keydown', handleDocumentKeyDown);
     document.addEventListener('keyup', handleDocumentKeyUp);
@@ -299,8 +315,10 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
-    // Prevent default browser behavior to avoid scrolling
-    event.preventDefault();
+    // Only prevent default if not in touch emulation mode
+    if (!isTouchEmulationEnabled) {
+      event.preventDefault();
+    }
 
     const touch = event.touches[0];
     setIsGestureActive(true);
@@ -311,8 +329,8 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle touch move - important to prevent default scrolling behavior
   const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
-    if (isGestureActive) {
-      // Prevent default scrolling behavior while swiping
+    if (isGestureActive && !isTouchEmulationEnabled) {
+      // Only prevent default if not in touch emulation mode
       event.preventDefault();
     }
   };
@@ -325,8 +343,10 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
-    // Prevent default browser behavior
-    event.preventDefault();
+    // Only prevent default if not in touch emulation mode
+    if (!isTouchEmulationEnabled) {
+      event.preventDefault();
+    }
     
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
@@ -451,6 +471,15 @@ const RemoteControlPage: React.FC = () => {
           />
           <span className="text-sm font-medium text-gray-700">Toggle Mode</span>
         </div>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="text-sm font-medium text-gray-700">Normal Mode</span>
+          <Switch 
+            checked={isTouchEmulationEnabled} 
+            onCheckedChange={setIsTouchEmulationEnabled} 
+            id="touch-emulation-switch"
+          />
+          <span className="text-sm font-medium text-gray-700">Touch Emulation</span>
+        </div>
         <div className="flex justify-center">
           <video
             ref={videoRef}
@@ -469,12 +498,13 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              touchAction: 'none',  /* Disable browser touch actions */
+              touchAction: isTouchEmulationEnabled ? 'manipulation' : 'none',  /* Use manipulation in emulation mode */
               pointerEvents: 'auto',
               userSelect: 'none',
               WebkitUserSelect: 'none',
               WebkitTapHighlightColor: 'rgba(0,0,0,0)', /* Remove tap highlight on mobile */
-              outline: 'none' /* Remove focus outline */
+              outline: 'none', /* Remove focus outline */
+              cursor: isTouchEmulationEnabled ? 'pointer' : 'default'
             }}
           />
 

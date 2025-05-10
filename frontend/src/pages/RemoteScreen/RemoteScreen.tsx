@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation } from 'react-router-dom';
+import { Switch } from '../../components/ui/Switch.tsx';
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -15,6 +16,9 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartTime, setGestureStartTime] = useState(0);
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
+  
+  // Toggle for mouse mode (standard vs toggle mode)
+  const [isToggleMode, setIsToggleMode] = useState(false);
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -116,13 +120,14 @@ const RemoteControlPage: React.FC = () => {
   };
 
   const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl || isGestureActive) {
+    // In toggle mode, clicks are handled by gesture system instead
+    if (!videoRef.current || !sessionIdFromUrl || isGestureActive || isToggleMode) {
       return;
     }
 
     const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
 
-    console.log('Kliknuto na korigirane relativne koordinate:', relativeX, relativeY);
+    console.log('Clicked at corrected relative coordinates:', relativeX, relativeY);
 
     websocketService.sendControlMessage({
       action: 'mouse_click',
@@ -142,6 +147,7 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
+    // Always start gesture tracking regardless of mode
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
     setGestureStartX(event.clientX);
@@ -173,9 +179,9 @@ const RemoteControlPage: React.FC = () => {
     const distanceY = event.clientY - gestureStartY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    // If movement is small and quick, treat as a click
-    if (distance < 10 && duration < 300) {
-      // IMPORTANT: Handle this as a click directly here instead of letting another handler manage it
+    // If movement is small and quick in toggle mode, or in standard mode, treat as a click
+    if ((isToggleMode && distance < 10) || (!isToggleMode && distance < 10 && duration < 300)) {
+      // Handle as a click
       const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
 
       websocketService.sendControlMessage({
@@ -192,6 +198,9 @@ const RemoteControlPage: React.FC = () => {
       cleanupMouseEvents();
       return;
     }
+    
+    // In toggle mode, we always want to detect swipes - even slower ones
+    // In standard mode, we only detect quick swipes
 
     // Get relative coordinates for start and end points
     const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
@@ -205,7 +214,8 @@ const RemoteControlPage: React.FC = () => {
       end: endCoords,
       distance,
       duration,
-      velocity
+      velocity,
+      isToggleMode
     });
 
     // Send swipe event
@@ -278,8 +288,9 @@ const RemoteControlPage: React.FC = () => {
     const distanceY = touch.clientY - gestureStartY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    // If movement is small and quick, treat as a click
-    if (distance < 10 && duration < 300) {
+    // If movement is small, treat as a click in toggle mode
+    // In standard mode, only if quick and small
+    if ((isToggleMode && distance < 10) || (!isToggleMode && distance < 10 && duration < 300)) {
       // Handle as a click instead
       const { relativeX, relativeY } = getRelativeCoordinates(touch.clientX, touch.clientY);
 
@@ -371,6 +382,15 @@ const RemoteControlPage: React.FC = () => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           {deviceIdFromUrl && <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>}
           {sessionIdFromUrl && <p><span className="font-medium">Session ID:</span> {sessionIdFromUrl}</p>}
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-sm font-medium text-gray-700">Standard Mode</span>
+          <Switch 
+            checked={isToggleMode} 
+            onCheckedChange={setIsToggleMode} 
+            id="mouse-mode-switch"
+          />
+          <span className="text-sm font-medium text-gray-700">Toggle Mode</span>
         </div>
         <div className="flex justify-center">
           <video

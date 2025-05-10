@@ -70,10 +70,14 @@ const RemoteControlPage: React.FC = () => {
 
     service.setOnRemoteStream((stream) => {
       if (isMounted && videoRef.current) {
+        console.log(`RemoteControlPage [${pageSessionId}]: setOnRemoteStream CALLBACK FIRED. Stream object:`, stream);
+        console.log(`RemoteControlPage [${pageSessionId}]: Stream tracks:`, stream.getTracks());
+        console.log(`RemoteControlPage [${pageSessionId}]: Stream video tracks:`, stream.getVideoTracks());
+        console.log(`RemoteControlPage [${pageSessionId}]: setOnRemoteStream CALLBACK FIRED. Attaching stream.`);
         videoRef.current.srcObject = stream;
         setUserMessage("Video stream aktivan.");
         setIsStreamActive(true); // Stream is now active
-        console.log(`RemoteControlPage [${pageSessionId}]: Remote stream attached.`);
+        console.log(`RemoteControlPage [${pageSessionId}]: Remote stream attached. isStreamActive: true, userMessage: "Video stream aktivan."`);
 
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();

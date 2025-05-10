@@ -53,8 +53,16 @@ class WebRTCService {
         console.log('Primljen video stream:', event.track);
       }
       if (event.track.kind === 'video' && event.streams && event.streams[0] && this.onRemoteStreamCallback) {
+        console.log('WebRTCService: Calling onRemoteStreamCallback with stream:', event.streams[0]);
         this.onRemoteStreamCallback(event.streams[0]);
-      }
+      } else {
+          if (!event.streams || !event.streams[0]) {
+            console.warn('WebRTCService: ontrack event fired, but event.streams[0] is missing.');
+          }
+          if (!this.onRemoteStreamCallback) {
+            console.warn('WebRTCService: ontrack event fired, but onRemoteStreamCallback is not set.');
+          }
+        }
     };
 
     this.peerConnection.oniceconnectionstatechange = () => {

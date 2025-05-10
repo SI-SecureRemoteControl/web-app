@@ -43,7 +43,7 @@ type RemoteControlAction =
   | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string; sessionId: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
-  | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string } }
+  | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string; deviceId?: string; decision?: 'accepted' } }
   | { type: 'CLEAR_NOTIFICATION' }
   | { type: 'RESET_NAVIGATION' };
 
@@ -121,91 +121,121 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
       };
 
     case 'SESSION_STATUS_UPDATE': {
-      console.log('SESSION_STATUS_UPDATE received in context reducer:', action.payload);
-      const { sessionId: payloadSessionId, status: backendStatus } = action.payload;
-      // Check if the update is for the current active session
+      const { sessionId: payloadSessionId, status: backendStatus, message: payloadMessage, deviceId: payloadDeviceId } = action.payload;
+      console.log(`Context Reducer: SESSION_STATUS_UPDATE for ${payloadSessionId}, new backend status: ${backendStatus}`);
 
-      // Only update if we have an active session
+      // IMPORTANT: Only process this update if it's for the session we believe is active,
+      // OR if we don't have an active session yet and this is an activating status for the accepted session.
       if (!state.activeSession || state.activeSession.sessionId !== payloadSessionId) {
-        console.warn(`SESSION_STATUS_UPDATE: No active session or session ID mismatch. Context active: ${state.activeSession?.sessionId}, Update for: ${payloadSessionId}. Ignoring for now.`);
-        return state;
+        // If we have no active session, but this update is for the one we JUST accepted (check by sessionId if available)
+        // This can happen if ACCEPT_REQUEST was dispatched, and a server status comes in before the next render cycle fully reflects the new activeSession.
+        // However, given ACCEPT_REQUEST *sets* activeSession, this path should be less common for initial statuses.
+        // More likely, this is a status update for an OLD session after a new one has been activated, or if no session is active.
+        console.warn(`Context Reducer: SESSION_STATUS_UPDATE for ${payloadSessionId} received, but current active session is ${state.activeSession?.sessionId || 'null'}. Ignoring unless it's a relevant initial status.`);
+        // Let's not ignore if it's 'pending_device_confirmation' or 'connected' for a session we *might* have just accepted.
+        // This is tricky. For now, if no active session matches, we don't update it, UNLESS it's a terminal state.
+        // A robust way is to ensure ACCEPT_REQUEST always primes activeSession.
+
+        const isPotentiallyActivating = ['pending_device_confirmation', 'connected'].includes(backendStatus);
+        if (!isPotentiallyActivating && !(state.activeSession && state.activeSession.sessionId === payloadSessionId)) {
+             // If not activating and not for current active, and not terminal, ignore.
+            const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found'].includes(backendStatus);
+            if (!isTerminal) { // Only ignore if not terminal and not for current active
+                console.log("Ignoring status update for non-active session or non-activating status.");
+                return state;
+            }
+        }
       }
 
-      // Map backend status (string) to frontend status ('pending' | 'connected' | 'error')
-      let frontendStatus: 'pending' | 'connected' | 'error' = state.activeSession.status; // Default to current
+
+      let frontendStatus: 'pending' | 'connected' | 'error' = state.activeSession?.status || 'pending';
       let notificationType: 'success' | 'error' | 'info' = 'info';
-      let notificationMessage = action.payload.message || '';
+      let notificationMessage = payloadMessage || `Status: ${backendStatus}`;
       let shouldNavigate = state.navigateToWebRTC;
       let shouldClearSession = false;
 
       if (backendStatus === 'connected') {
         frontendStatus = 'connected';
         notificationType = 'success';
-        notificationMessage = notificationMessage || `Connected to ${state.activeSession.deviceName}`;
+        notificationMessage = `Povezan sa ${state.activeSession?.deviceName || payloadDeviceId || 'uređajem'}.`;
         shouldNavigate = true;
-        console.log('Mapping to: connected');
-      }
-      else if (backendStatus === 'pending_device_confirmation' ||
-               backendStatus === 'admin_accepted' ||
-               backendStatus === 'pending') { // Explicitly handle 'pending' too
+      } else if (backendStatus === 'pending_device_confirmation' || backendStatus === 'admin_accepted') {
         frontendStatus = 'pending';
         notificationType = 'info';
-        notificationMessage = notificationMessage || 'Session pending...';
-        console.log('Mapping to: pending');
-      }
-      else if (backendStatus === 'failed' ||
-               backendStatus === 'rejected' ||
-               backendStatus === 'timed_out' ||
-               backendStatus === 'disconnected' ||
-               backendStatus === 'terminated' ||
-               backendStatus === 'terminated_by_admin' || 
-               backendStatus === 'terminated_not_found' || 
-              backendStatus === 'comm_disconnected' || 
-               backendStatus === 'comm_disconnected_while_connected' || 
-               backendStatus === 'error') { // Explicitly handle 'error'
+      } else if (
+        ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated',
+         'terminated_by_admin', 'terminated_not_found',
+         'comm_disconnected', 'comm_disconnected_while_connected', 'error']
+        .includes(backendStatus)
+      ) {
         frontendStatus = 'error';
         notificationType = 'error';
-        shouldClearSession = true; // Clear session on terminal errors/disconnects
-        notificationMessage = notificationMessage || `Session ended: ${backendStatus}`;
-        console.log('Mapping to: error (clearing session)');
+        shouldClearSession = true;
+        notificationMessage = `Sesija sa ${state.activeSession?.deviceName || payloadDeviceId || 'uređajem'} je završena: ${backendStatus}`;
       } else {
-          console.warn(`Unhandled backend status received: ${backendStatus}. Keeping current state.`);
-          notificationMessage = notificationMessage || `Received unknown status: ${backendStatus}`;
-          frontendStatus = 'error';
-          notificationType = 'error';
-          shouldClearSession = true;
+        console.warn(`Context Reducer: Unhandled backend status '${backendStatus}'. Treating as pending.`);
+        frontendStatus = 'pending'; // Or 'error' if preferred for unknown states
+        notificationType = 'info';
       }
 
-      // If session should be cleared (terminal states)
       if (shouldClearSession) {
+        // Only clear if the update is for the currently active session
+        if (state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+            console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to: ${backendStatus}`);
+            return {
+                ...state,
+                activeSession: null,
+                notification: { type: notificationType, message: notificationMessage },
+                navigateToWebRTC: false,
+                currentSessionId: undefined,
+                currentDeviceId: undefined,
+            };
+        } else {
+            // Terminal status for a non-active session, just update notification if needed
+            console.log(`Context Reducer: Received terminal status ${backendStatus} for ${payloadSessionId}, but it wasn't the active one. Updating notification only.`);
+            return {...state, notification: { type: notificationType, message: notificationMessage }};
+        }
+      }
+
+      // If it's an update for the currently active session (or one we are activating)
+      if (state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         return {
           ...state,
-          activeSession: null, // Clear the session
-          notification: {
-            type: notificationType,
-            message: notificationMessage
+          activeSession: {
+            ...state.activeSession,
+            status: frontendStatus,
+            deviceId: payloadDeviceId || state.activeSession.deviceId, // Update if server provides it
           },
-          navigateToWebRTC: false, // Ensure navigation flag is off
-          currentSessionId: undefined, // Clear current IDs
-          currentDeviceId: undefined
+          notification: { type: notificationType, message: notificationMessage },
+          navigateToWebRTC: shouldNavigate,
+          currentSessionId: payloadSessionId, // Ensure these are consistent
+          currentDeviceId: payloadDeviceId || state.activeSession.deviceId,
+        };
+      } else if (backendStatus === 'connected' || backendStatus === 'pending_device_confirmation') {
+        // This handles the case where `activeSession` was null, but we get a 'connected' or 'pending'
+        // This path indicates the `ACCEPT_REQUEST` might not have fully populated `activeSession` yet,
+        // or this is the very first status update for that newly accepted session.
+        const originalRequest = state.requests.find(r => r.sessionId === payloadSessionId);
+        console.log(`Context Reducer: Setting up new active session ${payloadSessionId} with status ${backendStatus}`);
+        return {
+            ...state,
+            activeSession: {
+                sessionId: payloadSessionId,
+                deviceId: payloadDeviceId || originalRequest?.deviceId || '',
+                deviceName: originalRequest?.deviceName || 'Nepoznat uređaj',
+                status: frontendStatus,
+                requestId: originalRequest?.requestId || '',
+            },
+            notification: { type: notificationType, message: notificationMessage },
+            navigateToWebRTC: shouldNavigate,
+            currentSessionId: payloadSessionId,
+            currentDeviceId: payloadDeviceId || originalRequest?.deviceId || '',
         };
       }
 
-      // Otherwise, update the existing session
-      return {
-        ...state,
-        activeSession: {
-          ...state.activeSession,
-          status: frontendStatus // Update status
-        },
-        notification: {
-          type: notificationType,
-          message: notificationMessage
-        },
-        navigateToWebRTC: shouldNavigate // Set navigation flag
-      };
+      console.warn(`Context Reducer: Fell through SESSION_STATUS_UPDATE logic for ${payloadSessionId}, status ${backendStatus}.`);
+      return state; // Should not be reached if logic above is exhaustive
     }
-
     case 'CLEAR_NOTIFICATION':
       return {
         ...state,

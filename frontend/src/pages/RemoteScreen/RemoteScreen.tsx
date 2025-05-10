@@ -147,33 +147,44 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [location.search]);
+  }, [location.search, handleKeyDown, handleKeyUp, cleanupLocalWebRTCResources]);
   
-useEffect(() => {
-    const service = webRTCServiceRef.current;
-    if (!pageSessionId) {
-        console.log(`%c[${pageSessionId || 'N/A'}] ContextEffect: No pageSessionId. Skipping.`, "color: gray;");
-        return;
-    }
-
-    if (service && service.getSessionId() === pageSessionId) {
-        if (!activeSession || activeSession.sessionId !== pageSessionId) {
-
-            if (showVideo || remoteStreamState || 
-                (displayMessage !== "Inicijalizacija..." && displayMessage !== `Povezivanje na sesiju: ${pageSessionId}...`)) {
-                
-                console.log(`%c[${pageSessionId}] ContextEffect: Mismatch detected. Context active: ${activeSession ? activeSession.sessionId : 'null'}. Page thought it was active/attempting. Cleaning up.`, "color: orange; font-weight:bold;");
-                setDisplayMessage(`Sesija ${pageSessionId} je završena ili prekinuta.`);
-                cleanupLocalWebRTCResources('context state indicates termination/mismatch');
-            } else {
-                console.log(`%c[${pageSessionId}] ContextEffect: Mismatch, but local state indicates very early setup. Holding off cleanup.`, "color: gray;");
-            }
-        } else {
-            
-             console.log(`%c[${pageSessionId}] ContextEffect: Context activeSession matches. Status: ${activeSession?.status}`, "color: green;");
+  useEffect(() => {
+    console.log(`%c[${pageSessionId}] StreamEffect: remoteStreamState is ${remoteStreamState ? 'defined' : 'null'}, videoRef.current is ${videoRef.current ? 'defined' : 'null'}`, "color: green;");
+    if (remoteStreamState && videoRef.current) {
+      console.log(`%c[${pageSessionId}] StreamEffect: Attaching stream to video element.`, "color: green; font-weight: bold;");
+      videoRef.current.srcObject = remoteStreamState;
+      videoRef.current.onloadedmetadata = () => {
+        if (videoRef.current) { // Check ref again inside async callback
+          videoRef.current.width = videoRef.current.videoWidth;
+          videoRef.current.height = videoRef.current.videoHeight;
+          console.log(`%c[${pageSessionId}] StreamEffect: Video metadata loaded. Dimensions set.`, "color: green;");
         }
+      };
+      setDisplayMessage("Video stream aktivan.");
+      setShowVideo(true); // <<<< NOW make the video visible
+    } else if (!remoteStreamState) {
+      // If stream is removed (e.g., on disconnect), ensure video is hidden
+      setShowVideo(false);
+      if (videoRef.current) videoRef.current.srcObject = null; // Also clear srcObject
     }
-  }, [activeSession, pageSessionId, showVideo, remoteStreamState, displayMessage, navigate, cleanupLocalWebRTCResources]);
+  }, [remoteStreamState, pageSessionId]); // Run when remoteStreamState changes
+
+    useEffect(() => {
+    const service = webRTCServiceRef.current; // Capture current ref value
+    if (!pageSessionId || !service) return;
+
+    // If context says session is not active for this page, and we previously thought it was
+    if ((!activeSession || activeSession.sessionId !== pageSessionId) && showVideo) {
+        console.log(`%c[${pageSessionId}] ContextEffect: Context session mismatch/null, and video was showing. Closing.`, "color: orange;");
+        setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
+        cleanupLocalWebRTCResources('context (admin) termination');
+        service.closeConnection(); // Close the service
+        setRemoteStreamState(null); // This will trigger the StreamEffect to hide video
+        // setShowVideo(false); // StreamEffect will handle this via setRemoteStreamState(null)
+    }
+  }, [activeSession, pageSessionId, showVideo, navigate]);
+
   /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
       return;

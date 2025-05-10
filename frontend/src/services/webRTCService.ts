@@ -3,6 +3,7 @@ import { websocketService } from './webSocketService';
 class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
+  private onIceDisconnectedCallback: (() => void) | null = null; // new callback for disconnects coming from android users
   private deviceId: string | null = null;
   private sessionId: string | null = null;
 
@@ -22,6 +23,11 @@ class WebRTCService {
     this.onRemoteStreamCallback = callback;
   }
 
+  setOnIceDisconnected(callback: () => void) {
+    console.log(`%cWebRTCService [${this.sessionId}]: setOnIceDisconnected CALLED BY PAGE.`, "color: purple;");
+    this.onIceDisconnectedCallback = callback;
+  }
+  
   public isConnectionActive(): boolean { 
     return this.peerConnection !== null &&
            (this.peerConnection.iceConnectionState === 'connected' ||
@@ -63,14 +69,20 @@ class WebRTCService {
     };
 
     this.peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE Connection State:', this.peerConnection?.iceConnectionState);
-        if (this.peerConnection?.iceConnectionState === 'connected' || this.peerConnection?.iceConnectionState === 'completed') {
-          console.log('WebRTC veza (ICE) uspješno uspostavljena!');
-        } else if (this.peerConnection?.iceConnectionState === 'failed' || this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'closed') {
-          console.log('ICE Connection if not connected or completed:', this.peerConnection?.iceConnectionState);
-          console.error('ICE veza prekinuta ili nije uspjela.');
+      if (!this.peerConnection) return; // Guard against race conditions on close
+      const state = this.peerConnection.iceConnectionState;
+      console.log(`%cWebRTCService [${this.sessionId}]: ICE Connection State: ${state}`, "color: teal;");
+
+      if (state === 'connected' || state === 'completed') {
+        console.log(`%cWebRTCService [${this.sessionId}]: WebRTC veza (ICE) uspješno uspostavljena!`, "color: teal;");
+      } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+        console.error(`%cWebRTCService [${this.sessionId}]: ICE veza prekinuta ili nije uspjela. State: ${state}`, "color: red;");
+        if (this.onIceDisconnectedCallback) { 
+          console.log(`%cWebRTCService [${this.sessionId}]: Invoking onIceDisconnectedCallback.`, "color: red;");
+          this.onIceDisconnectedCallback();
         }
-      };
+      }
+    };
   }
 
   private setupWebSocketListeners() {
@@ -162,7 +174,12 @@ class WebRTCService {
   }
 
   closeConnection() {
-    console.log(`WebRTCService [${this.sessionId}]: closeConnection() called.`);
+    const currentSessionForLog = this.sessionId || 'unknown';
+    console.log(`%cWebRTCService [${currentSessionForLog}]: closeConnection() called.`, "color: brown; font-weight: bold;");
+
+    this.onRemoteStreamCallback = null; // Nullify callbacks first
+    this.onIceDisconnectedCallback = null; 
+
     if (this.peerConnection) {
       this.peerConnection.onicecandidate = null;
       this.peerConnection.ontrack = null;
@@ -177,7 +194,7 @@ class WebRTCService {
 
       this.peerConnection.close();
       this.peerConnection = null;
-      console.log(`WebRTCService [${this.sessionId}]: Peer connection closed and nulled.`);
+      console.log(`%cWebRTCService [${currentSessionForLog}]: Peer connection closed and nulled.`, "color: brown;");
     }
     this.isRemoteDescriptionSet = false;
     this.iceCandidateBuffer = []; 

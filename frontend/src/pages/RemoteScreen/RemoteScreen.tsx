@@ -20,7 +20,7 @@ const RemoteControlPage: React.FC = () => {
   const queryParams = new URLSearchParams(location.search);
   const deviceIdFromUrl = queryParams.get('deviceId');
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
-  const { activeSession } = useRemoteControl();
+  const { activeSession} = useRemoteControl();
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (!showVideo || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
@@ -37,6 +37,18 @@ const RemoteControlPage: React.FC = () => {
       payload: { key: event.key, code: event.code, type: 'keyup' }
     });
   }, [pageSessionId, deviceIdFromUrl]);
+
+   const cleanupLocalWebRTCResources = useCallback((reason: string) => {
+    console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
+    if (webRTCServiceRef.current) {
+      webRTCServiceRef.current.closeConnection(); 
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setRemoteStreamState(null); 
+    setShowVideo(false);
+   }, [pageSessionId]);
 
   useEffect(() => {
 
@@ -83,6 +95,15 @@ const RemoteControlPage: React.FC = () => {
         console.warn(`%c[${pageSessionId}] MainEffect: onRemoteStream callback - conditions NOT MET. isEffectMounted: ${isEffectMounted}, videoRef.current: ${!!videoRef.current}`, "color: orange;");
       }
     });
+
+    service.setOnIceDisconnected(() => {
+      if (isEffectMounted) { 
+        console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>. ICE connection lost.`, "color: red; font-weight: bold;");
+        setDisplayMessage("Veza sa uređajem je prekinuta (ICE).");
+        cleanupLocalWebRTCResources('ICE disconnected'); // Clean up local resources
+      }
+    });
+
       console.log(`%c[${pageSessionId}] MainEffect: Calling createOffer().`, "color: blue;");
       service.createOffer()
         .then(() => {
@@ -126,7 +147,7 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [location.search, handleKeyDown, handleKeyUp]);
+  }, [location.search, handleKeyDown, handleKeyUp, cleanupLocalWebRTCResources]);
   
   useEffect(() => {
     console.log(`%c[${pageSessionId}] StreamEffect: remoteStreamState is ${remoteStreamState ? 'defined' : 'null'}, videoRef.current is ${videoRef.current ? 'defined' : 'null'}`, "color: green;");
@@ -157,6 +178,7 @@ const RemoteControlPage: React.FC = () => {
     if ((!activeSession || activeSession.sessionId !== pageSessionId) && showVideo) {
         console.log(`%c[${pageSessionId}] ContextEffect: Context session mismatch/null, and video was showing. Closing.`, "color: orange;");
         setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
+        cleanupLocalWebRTCResources('context (admin) termination');
         service.closeConnection(); // Close the service
         setRemoteStreamState(null); // This will trigger the StreamEffect to hide video
         // setShowVideo(false); // StreamEffect will handle this via setRemoteStreamState(null)

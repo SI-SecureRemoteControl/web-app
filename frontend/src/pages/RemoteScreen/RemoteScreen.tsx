@@ -108,11 +108,21 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-      cleanupMouseEvents();
-    };
-  }, [location.search]);
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
 
   // Convert client coordinates to relative coordinates
   const getRelativeCoordinates = (clientX: number, clientY: number) => {
@@ -145,34 +155,6 @@ const RemoteControlPage: React.FC = () => {
     return { relativeX, relativeY };
   };
 
-  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    // In toggle mode, clicks are handled by gesture system instead
-    if (!videoRef.current || !sessionIdFromUrl || isGestureActive || isToggleMode) {
-      return;
-    }
-
-    const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
-
-    console.log('Clicked at corrected relative coordinates:', relativeX, relativeY);
-
-
-    websocketService.sendControlMessage({
-      action: 'keyboard',
-      deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
-      payload: {
-        key: event.key,
-        code: event.code,
-        type: 'keyup',
-        ctrl: event.ctrlKey,
-        alt: event.altKey,
-        shift: event.shiftKey,
-        meta: event.metaKey,
-      }
-    });
-  };
-
-
   useEffect(() => {
     document.addEventListener('keydown', handleDocumentKeyDown);
     document.addEventListener('keyup', handleDocumentKeyUp);
@@ -182,8 +164,28 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('keyup', handleDocumentKeyUp);
     };
   }, [sessionIdFromUrl]);
-
+  
   const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    // In toggle mode, clicks are handled by gesture system instead
+    if (!videoRef.current || !sessionIdFromUrl || isGestureActive || isToggleMode) {
+      return;
+    }
+
+    const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
+
+    console.log('Clicked at corrected relative coordinates:', relativeX, relativeY);
+    
+    websocketService.sendControlMessage({
+      action: 'mouse_click',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        x: relativeX,
+        y: relativeY,
+        button: 'left'
+      }
+    });
+  };
   // Handle mouse down to start gesture tracking
   const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
@@ -366,9 +368,7 @@ const RemoteControlPage: React.FC = () => {
       duration,
       velocity
     });
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLVideoElement>) => {
-
+    
     // Send swipe event
     websocketService.sendControlMessage({
       action: 'swipe',
@@ -382,15 +382,16 @@ const RemoteControlPage: React.FC = () => {
         velocity: velocity
       }
     });
-
+    
     setIsGestureActive(false);
   };
 
-  const handleKeyDown = (event: KeyboardEvent) => {
+  // Handle keyboard events from video element
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLVideoElement>) => {
     if (!sessionIdFromUrl) {
       return;
     }
-
+    
     websocketService.sendControlMessage({
       action: 'keyboard',
       deviceId: deviceIdFromUrl,
@@ -404,10 +405,10 @@ const RemoteControlPage: React.FC = () => {
         shift: event.shiftKey,
         meta: event.metaKey,
       }
-
     });
   };
-
+  
+  // Handle key up events from video element
   const handleKeyUp = (event: React.KeyboardEvent<HTMLVideoElement>) => {
     if (!sessionIdFromUrl) {
       return;
@@ -426,10 +427,9 @@ const RemoteControlPage: React.FC = () => {
         shift: event.shiftKey,
         meta: event.metaKey,
       }
-
     });
   };
-
+  
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">

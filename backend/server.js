@@ -149,7 +149,7 @@ wssControl.on('connection', (ws) => {
             } else if (parsedMessage.action === 'mouse_click') {
                 handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.action === 'keyboard') {
-                handleRemoteKeyboard(sessionId, parsedMessage);
+                handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
             }
             else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);

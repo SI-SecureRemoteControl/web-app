@@ -10,78 +10,61 @@ const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
+  const [isStreamActuallyPlaying, setIsStreamActuallyPlaying] = useState<boolean>(false);
+  const [displayMessage, setDisplayMessage] = useState<string>("Inicijalizacija...");
+
   const location = useLocation();
   const navigate = useNavigate();
-
-  const [isStreamActive, setIsStreamActive] = useState<boolean>(false);
-  const [userMessage, setUserMessage] = useState<string>("Inicijalizacija...");
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null); 
 
   const queryParams = new URLSearchParams(location.search);
   const deviceIdFromUrl = queryParams.get('deviceId');
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
 
   const { activeSession } = useRemoteControl(); // Get 
-  const hasInitializedRef = useRef(false);
-
-  const closeAndCleanupWebRTC = useCallback((reason?: string) => {
-    if (webRTCServiceRef.current) {
-      console.log(`RemoteControlPage [${pageSessionId}]: Closing WebRTC. Reason: ${reason || 'N/A'}`);
-      webRTCServiceRef.current.closeConnection();
-      // webRTCServiceRef.current = null; // Clearing ref here might be too early if other effects depend on it momentarily
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null; // Important: Clear the video source
-    }
-    setIsStreamActive(false);
-    setRemoteStream(null) // Update UI state
-  }, [pageSessionId]);
 
     const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!isStreamActive || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
+    if (!isStreamActuallyPlaying || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
     websocketService.sendControlMessage({
       action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
       payload: { key: event.key, code: event.code, type: 'keydown' }
     });
-  }, [isStreamActive, pageSessionId, deviceIdFromUrl]);
+  }, [isStreamActuallyPlaying , pageSessionId, deviceIdFromUrl]);
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    if (!isStreamActive || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
+    if (!isStreamActuallyPlaying  || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
     websocketService.sendControlMessage({
       action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
       payload: { key: event.key, code: event.code, type: 'keyup' }
     });
-  }, [isStreamActive, pageSessionId, deviceIdFromUrl]);
+  }, [isStreamActuallyPlaying , pageSessionId, deviceIdFromUrl]);
 
   useEffect(() => {
 
     if (!pageSessionId || !deviceIdFromUrl) {
       console.warn('RemoteControlPage: Session ID or Device ID not found in URL.');
-      setUserMessage("Greška: Nedostaju ID sesije ili uređaja u URL parametrima.");
-      setIsStreamActive(false);
+      setDisplayMessage("Greška: Nedostaju ID sesije ili uređaja u URL parametrima.");
+      setIsStreamActuallyPlaying(false);
       // navigate('/'); // Optionally navigate away
       return;
     }
 
     console.log(`%cRemoteControlPage [${pageSessionId}]: MAIN useEffect RUNNING (location.search changed or initial mount)`, "color: blue; font-weight: bold;");
-    setUserMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
-    setIsStreamActive(false);
-    setRemoteStream(null);
+    setDisplayMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
+    setIsStreamActuallyPlaying(false);
+
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
-    hasInitializedRef.current = true;
     let isEffectMounted = true;
 
     console.log(`%cRemoteControlPage [${pageSessionId}]: WebRTCService INSTANTIATED. Setting onRemoteStream callback.`, "color: green;");
 
     service.setOnRemoteStream((stream) => {
       if (isEffectMounted && videoRef.current) {
-        console.log(`%cRemoteControlPage [${pageSessionId}]: <<<>>> setOnRemoteStream CALLBACK EXECUTED <<<>>>`, "color: red; font-size: 1.2em; font-weight: bold;");
-        console.log(`%cRemoteControlPage [${pageSessionId}]: Stream object:`, "color: red;", stream);
-        setRemoteStream(stream);
-        setUserMessage("Video stream primljen. Priprema prikaza...");
-
+        console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>. Attaching stream.`, "color: red; font-weight: bold;");
+        setDisplayMessage("Video stream aktivan.");
+        videoRef.current.srcObject = stream;
+        setIsStreamActuallyPlaying(true);
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();
 
@@ -98,25 +81,29 @@ const RemoteControlPage: React.FC = () => {
           }
         };
       } else {
-        console.warn(`%cRemoteControlPage [${pageSessionId}]: setOnRemoteStream callback conditions NOT MET. isEffectMounted: ${isEffectMounted}, videoRef.current: ${!!videoRef.current}`, "color: orange;");
+        console.warn(`%c[${pageSessionId}] MainEffect: onRemoteStream callback - conditions NOT MET. isEffectMounted: ${isEffectMounted}, videoRef.current: ${!!videoRef.current}`, "color: orange;");
       }
     });
-
+      console.log(`%c[${pageSessionId}] MainEffect: Calling createOffer().`, "color: blue;");
       service.createOffer()
         .then(() => {
-          if (isEffectMounted) console.log(`%cRemoteControlPage [${pageSessionId}]: Offer CREATED successfully. Current userMessage: "${userMessage}"`, "color: green;"); //
-            setUserMessage("WebRTC ponuda poslana. Čekanje odgovora...");
+          if (isEffectMounted){
+            setDisplayMessage("WebRTC ponuda poslana. Čekanje odgovora...");
+            console.log(`%c[${pageSessionId}] MainEffect: createOffer() resolved.`, "color: blue;");
+          }
         })
         .catch(error => {
-          if (isEffectMounted) setUserMessage("Greška pri kreiranju WebRTC ponude.");
-          console.error(`RemoteControlPage [${pageSessionId}]: Failed to create offer:`, error);
-          if (isEffectMounted) closeAndCleanupWebRTC('offer failed');
+          if(isEffectMounted) {
+             setDisplayMessage("Greška pri kreiranju WebRTC ponude.");
+            console.error(`[${pageSessionId}] MainEffect: Failed to create offer:`, error);
+          }
         });
 
     const handleWebSocketMessagesForThisSession = (data: any) => {
-      if (!isEffectMounted || data.sessionId !== pageSessionId) return; // Only process messages for this page's session
+      if (!isEffectMounted || data.sessionId !== pageSessionId || !webRTCServiceRef.current) return; // Only process messages for this page's session
 
       if (data.type === 'answer') {
+        console.log(`%c[${pageSessionId}] MainEffect: Received ANSWER. Passing to service.`, "color: purple;");
         webRTCServiceRef.current?.handleAnswer(data.payload);
       } else if (data.type === 'ice-candidate') {
         webRTCServiceRef.current?.addIceCandidate(data.payload);
@@ -130,8 +117,7 @@ const RemoteControlPage: React.FC = () => {
 
     return () => {
       isEffectMounted = false;
-      console.log(`%cRemoteControlPage [${pageSessionId}]: Main useEffect CLEANUP.`, "color: blue; font-weight: bold;");
-      closeAndCleanupWebRTC();
+      console.log(`%c[${pageSessionId}] MainEffect: CLEANUP. Closing WebRTC.`, "color: blue; font-weight: bold;");
        if (webRTCServiceRef.current) {
         webRTCServiceRef.current.closeConnection();
         webRTCServiceRef.current = null;
@@ -140,44 +126,26 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [location.search, closeAndCleanupWebRTC, handleKeyDown, handleKeyUp]);
-
-useEffect(() => {
-    if (remoteStream && videoRef.current) {
-      console.log(`%cRemoteControlPage [${pageSessionId}]: Attaching stored remote stream to video element.`, "color: green;");
-      videoRef.current.srcObject = remoteStream;
-      setIsStreamActive(true); // Now that srcObject is set, activate the stream display
-      setUserMessage("Video stream aktivan.");
-
-      videoRef.current.onloadedmetadata = () => {
-        if (videoRef.current) { // Check ref again inside async callback
-          console.log(`RemoteControlPage [${pageSessionId}]: Video metadata loaded. Original dimensions: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`);
-          videoRef.current.width = videoRef.current.videoWidth;
-          videoRef.current.height = videoRef.current.videoHeight;
-        }
-      };
-    } else if (remoteStream && !videoRef.current) {
-        console.warn(`%cRemoteControlPage [${pageSessionId}]: Remote stream exists, but videoRef.current is still null. Waiting for ref.`, "color: orange;");
-    }
-  }, [remoteStream, pageSessionId]);
-
+  }, [location.search, handleKeyDown, handleKeyUp]);
+ 
+/*
 useEffect(() => {
     if (!pageSessionId) return;
     if (webRTCServiceRef.current && webRTCServiceRef.current.getSessionId() === pageSessionId) {
         if (!activeSession || activeSession.sessionId !== pageSessionId) {
             if (userMessage !== "Inicijalizacija..." || isStreamActive || remoteStream) { 
                  console.log(`RemoteControlPage [${pageSessionId}]: Context indicates session termination. User message: "${userMessage}". Closing local WebRTC.`);
-                 setUserMessage(`Sesija ${pageSessionId} je prekinuta ili više nije aktivna.`);
+                 setDisplayMessage(`Sesija ${pageSessionId} je prekinuta ili više nije aktivna.`);
                  closeAndCleanupWebRTC('context termination');
             }
         }
     } else if (!activeSession && (isStreamActive || remoteStream)) { 
         console.log(`RemoteControlPage [${pageSessionId}]: Global activeSession is null, and stream was active/received. Closing.`);
-        setUserMessage(`Sesija ${pageSessionId} je prekinuta globalno.`);
+        setDisplayMessage(`Sesija ${pageSessionId} je prekinuta globalno.`);
         closeAndCleanupWebRTC('global session null, local stream was present');
     }
   }, [activeSession, pageSessionId, userMessage, isStreamActive, remoteStream, navigate, closeAndCleanupWebRTC]);
-
+*/
 
   /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
@@ -250,7 +218,7 @@ useEffect(() => {
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
                 <h1 className="text-xl font-bold text-red-600">Greška</h1>
-                <p className="text-gray-700 mt-2">{userMessage || "Nije moguće učitati sesiju. Nedostaju ID uređaja ili sesije u URL-u."}</p>
+                <p className="text-gray-700 mt-2">{displayMessage || "Nije moguće učitati sesiju. Nedostaju ID uređaja ili sesije u URL-u."}</p>
             </div>
         </div>
     );
@@ -263,10 +231,10 @@ useEffect(() => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
-          <p><span className="font-medium">Status:</span> {userMessage}</p>
+          <p><span className="font-medium">Status:</span> {displayMessage}</p>
         </div>
 
-        {isStreamActive && remoteStream ? (
+        {isStreamActuallyPlaying ? (
           <div className="flex justify-center">
             <video
               ref={videoRef}
@@ -282,8 +250,12 @@ useEffect(() => {
           <div className="flex flex-col items-center justify-center p-10 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 text-gray-500">
             {/* <VideoOff size={48} className="mb-4" /> */}
             <WifiOff size={48} className="mb-4" />
-            <p className="text-lg font-medium">{userMessage.includes("Greška") || userMessage.includes("prekinuta") ? userMessage : "više nije aktivna"}</p>
-            {userMessage.includes("Greška") && (
+            <p className="text-lg font-medium">
+              {displayMessage.includes("Greška") || displayMessage.includes("prekinuta") ?
+                    displayMessage :
+                    "Očekuje se video stream..."
+                }</p>
+            {displayMessage.includes("Greška") && (
                 <button
                     onClick={() => navigate('/devices')} // Example: Navigate to devices list
                     className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"

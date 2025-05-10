@@ -121,7 +121,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
       };
 
     case 'SESSION_STATUS_UPDATE': {
-      console.log('SESSION_STATUS_UPDATE received:', action.payload);
+      console.log('SESSION_STATUS_UPDATE received in context reducer:', action.payload);
       const { sessionId: payloadSessionId, status: backendStatus } = action.payload;
       // Check if the update is for the current active session
 

@@ -11,8 +11,6 @@ const RemoteControlPage: React.FC = () => {
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
-  const [showVideo, setShowVideo] = useState<boolean>(false); // Controls visibility
-  const [displayMessage, setDisplayMessage] = useState<string>("Inicijalizacija...");
   //const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
@@ -33,7 +31,6 @@ const RemoteControlPage: React.FC = () => {
       videoRef.current.srcObject = null;
     }
     setRemoteStreamState(null); 
-    setShowVideo(false);
    }, [pageSessionId]);
 
   // States for gesture tracking
@@ -47,8 +44,6 @@ const RemoteControlPage: React.FC = () => {
 
     if(!pageSessionId || !deviceIdFromUrl) {return;}
     console.log(`%c[${pageSessionId}] MainEffect: START/RE-START. Setting up.`, "color: blue;");
-    setDisplayMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
-    setShowVideo(false);
     setRemoteStreamState(null);
     //setIsLoading(true); // Start loading on mount or session change
 
@@ -60,7 +55,6 @@ const RemoteControlPage: React.FC = () => {
       if (isEffectMounted && videoRef.current) {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
         setRemoteStreamState(stream);
-        setDisplayMessage("Video stream aktivan.");
        // setIsLoading(false); // Video is ready, stop loading
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();
@@ -84,7 +78,6 @@ const RemoteControlPage: React.FC = () => {
     service.setOnIceDisconnected(() => {
       if (isEffectMounted) { 
         console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>.`, "color: red;");
-        setDisplayMessage("Veza sa uređajem je prekinuta (ICE).");
         cleanupLocalWebRTCResources('ICE disconnected'); // Clean up local resources
       //  setIsLoading(false); // Stop loading on disconnect
       }
@@ -94,13 +87,11 @@ const RemoteControlPage: React.FC = () => {
       service.createOffer()
         .then(() => {
           if (isEffectMounted){
-            setDisplayMessage("WebRTC ponuda poslana. Čekanje odgovora...");
             console.log(`%c[${pageSessionId}] MainEffect: createOffer() resolved.`, "color: blue;");
           }
         })
         .catch(error => {
           if(isEffectMounted) {
-             setDisplayMessage("Greška pri kreiranju WebRTC ponude.");
               console.error(`[${pageSessionId}] MainEffect: Failed to create offer:`, error);
               cleanupLocalWebRTCResources('Offer failed');
           }
@@ -141,10 +132,7 @@ const RemoteControlPage: React.FC = () => {
           console.log(`%c[${pageSessionId}] StreamEffect: Video metadata loaded. Dimensions set.`, "color: green;");
         }
       };
-      setDisplayMessage("Video stream aktivan.");
-      setShowVideo(true); 
     } else if (!remoteStreamState) {
-      setShowVideo(false);
       if (videoRef.current) videoRef.current.srcObject = null; 
     }
   }, [remoteStreamState, pageSessionId]); 
@@ -154,7 +142,6 @@ const RemoteControlPage: React.FC = () => {
     if (!pageSessionId || !service) return;
 
     if (!activeSession || activeSession.sessionId !== pageSessionId) {
-        setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
         cleanupLocalWebRTCResources('context termination');
     }
   }, [activeSession, pageSessionId, cleanupLocalWebRTCResources]);
@@ -165,7 +152,7 @@ const RemoteControlPage: React.FC = () => {
     let intervalId: NodeJS.Timeout | null = null;
     //let statsServiceInstance: WebRTCService | null = null;
 
-    if (pageSessionId && deviceIdFromUrl && showVideo) {
+    if (pageSessionId && deviceIdFromUrl) {
     //statsServiceInstance = new WebRTCService(deviceIdFromUrl, pageSessionId); 
       const currentService = webRTCServiceRef.current; // Use the main service instance
       if (!currentService) return;
@@ -220,7 +207,7 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [pageSessionId, deviceIdFromUrl, showVideo]);
+  }, [pageSessionId, deviceIdFromUrl]);
 
   // Setup for global event listeners for touch/gestures and keyboard
   useEffect(() => {
@@ -437,7 +424,7 @@ const RemoteControlPage: React.FC = () => {
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-lg p-6 text-center">
                 <h1 className="text-xl font-bold text-red-600">Greška</h1>
-                <p className="text-gray-700 mt-2">{displayMessage || "Nije moguće učitati sesiju. Nedostaju ID uređaja ili sesije u URL-u."}</p>
+                <p className="text-gray-700 mt-2">Nije moguće učitati sesiju. Nedostaju ID uređaja ili sesije u URL-u.</p>
             </div>
         </div>
     );
@@ -640,10 +627,9 @@ const RemoteControlPage: React.FC = () => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
-          <p><span className="font-medium">Status:</span> {displayMessage}</p>
         </div>
-        <div className="flex justify-center">
-          {/* Always render the video element, but hide it if not showVideo */}
+        <div className="flex justify-center relative min-h-[300px]">
+          {/* Always render the video element, but hide it if no stream */}
           <video
             ref={videoRef}
             onClick={handleVideoClick}
@@ -652,13 +638,14 @@ const RemoteControlPage: React.FC = () => {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             tabIndex={0}
-            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer bg-black"
             autoPlay
             playsInline
             style={{
-              display: showVideo ? 'block' : 'none',
+              display: remoteStreamState ? 'block' : 'none',
               maxWidth: '100%',
               height: 'auto',
+              minHeight: '300px',
               touchAction: 'manipulation',
               pointerEvents: 'auto',
               userSelect: 'none',
@@ -668,16 +655,10 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
-          {!showVideo && (
-            <div className="flex flex-col items-center justify-center text-gray-500 absolute">
+          {!remoteStreamState && (
+            <div className="flex flex-col items-center justify-center text-gray-500 absolute inset-0 bg-white bg-opacity-80 rounded-xl">
               <WifiOff size={48} className="mb-4" />
-              <p className="text-lg font-medium">
-                {displayMessage.includes("Greška") || displayMessage.includes("prekinuta") ?
-                    displayMessage :
-                    (remoteStreamState ? "Povezivanje video prikaza..." : displayMessage)
-                }
-              </p>
-              {/* ... error button ... */}
+              <p className="text-lg font-medium">{pageSessionId ? 'Povezivanje ili sesija prekinuta.' : 'Nema aktivne sesije.'}</p>
             </div>
           )}
         </div>

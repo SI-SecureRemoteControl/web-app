@@ -95,7 +95,11 @@ const RemoteControlPage: React.FC = () => {
 
           stats.forEach((stat) => {
             if (stat.currentRoundTripTime) {
-              setLatency(Math.round(stat.currentRoundTripTime * 1000)); // Convert to ms
+              const latencyValue = Math.round(stat.currentRoundTripTime * 1000); // Convert to ms
+              const latencyElement = document.getElementById('latency-display');
+              if (latencyElement) {
+                latencyElement.textContent = `Latency: ${latencyValue} ms`;
+              }
             }
           });
         } catch (error) {
@@ -362,7 +366,7 @@ const RemoteControlPage: React.FC = () => {
       handleGestureStart(event.clientX, event.clientY);
     }
 
-    // Add event listeners for mouse move and mouse up
+    // Add event listeners for mouse move and mouse up immediately
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 
@@ -411,14 +415,14 @@ const RemoteControlPage: React.FC = () => {
       handleGestureEnd(event.clientX, event.clientY);
     }
 
-    // Cleanup
+    // Cleanup event listeners immediately
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
   
   // Touch event handlers
   const handleTouchStart = (event: React.TouchEvent<HTMLVideoElement>) => {
-    if (event.touches.length !== 1) return;
+   // if (event.touches.length !== 1) return;
     
     const touch = event.touches[0];
     handleGestureStart(touch.clientX, touch.clientY);
@@ -472,6 +476,9 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
+        </div>
+        <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
+          Latency: Calculating...
         </div>
         <div className="text-sm text-gray-600 text-center mt-2">
             <p>Data is sending to mobile with <span className="font-medium">{latency} ms</span> latency</p>

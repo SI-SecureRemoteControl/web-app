@@ -26,6 +26,7 @@ const RemoteControlPage: React.FC = () => {
     console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
     if (webRTCServiceRef.current) {
       webRTCServiceRef.current.closeConnection(); 
+      webRTCServiceRef.current = null; // Ensure ref is cleared after closing
     }
     if (videoRef.current) {
       videoRef.current.srcObject = null;

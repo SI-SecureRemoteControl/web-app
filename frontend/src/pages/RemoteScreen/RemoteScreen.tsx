@@ -160,10 +160,10 @@ const RemoteControlPage: React.FC = () => {
   useEffect(() => {
 
     let intervalId: NodeJS.Timeout | null = null;
-    let statsServiceInstance: WebRTCService | null = null;
+    //let statsServiceInstance: WebRTCService | null = null;
 
     if (pageSessionId && deviceIdFromUrl && showVideo) {
-      statsServiceInstance = new WebRTCService(deviceIdFromUrl, pageSessionId); 
+    //statsServiceInstance = new WebRTCService(deviceIdFromUrl, pageSessionId); 
       const currentService = webRTCServiceRef.current; // Use the main service instance
       if (!currentService) return;
 

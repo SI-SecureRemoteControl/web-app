@@ -643,38 +643,38 @@ const RemoteControlPage: React.FC = () => {
           <p><span className="font-medium">Status:</span> {displayMessage}</p>
         </div>
         <div className="flex justify-center">
+          {/* Always render the video element, but hide it if not showVideo */}
+          <video
+            ref={videoRef}
+            onClick={handleVideoClick}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            tabIndex={0}
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
+            autoPlay
+            playsInline
+            style={{
+              display: showVideo ? 'block' : 'none',
+              maxWidth: '100%',
+              height: 'auto',
+              touchAction: 'manipulation',
+              pointerEvents: 'auto',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center text-gray-500">
+            <div className="flex flex-col items-center justify-center text-gray-500 absolute">
               <Loader2 size={48} className="mb-4 animate-spin" />
               <p className="text-lg font-medium">{displayMessage}</p>
             </div>
-          ) : showVideo ? (
-            <video
-              ref={videoRef}
-              onClick={handleVideoClick}
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              tabIndex={0}
-              className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
-              autoPlay
-              playsInline
-              style={{
-                display: 'block',
-                maxWidth: '100%',
-                height: 'auto',
-                touchAction: 'manipulation',
-                pointerEvents: 'auto',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTapHighlightColor: 'rgba(0,0,0,0)',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-gray-500">
+          ) : !showVideo && (
+            <div className="flex flex-col items-center justify-center text-gray-500 absolute">
               <WifiOff size={48} className="mb-4" />
               <p className="text-lg font-medium">
                 {displayMessage.includes("Greška") || displayMessage.includes("prekinuta") ?

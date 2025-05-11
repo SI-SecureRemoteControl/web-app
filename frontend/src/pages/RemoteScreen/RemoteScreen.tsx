@@ -91,10 +91,10 @@ const RemoteControlPage: React.FC = () => {
           if (!stats) return;
 
           stats.forEach((stat) => {
-            if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
-              const candidatePair = stat as RTCIceCandidatePairStats;
-              if (candidatePair.currentRoundTripTime) {
-                setLatency(Math.round(candidatePair.currentRoundTripTime * 1000)); // Convert to ms
+            if (stat.type === 'ice-candidate' && stat.state === 'connected') {
+              const iceCandidate = stat as RTCIceCandidatePairStats;
+              if (iceCandidate.currentRoundTripTime) {
+                setLatency(Math.round(iceCandidate.currentRoundTripTime * 1000)); // Convert to ms
               }
             }
           });

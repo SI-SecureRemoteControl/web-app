@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback} from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation/*, useNavigate*/ } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
 import { WifiOff, Loader2 } from 'lucide-react'; 
 
@@ -15,7 +15,7 @@ const RemoteControlPage: React.FC = () => {
   const [displayMessage, setDisplayMessage] = useState<string>("Inicijalizacija...");
 
   const location = useLocation();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
 
   const queryParams = new URLSearchParams(location.search);
   const deviceIdFromUrl = queryParams.get('deviceId');
@@ -143,18 +143,15 @@ const RemoteControlPage: React.FC = () => {
     }
   }, [remoteStreamState, pageSessionId]); 
 
-    useEffect(() => {
+  useEffect(() => {
     const service = webRTCServiceRef.current; 
     if (!pageSessionId || !service) return;
 
-    if ((!activeSession || activeSession.sessionId !== pageSessionId) && showVideo) {
-        if (showVideo || remoteStreamState || (displayMessage !== "Inicijalizacija..." && displayMessage !== `Povezivanje na sesiju: ${pageSessionId}...`)) {
-            console.log(`%c[${pageSessionId}] ContextEffect: Mismatch/Null activeSession. Cleaning up.`, "color: orange;");
-            setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
-            cleanupLocalWebRTCResources('context termination');
-        }
+    if (!activeSession || activeSession.sessionId !== pageSessionId) {
+        setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
+        cleanupLocalWebRTCResources('context termination');
     }
-  }, [activeSession, pageSessionId, showVideo, remoteStreamState, displayMessage, navigate, cleanupLocalWebRTCResources]);
+  }, [activeSession, pageSessionId, cleanupLocalWebRTCResources]);
 
   // Stats and Latency useEffects (treba fix)
   useEffect(() => {

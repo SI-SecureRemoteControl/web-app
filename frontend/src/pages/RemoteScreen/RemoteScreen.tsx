@@ -16,6 +16,8 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
 
+  const [latency, setLatency] = useState<number | null>(null);
+
   useEffect(() => {
     websocketService.connectControlSocket();
 
@@ -76,6 +78,36 @@ const RemoteControlPage: React.FC = () => {
       websocketService.removeControlMessageListener(handleControlMessage);
     };
   }, [location.search]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (sessionIdFromUrl && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+
+      intervalId = setInterval(async () => {
+        try {
+          const stats = await service.getStats();
+          if (!stats) return;
+
+          stats.forEach((stat) => {
+            if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
+              const candidatePair = stat as RTCIceCandidatePairStats;
+              if (candidatePair.currentRoundTripTime) {
+                setLatency(Math.round(candidatePair.currentRoundTripTime * 1000)); // Convert to ms
+              }
+            }
+          });
+        } catch (error) {
+          console.error('Error fetching WebRTC stats:', error);
+        }
+      }, 1000); // Update every second
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sessionIdFromUrl, deviceIdFromUrl]);
 
   // Set up touch-friendly environment and add wheel event listeners
   useEffect(() => {
@@ -406,6 +438,11 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
+        </div>
+        <div className="text-sm text-gray-600 text-center mt-2">
+          {latency !== null && (
+            <p>Data is sending to mobile with <span className="font-medium">{latency} ms</span> latency</p>
+          )}
         </div>
       </div>
     </div>

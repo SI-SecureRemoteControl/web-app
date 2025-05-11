@@ -146,6 +146,21 @@ class WebRTCService {
     }
   }
 
+  async getStats(): Promise<RTCStatsReport | null> {
+    if (!this.peerConnection) {
+      console.warn('PeerConnection is not initialized.');
+      return null;
+    }
+
+    try {
+      const stats = await this.peerConnection.getStats();
+      return stats;
+    } catch (error) {
+      console.error('Error fetching WebRTC stats:', error);
+      return null;
+    }
+  }
+
   closeConnection() {
     if (this.peerConnection) {
       this.peerConnection.close();

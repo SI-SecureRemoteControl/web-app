@@ -104,6 +104,11 @@ const RemoteControlPage: React.FC = () => {
     }
     viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
     
+    // Ensure touchAction is set on the video element
+    if (videoRef.current) {
+      videoRef.current.style.touchAction = 'manipulation';
+    }
+
     // *** NEW: Add event listeners for wheel events to detect trackpad gestures ***
     if (videoRef.current) {
       videoRef.current.addEventListener('wheel', handleWheelEvent, { passive: false });
@@ -606,16 +611,6 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
-        </div>
-        
-        {/* Instructions for MacBook users */}
-        <div className="text-sm text-gray-600 text-center mt-4">
-          <p className="font-medium mb-1">How to use with MacBook touchbar/trackpad:</p>
-          <ul className="text-left max-w-md mx-auto space-y-1">
-            <li>• <strong>Two-finger swipe</strong>: Swipe on the trackpad with two fingers</li>
-            <li>• <strong>Click</strong>: Normal trackpad click</li>
-            <li>• <strong>Toggle mode</strong>: Enable for easier gesture recognition</li>
-          </ul>
         </div>
       </div>
     </div>

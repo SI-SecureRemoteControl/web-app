@@ -457,31 +457,20 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
 
       const deviceId = currentActiveSession.deviceId;
 
-      // Immediately clear the session from state for instant UI update
-      dispatch({
-        type: 'SESSION_STATUS_UPDATE',
-        payload: {
-          sessionId,
-          status: 'terminated',
-          message: 'Session terminated by user.'
-        }
-      });
+      // Explicitly reset activeSession and related state
+      dispatch({ type: 'SESSION_STATUS_UPDATE', payload: { sessionId, status: 'terminated', message: 'Session terminated by user.' } });
+      dispatch({ type: 'CONNECTION_CHANGE', payload: { connected: false } });
+      dispatch({ type: 'RESET_NAVIGATION' });
+      dispatch({ type: 'CLEAR_NOTIFICATION' });
+      dispatch({ type: 'ACCEPT_REQUEST', payload: { requestId: '', deviceId: '', deviceName: '', sessionId: '' } }); // Clear active session
 
       // Then send the termination message to backend
-      const success = sendWebSocketMessage('terminate_session', {
-        sessionId,
-        deviceId
-      });
+      const success = sendWebSocketMessage('terminate_session', { sessionId, deviceId });
 
       // Optionally, show a notification if sending failed (but session is already cleared from UI)
       if (!success) {
-        dispatch({
-          type: 'CLEAR_NOTIFICATION'
-        });
-        dispatch({
-          type: 'CONNECTION_CHANGE',
-          payload: { connected: false }
-        });
+        dispatch({ type: 'CLEAR_NOTIFICATION' });
+        dispatch({ type: 'CONNECTION_CHANGE', payload: { connected: false } });
         console.error('Failed to send termination request');
       }
 

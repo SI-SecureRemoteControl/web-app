@@ -4,7 +4,7 @@ import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation/*, useNavigate*/ } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
-import { WifiOff, Loader2 } from 'lucide-react'; 
+import { WifiOff/*, Loader2 */} from 'lucide-react'; 
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -13,7 +13,7 @@ const RemoteControlPage: React.FC = () => {
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
   const [showVideo, setShowVideo] = useState<boolean>(false); // Controls visibility
   const [displayMessage, setDisplayMessage] = useState<string>("Inicijalizacija...");
-  const [isLoading, setIsLoading] = useState(true);
+  //const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
   //const navigate = useNavigate();
@@ -50,7 +50,7 @@ const RemoteControlPage: React.FC = () => {
     setDisplayMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
     setShowVideo(false);
     setRemoteStreamState(null);
-    setIsLoading(true); // Start loading on mount or session change
+    //setIsLoading(true); // Start loading on mount or session change
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
@@ -61,7 +61,7 @@ const RemoteControlPage: React.FC = () => {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
         setRemoteStreamState(stream);
         setDisplayMessage("Video stream aktivan.");
-        setIsLoading(false); // Video is ready, stop loading
+       // setIsLoading(false); // Video is ready, stop loading
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();
 
@@ -86,7 +86,7 @@ const RemoteControlPage: React.FC = () => {
         console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>.`, "color: red;");
         setDisplayMessage("Veza sa uređajem je prekinuta (ICE).");
         cleanupLocalWebRTCResources('ICE disconnected'); // Clean up local resources
-        setIsLoading(false); // Stop loading on disconnect
+      //  setIsLoading(false); // Stop loading on disconnect
       }
     });
 
@@ -126,7 +126,7 @@ const RemoteControlPage: React.FC = () => {
         webRTCServiceRef.current = null;
       }
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
-      setIsLoading(false); // Stop loading on cleanup
+      //setIsLoading(false); // Stop loading on cleanup
     };
   }, [location.search, cleanupLocalWebRTCResources]);
   
@@ -668,12 +668,7 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center text-gray-500 absolute">
-              <Loader2 size={48} className="mb-4 animate-spin" />
-              <p className="text-lg font-medium">{displayMessage}</p>
-            </div>
-          ) : !showVideo && (
+          {!showVideo && (
             <div className="flex flex-col items-center justify-center text-gray-500 absolute">
               <WifiOff size={48} className="mb-4" />
               <p className="text-lg font-medium">

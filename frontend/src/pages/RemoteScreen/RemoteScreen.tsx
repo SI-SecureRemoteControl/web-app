@@ -22,22 +22,6 @@ const RemoteControlPage: React.FC = () => {
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
   const { activeSession} = useRemoteControl();
 
-    const handleKeyDown = useCallback((event: KeyboardEvent) => {
-    if (!showVideo || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
-    websocketService.sendControlMessage({
-      action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
-      payload: { key: event.key, code: event.code, type: 'keydown' }
-    });
-  }, [pageSessionId, deviceIdFromUrl]);
-
-  const handleKeyUp = useCallback((event: KeyboardEvent) => {
-    if (!showVideo  || !pageSessionId || !deviceIdFromUrl || !webRTCServiceRef.current?.isConnectionActive()) return;
-    websocketService.sendControlMessage({
-      action: 'keyboard', deviceId: deviceIdFromUrl, sessionId: pageSessionId,
-      payload: { key: event.key, code: event.code, type: 'keyup' }
-    });
-  }, [pageSessionId, deviceIdFromUrl]);
-
    const cleanupLocalWebRTCResources = useCallback((reason: string) => {
     console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
     if (webRTCServiceRef.current) {

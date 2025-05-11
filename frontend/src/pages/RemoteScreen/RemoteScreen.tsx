@@ -15,7 +15,7 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartTime, setGestureStartTime] = useState(0);
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
-  
+  const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -130,6 +130,27 @@ const RemoteControlPage: React.FC = () => {
           console.error('Error fetching WebRTC stats:', error);
         }
       }, 1000); // Update every second
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sessionIdFromUrl, deviceIdFromUrl]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (sessionIdFromUrl && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+
+      intervalId = setInterval(async () => {
+        try {
+          const latencyValue = await service.getLatency();
+          setLatency(latencyValue);
+        } catch (error) {
+          setLatency(null);
+        }
+      }, 1000);
     }
 
     return () => {
@@ -551,7 +572,12 @@ const RemoteControlPage: React.FC = () => {
           />
         </div>
         <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
-          Latency: Calculating...
+          Loading...
+        </div>
+        <div className="text-sm text-gray-600 text-center">
+          {latency !== null
+            ? `Trenutno zbog konekcije, latency je ${latency >= 1000 ? (latency / 1000).toFixed(1) + 's' : latency.toFixed(0) + 'ms'}`
+            : 'Latency: Calculating...'}
         </div>
       </div>
     </div>

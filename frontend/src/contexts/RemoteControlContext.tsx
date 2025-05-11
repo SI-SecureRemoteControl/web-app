@@ -485,8 +485,9 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         console.error('Failed to send termination request');
       }
 
-      // After session is terminated, navigate to dashboard
+      // After session is terminated, navigate to dashboard and refresh the page
       navigate('/dashboard');
+      window.location.reload(); // Programmatically refresh the page to ensure a clean state
     };
 
     const clearNotification = () => {

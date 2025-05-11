@@ -43,7 +43,7 @@ type RemoteControlAction =
   | { type: 'ACCEPT_REQUEST'; payload: { requestId: string; deviceId: string; deviceName: string; sessionId: string } }
   | { type: 'DECLINE_REQUEST'; payload: { requestId: string } }
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
-  | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string } }
+  | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string; deviceId?: string; decision?: 'accepted' } }
   | { type: 'CLEAR_NOTIFICATION' }
   | { type: 'RESET_NAVIGATION' };
 
@@ -120,104 +120,63 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         }
       };
 
-    // --- CORRECTION 2: SESSION_STATUS_UPDATE Reducer Logic ---
     case 'SESSION_STATUS_UPDATE': {
-      console.log('SESSION_STATUS_UPDATE received:', action.payload);
-
-      // Only update if we have an active session
-      if (!state.activeSession) {
-        console.warn('Received status update but no active session exists');
-        return state;
-      }
-
-      // Check if the update is for the current active session
-      const sessionMatch = action.payload.sessionId &&
-                          state.activeSession.sessionId === action.payload.sessionId;
-
-      console.log('Session match check:', {
-        sessionMatch,
-        activeSessionId: state.activeSession.sessionId,
-        payloadSessionId: action.payload.sessionId
-      });
-
-      if (!sessionMatch) {
-        console.warn('Session ID mismatch, ignoring update');
-        return state;
-      }
-
-      // Map backend status (string) to frontend status ('pending' | 'connected' | 'error')
-      let frontendStatus: 'pending' | 'connected' | 'error' = state.activeSession.status; // Default to current
-      let notificationType: 'success' | 'error' | 'info' = 'info';
-      let notificationMessage = action.payload.message || '';
-      let shouldNavigate = false;
-      let shouldClearSession = false;
-
-      const backendStatus = action.payload.status;
-
-      if (backendStatus === 'connected') {
-        frontendStatus = 'connected';
-        notificationType = 'success';
-        notificationMessage = notificationMessage || `Connected to ${state.activeSession.deviceName}`;
-        shouldNavigate = true;
-        console.log('Mapping to: connected');
-      }
-      else if (backendStatus === 'pending_device_confirmation' ||
-               backendStatus === 'admin_accepted' ||
-               backendStatus === 'pending') { // Explicitly handle 'pending' too
-        frontendStatus = 'pending';
-        notificationType = 'info';
-        notificationMessage = notificationMessage || 'Session pending...';
-        console.log('Mapping to: pending');
-      }
-      else if (backendStatus === 'failed' ||
-               backendStatus === 'rejected' ||
-               backendStatus === 'timed_out' ||
-               backendStatus === 'disconnected' ||
-               backendStatus === 'terminated' ||
-               backendStatus === 'error') { // Explicitly handle 'error'
-        frontendStatus = 'error';
-        notificationType = 'error';
-        shouldClearSession = true; // Clear session on terminal errors/disconnects
-        notificationMessage = notificationMessage || `Session ended: ${backendStatus}`;
-        console.log('Mapping to: error (clearing session)');
-      } else {
-          console.warn(`Unhandled backend status received: ${backendStatus}. Keeping current state.`);
-          notificationMessage = notificationMessage || `Received unknown status: ${backendStatus}`;
-          frontendStatus = 'error';
-          notificationType = 'error';
-          shouldClearSession = true;
-      }
-
-      // If session should be cleared (terminal states)
-      if (shouldClearSession) {
+      const { sessionId: payloadSessionId, status: backendStatus, message: payloadMessage, deviceId: payloadDeviceId } = action.payload;
+      console.log(`Context Reducer: SESSION_STATUS_UPDATE for ${payloadSessionId}, new backend status: ${backendStatus}`);
+      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found'].includes(backendStatus);
+        if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+              console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
         return {
-          ...state,
-          activeSession: null, // Clear the session
-          notification: {
-            type: notificationType,
-            message: notificationMessage
-          },
-          navigateToWebRTC: false, // Ensure navigation flag is off
-          currentSessionId: undefined, // Clear current IDs
-          currentDeviceId: undefined
+            ...state,
+            activeSession: null,
+            notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` },
+            navigateToWebRTC: false,
+            currentSessionId: undefined,
+            currentDeviceId: undefined,
         };
       }
 
-      // Otherwise, update the existing session
-      return {
-        ...state,
-        activeSession: {
-          ...state.activeSession,
-          status: frontendStatus // Update status
-        },
-        notification: {
-          type: notificationType,
-          message: notificationMessage
-        },
-        navigateToWebRTC: shouldNavigate // Set navigation flag
-      };
+      if (isTerminal && (!state.activeSession || state.activeSession.sessionId !== payloadSessionId)) {
+        console.log(`Context Reducer: Received terminal status ${backendStatus} for non-active/mismatched session ${payloadSessionId}. Updating notification only.`);
+        return { ...state, notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` } };
     }
 
+    if (state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+        let frontendStatus: 'pending' | 'connected' | 'error' = state.activeSession.status;
+        let notificationType: 'success' | 'error' | 'info' = 'info';
+        let notificationMsg = payloadMessage || `Status: ${backendStatus}`;
+        let shouldNavigate = state.navigateToWebRTC;
+
+        if (backendStatus === 'connected') {
+            frontendStatus = 'connected';
+            notificationType = 'success';
+            notificationMsg = `Povezan sa ${state.activeSession.deviceName}.`;
+            shouldNavigate = true;
+        } else if (backendStatus === 'pending_device_confirmation' || backendStatus === 'admin_accepted') {
+            frontendStatus = 'pending';
+            notificationType = 'info';
+        } else {
+            // Any other non-terminal status for the active session
+            console.warn(`Context Reducer: Unexpected non-terminal status '${backendStatus}' for active session ${payloadSessionId}. Treating as pending.`);
+            frontendStatus = 'pending'; // Or update as needed
+        }
+
+        return {
+            ...state,
+            activeSession: {
+                ...state.activeSession,
+                status: frontendStatus,
+                deviceId: payloadDeviceId || state.activeSession.deviceId,
+            },
+            notification: { type: notificationType, message: notificationMsg },
+            navigateToWebRTC: shouldNavigate,
+            currentSessionId: payloadSessionId,
+            currentDeviceId: payloadDeviceId || state.activeSession.deviceId,
+        };
+    }
+      console.warn(`Context Reducer: Ignoring non-terminal status update for ${payloadSessionId} (status: ${backendStatus}) as it does not match current active session ${state.activeSession?.sessionId}.`);
+      return state; // Should not be reached if logic above is exhaustive
+    }
     case 'CLEAR_NOTIFICATION':
       return {
         ...state,

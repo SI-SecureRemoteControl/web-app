@@ -83,46 +83,54 @@ const RemoteControlPage: React.FC = () => {
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
-   if (sessionIdFromUrl && deviceIdFromUrl) {
-  const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+    if (sessionIdFromUrl && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
 
-  intervalId = setInterval(async () => {
-    try {
-      const stats = await service.getStats();
-      const latency = await service.getLatency();
-      if (!stats) return;
+      intervalId = setInterval(async () => {
+        try {
+          const stats = await service.getStats();
+          console.log('WebRTC stats that is inside:', stats);
+          const latency = await service.getLatency();
+          console.log('WebRTC latency that is inside:', latency);
+          if (!stats) return;
 
-      let fps: number | null = null;
-      let droppedFrames: number | null = null;
-      let frameWidth: number | null = null;
-      let frameHeight: number | null = null;
-      let packetsLost: number | null = null;
-      let jitter: string | null = null;
+          let fps: number | null = null;
+          let droppedFrames: number | null = null;
+          let frameWidth: number | null = null;
+          let frameHeight: number | null = null;
+          let packetsLost: number | null = null;
+          let jitter: string | null = null;
 
-      stats.forEach((stat) => {
-        if ('framesPerSecond' in stat) fps = stat.framesPerSecond;
-        if ('framesDropped' in stat) droppedFrames = stat.framesDropped;
-        if ('frameWidth' in stat) frameWidth = stat.frameWidth;
-        if ('frameHeight' in stat) frameHeight = stat.frameHeight;
-        if ('packetsLost' in stat) packetsLost = stat.packetsLost;
-        if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2); 
-      });
+          // Try to extract from all stats entries
+          stats.forEach((stat) => {
+            // FPS: try both framesPerSecond and fps
+            if ('framesPerSecond' in stat && stat.framesPerSecond != null) fps = stat.framesPerSecond;
+            if ('fps' in stat && stat.fps != null) fps = stat.fps;
+            // Dropped frames: try both framesDropped and droppedFrames
+            if ('framesDropped' in stat && stat.framesDropped != null) droppedFrames = stat.framesDropped;
+            if ('droppedFrames' in stat && stat.droppedFrames != null) droppedFrames = stat.droppedFrames;
+            // Resolution
+            if ('frameWidth' in stat && stat.frameWidth != null) frameWidth = stat.frameWidth;
+            if ('frameHeight' in stat && stat.frameHeight != null) frameHeight = stat.frameHeight;
+            // Packets lost
+            if ('packetsLost' in stat && stat.packetsLost != null) packetsLost = stat.packetsLost;
+            // Jitter
+            if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2);
+          });
 
-      const latencyElement = document.getElementById('latency-display');
-      if (latencyElement) {
-        latencyElement.textContent =
-          `FPS: ${fps ?? 'N/A'}, Dropped: ${droppedFrames ?? 'N/A'}, ` +
-          `Resolution: ${frameWidth ?? '?'}x${frameHeight ?? '?'}, ` +
-          `Lost Packets: ${packetsLost ?? 'N/A'}, Jitter: ${jitter ?? 'N/A'} ms`+
-          `Latency: ${latency !== null ? latency.toFixed(2) : 'N/A'} ms`;
-      }
-
-    } catch (error) {
-      console.error('Error fetching WebRTC stats:', error);
+          const latencyElement = document.getElementById('latency-display');
+          if (latencyElement) {
+            latencyElement.textContent =
+              `FPS: ${fps ?? 'N/A'}, Dropped: ${droppedFrames ?? 'N/A'}, ` +
+              `Resolution: ${frameWidth ?? '?'}x${frameHeight ?? '?'}, ` +
+              `Lost Packets: ${packetsLost ?? 'N/A'}, Jitter: ${jitter ?? 'N/A'} ms, ` +
+              `Latency: ${latency !== null ? latency.toFixed(2) : 'N/A'} ms`;
+          }
+        } catch (error) {
+          console.error('Error fetching WebRTC stats:', error);
+        }
+      }, 1000); // Update every second
     }
-  }, 1000); // Update every second
-}
-
 
     return () => {
       if (intervalId) clearInterval(intervalId);

@@ -37,7 +37,7 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartTime, setGestureStartTime] = useState(0);
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
-  const [latency, setLatency] = useState<number | null>(null);
+  //const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
 
@@ -92,6 +92,7 @@ const RemoteControlPage: React.FC = () => {
       isEffectMounted = false;
       console.log(`%c[${pageSessionId}] MainEffect: CLEANUP.`, "color: blue;");
       cleanupLocalWebRTCResources('main effect unmount/deps change');
+      setRemoteStream(null); // Ensure remoteStream is reset on cleanup
        if (webRTCServiceRef.current) {
         webRTCServiceRef.current.closeConnection();
         webRTCServiceRef.current = null;
@@ -111,7 +112,7 @@ const RemoteControlPage: React.FC = () => {
   }, [activeSession, pageSessionId, cleanupLocalWebRTCResources]);
 
   // Stats and Latency useEffects (treba fix)
-  useEffect(() => {
+ /* useEffect(() => {
 
     let intervalId: NodeJS.Timeout | null = null;
     //let statsServiceInstance: WebRTCService | null = null;
@@ -125,9 +126,9 @@ const RemoteControlPage: React.FC = () => {
         try {
           // const stats = await service.getStats();
           //console.log('WebRTC stats that is inside:', stats);
-          const latencyVal = await currentService.getLatency();
+          //const latencyVal = await currentService.getLatency();
          // console.log('WebRTC latency that is inside:', latency);
-          setLatency(latencyVal);
+        //  setLatency(latencyVal);
 
           let fps: number | null = null;
           let droppedFrames: number | null = null;
@@ -171,10 +172,10 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [pageSessionId, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl]);*/
 
   // Setup for global event listeners for touch/gestures and keyboard
-  useEffect(() => {
+  /*useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
     if (pageSessionId && deviceIdFromUrl) {
@@ -194,7 +195,7 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [pageSessionId, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl]);*/
 
   // Set up touch-friendly environment and add wheel event listeners
   useEffect(() => {
@@ -627,14 +628,14 @@ const RemoteControlPage: React.FC = () => {
             }}
           />
         </div>
-        <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
+        {/*<div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
           Loading...
-        </div>
-        <div className="text-sm text-gray-600 text-center">
+        </div>*/}
+        {/* <div className="text-sm text-gray-600 text-center">
           {latency !== null
             ? `Trenutno zbog konekcije, latency je ${latency >= 1000 ? (latency / 1000).toFixed(1) + 's' : latency.toFixed(0) + 'ms'}`
             : 'Latency: Calculating...'}
-        </div>
+        </div> */}
       </div>
     </div>
   );

@@ -19,6 +19,8 @@ const RemoteControlPage: React.FC = () => {
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
   const { activeSession} = useRemoteControl();
 
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
    const cleanupLocalWebRTCResources = useCallback((reason: string) => {
     console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
     if (webRTCServiceRef.current) {
@@ -47,21 +49,9 @@ const RemoteControlPage: React.FC = () => {
     let isEffectMounted = true;
 
     service.setOnRemoteStream((stream) => {
-      if (isEffectMounted && videoRef.current) {
+      if (isEffectMounted) {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
-        videoRef.current.srcObject = stream;
-        const videoTrack = stream.getVideoTracks()[0];
-        const settings = videoTrack.getSettings();
-        if (settings.width && settings.height) {
-          videoRef.current.width = settings.width;
-          videoRef.current.height = settings.height;
-        }
-        videoRef.current.onloadedmetadata = () => {
-          if(videoRef.current && isEffectMounted){
-            videoRef.current.width = videoRef.current.videoWidth;
-            videoRef.current.height = videoRef.current.videoHeight;
-          }
-        };
+        setRemoteStream(stream);
       }
     });
 
@@ -593,6 +583,13 @@ const RemoteControlPage: React.FC = () => {
     const touch = event.changedTouches[0];
     handleGestureEnd(touch.clientX, touch.clientY);
   };
+
+  // Assign remoteStream to video element when it changes
+  useEffect(() => {
+    if (videoRef.current && remoteStream) {
+      videoRef.current.srcObject = remoteStream;
+    }
+  }, [remoteStream]);
   
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">

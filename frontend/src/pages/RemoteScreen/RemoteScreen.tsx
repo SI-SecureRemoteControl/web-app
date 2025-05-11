@@ -59,28 +59,19 @@ const RemoteControlPage: React.FC = () => {
 
   useEffect(() => {
 
-    if (!pageSessionId || !deviceIdFromUrl) {
-      console.warn('RemoteControlPage: Session ID or Device ID not found in URL.');
-      setDisplayMessage("Greška: Nedostaju ID sesije ili uređaja u URL parametrima.");
-      setShowVideo(false);
-      // navigate('/'); // Optionally navigate away
-      return;
-    }
-
-    console.log(`%cRemoteControlPage [${pageSessionId}]: MAIN useEffect RUNNING (location.search changed or initial mount)`, "color: blue; font-weight: bold;");
+    if(!pageSessionId || !deviceIdFromUrl) {return;}
+    console.log(`%c[${pageSessionId}] MainEffect: START/RE-START. Setting up.`, "color: blue;");
     setDisplayMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
     setShowVideo(false);
-
+    setRemoteStreamState(null);
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
     let isEffectMounted = true;
 
-    console.log(`%cRemoteControlPage [${pageSessionId}]: WebRTCService INSTANTIATED. Setting onRemoteStream callback.`, "color: green;");
-
     service.setOnRemoteStream((stream) => {
       if (isEffectMounted && videoRef.current) {
-        console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>. Attaching stream.`, "color: red; font-weight: bold;");
+        console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
         setRemoteStreamState(stream);
         setDisplayMessage("Video stream aktivan.");
         const videoTrack = stream.getVideoTracks()[0];
@@ -104,7 +95,7 @@ const RemoteControlPage: React.FC = () => {
 
     service.setOnIceDisconnected(() => {
       if (isEffectMounted) { 
-        console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>. ICE connection lost.`, "color: red; font-weight: bold;");
+        console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>.`, "color: red;");
         setDisplayMessage("Veza sa uređajem je prekinuta (ICE).");
         cleanupLocalWebRTCResources('ICE disconnected'); // Clean up local resources
       }
@@ -122,27 +113,16 @@ const RemoteControlPage: React.FC = () => {
           if(isEffectMounted) {
              setDisplayMessage("Greška pri kreiranju WebRTC ponude.");
               console.error(`[${pageSessionId}] MainEffect: Failed to create offer:`, error);
-              if (webRTCServiceRef.current) webRTCServiceRef.current.closeConnection();
-                setShowVideo(false);
+              cleanupLocalWebRTCResources('Offer failed');
           }
         });
 
     const handleWebSocketMessagesForThisSession = (data: any) => {
       if (!isEffectMounted || data.sessionId !== pageSessionId || !webRTCServiceRef.current) return; // Only process messages for this page's session
-
       if (data.type === 'answer') {
         webRTCServiceRef.current?.handleAnswer(data.payload);
       } else if (data.type === 'ice-candidate') {
         webRTCServiceRef.current?.addIceCandidate(data.payload);
-    const handleControlMessage = (data: any) => {
-      if (data.type === 'answer' && data.payload?.sessionId === sessionId) {
-        console.log('Primljen SDP odgovor:', data.payload);
-        service.handleAnswer(data.payload);
-
-        // Set latency to 0 temporarily when answer is received
-      } else if (data.type === 'ice-candidate' && data.payload?.sessionId === sessionId) {
-        console.log('Primljen ICE kandidat:', data.payload);
-        service.addIceCandidate(data.payload);
       }
     };
 
@@ -150,24 +130,19 @@ const RemoteControlPage: React.FC = () => {
 
     return () => {
       isEffectMounted = false;
-      console.log(`%c[${pageSessionId}] MainEffect: CLEANUP. Closing WebRTC.`, "color: blue; font-weight: bold;");
+      console.log(`%c[${pageSessionId}] MainEffect: CLEANUP.`, "color: blue;");
+      cleanupLocalWebRTCResources('main effect unmount/deps change');
        if (webRTCServiceRef.current) {
         webRTCServiceRef.current.closeConnection();
         webRTCServiceRef.current = null;
       }
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-
-      service.closeConnection();
-      websocketService.removeControlMessageListener(handleControlMessage);
     };
-  }, [location.search, handleKeyDown, handleKeyUp, cleanupLocalWebRTCResources]);
+  }, [location.search, cleanupLocalWebRTCResources]);
   
   useEffect(() => {
-    console.log(`%c[${pageSessionId}] StreamEffect: remoteStreamState is ${remoteStreamState ? 'defined' : 'null'}, videoRef.current is ${videoRef.current ? 'defined' : 'null'}`, "color: green;");
     if (remoteStreamState && videoRef.current) {
-      console.log(`%c[${pageSessionId}] StreamEffect: Attaching stream to video element.`, "color: green; font-weight: bold;");
+      console.log(`%c[${pageSessionId}] StreamEffect: Attaching stream.`, "color: green;");
       videoRef.current.srcObject = remoteStreamState;
       videoRef.current.onloadedmetadata = () => {
         if (videoRef.current) { // Check ref again inside async callback
@@ -177,42 +152,44 @@ const RemoteControlPage: React.FC = () => {
         }
       };
       setDisplayMessage("Video stream aktivan.");
-      setShowVideo(true); // <<<< NOW make the video visible
+      setShowVideo(true); 
     } else if (!remoteStreamState) {
-      // If stream is removed (e.g., on disconnect), ensure video is hidden
       setShowVideo(false);
-      if (videoRef.current) videoRef.current.srcObject = null; // Also clear srcObject
+      if (videoRef.current) videoRef.current.srcObject = null; 
     }
-  }, [remoteStreamState, pageSessionId]); // Run when remoteStreamState changes
+  }, [remoteStreamState, pageSessionId]); 
 
     useEffect(() => {
-    const service = webRTCServiceRef.current; // Capture current ref value
+    const service = webRTCServiceRef.current; 
     if (!pageSessionId || !service) return;
 
-    // If context says session is not active for this page, and we previously thought it was
     if ((!activeSession || activeSession.sessionId !== pageSessionId) && showVideo) {
-        console.log(`%c[${pageSessionId}] ContextEffect: Context session mismatch/null, and video was showing. Closing.`, "color: orange;");
-        setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
-        cleanupLocalWebRTCResources('context (admin) termination');
-        service.closeConnection(); // Close the service
-        setRemoteStreamState(null); // This will trigger the StreamEffect to hide video
-        // setShowVideo(false); // StreamEffect will handle this via setRemoteStreamState(null)
+        if (showVideo || remoteStreamState || (displayMessage !== "Inicijalizacija..." && displayMessage !== `Povezivanje na sesiju: ${pageSessionId}...`)) {
+            console.log(`%c[${pageSessionId}] ContextEffect: Mismatch/Null activeSession. Cleaning up.`, "color: orange;");
+            setDisplayMessage(`Sesija ${pageSessionId} prekinuta.`);
+            cleanupLocalWebRTCResources('context termination');
+        }
     }
-  }, [activeSession, pageSessionId, showVideo, navigate]);
+  }, [activeSession, pageSessionId, showVideo, remoteStreamState, displayMessage, navigate, cleanupLocalWebRTCResources]);
 
+  // Stats and Latency useEffects (treba fix)
   useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
 
-    if (sessionIdFromUrl && deviceIdFromUrl) {
-      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+    let intervalId: NodeJS.Timeout | null = null;
+    let statsServiceInstance: WebRTCService | null = null;
+
+    if (pageSessionId && deviceIdFromUrl && showVideo) {
+      statsServiceInstance = new WebRTCService(deviceIdFromUrl, pageSessionId); 
+      const currentService = webRTCServiceRef.current; // Use the main service instance
+      if (!currentService) return;
 
       intervalId = setInterval(async () => {
         try {
-          const stats = await service.getStats();
+          // const stats = await service.getStats();
           //console.log('WebRTC stats that is inside:', stats);
-          const latency = await service.getLatency();
+          const latencyVal = await currentService.getLatency();
          // console.log('WebRTC latency that is inside:', latency);
-          if (!stats) return;
+          setLatency(latencyVal);
 
           let fps: number | null = null;
           let droppedFrames: number | null = null;
@@ -222,21 +199,21 @@ const RemoteControlPage: React.FC = () => {
           let jitter: string | null = null;
 
           // Try to extract from all stats entries
-          stats.forEach((stat) => {
+          //stats.forEach((stat) => {
             // FPS: try both framesPerSecond and fps
-            if ('framesPerSecond' in stat && stat.framesPerSecond != null) fps = stat.framesPerSecond;
-            if ('fps' in stat && stat.fps != null) fps = stat.fps;
+            //if ('framesPerSecond' in stat && stat.framesPerSecond != null) fps = stat.framesPerSecond;
+            //if ('fps' in stat && stat.fps != null) fps = stat.fps;
             // Dropped frames: try both framesDropped and droppedFrames
-            if ('framesDropped' in stat && stat.framesDropped != null) droppedFrames = stat.framesDropped;
-            if ('droppedFrames' in stat && stat.droppedFrames != null) droppedFrames = stat.droppedFrames;
+            //if ('framesDropped' in stat && stat.framesDropped != null) droppedFrames = stat.framesDropped;
+            //if ('droppedFrames' in stat && stat.droppedFrames != null) droppedFrames = stat.droppedFrames;
             // Resolution
-            if ('frameWidth' in stat && stat.frameWidth != null) frameWidth = stat.frameWidth;
-            if ('frameHeight' in stat && stat.frameHeight != null) frameHeight = stat.frameHeight;
+            //if ('frameWidth' in stat && stat.frameWidth != null) frameWidth = stat.frameWidth;
+            //if ('frameHeight' in stat && stat.frameHeight != null) frameHeight = stat.frameHeight;
             // Packets lost
-            if ('packetsLost' in stat && stat.packetsLost != null) packetsLost = stat.packetsLost;
+            //if ('packetsLost' in stat && stat.packetsLost != null) packetsLost = stat.packetsLost;
             // Jitter
-            if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2);
-          });
+            //if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2);
+          //});
 
           const latencyElement = document.getElementById('latency-display');
           if (latencyElement) {
@@ -248,6 +225,7 @@ const RemoteControlPage: React.FC = () => {
           }
         } catch (error) {
           console.error('Error fetching WebRTC stats:', error);
+          setLatency(null);
         }
       }, 1000); // Update every second
     }
@@ -255,13 +233,14 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionIdFromUrl, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl, showVideo]);
 
+  // Setup for global event listeners for touch/gestures and keyboard
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
-    if (sessionIdFromUrl && deviceIdFromUrl) {
-      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+    if (pageSessionId && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
 
 
       intervalId = setInterval(async () => {
@@ -277,7 +256,7 @@ const RemoteControlPage: React.FC = () => {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [sessionIdFromUrl, deviceIdFromUrl]);
+  }, [pageSessionId, deviceIdFromUrl]);
 
   // Set up touch-friendly environment and add wheel event listeners
   useEffect(() => {
@@ -315,14 +294,14 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('keydown', handleDocumentKeyDown);
       document.removeEventListener('keyup', handleDocumentKeyUp);
     };
-  }, [sessionIdFromUrl]);
+  }, [pageSessionId]);
 
   useEffect(() => {
     // Add global mouse event listeners when the component mounts
     const handleMouseMove = (event: MouseEvent) => {
       if (isGestureActive) {
         event.preventDefault();
-        if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+        if (videoRef.current && pageSessionId && deviceIdFromUrl) {
           const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
           const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
 
@@ -336,7 +315,7 @@ const RemoteControlPage: React.FC = () => {
             websocketService.sendControlMessage({
               action: 'swipe',
               deviceId: deviceIdFromUrl,
-              sessionId: sessionIdFromUrl,
+              sessionId: pageSessionId,
               payload: {
                 startX: startCoords.relativeX,
                 startY: startCoords.relativeY,
@@ -364,7 +343,7 @@ const RemoteControlPage: React.FC = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isGestureActive, sessionIdFromUrl, deviceIdFromUrl]);
+  }, [isGestureActive, pageSessionId, deviceIdFromUrl]);
 
   // Convert client coordinates to relative coordinates
   const getRelativeCoordinates = (clientX: number, clientY: number) => {
@@ -396,7 +375,7 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle wheel events (MacBook trackpad gestures)
   const handleWheelEvent = (event: WheelEvent) => {
-    if (!videoRef.current || !sessionIdFromUrl || !deviceIdFromUrl) return;
+    if (!videoRef.current || !pageSessionId || !deviceIdFromUrl) return;
     
     // Prevent default scrolling behavior
     event.preventDefault();
@@ -434,7 +413,7 @@ const RemoteControlPage: React.FC = () => {
       websocketService.sendControlMessage({
         action: 'swipe',
         deviceId: deviceIdFromUrl,
-        sessionId: sessionIdFromUrl,
+        sessionId: pageSessionId,
         payload: {
           startX: startCoords.relativeX,
           startY: startCoords.relativeY,
@@ -448,7 +427,7 @@ const RemoteControlPage: React.FC = () => {
 
   // Handle keyboard events
   const handleDocumentKeyDown = (event: KeyboardEvent) => {
-    if (!sessionIdFromUrl) return;
+    if (!pageSessionId) return;
 
     websocketService.sendControlMessage({
       action: 'keyboard',
@@ -477,12 +456,12 @@ const RemoteControlPage: React.FC = () => {
     );
   }
   const handleDocumentKeyUp = (event: KeyboardEvent) => {
-    if (!sessionIdFromUrl) return;
+    if (!pageSessionId) return;
 
     websocketService.sendControlMessage({
       action: 'keyboard',
       deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
+      sessionId: pageSessionId,
       payload: {
         key: event.key,
         code: event.code,
@@ -497,14 +476,14 @@ const RemoteControlPage: React.FC = () => {
   
   // Handle video click
   const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl || isGestureActive) return;
+    if (!videoRef.current || !pageSessionId || isGestureActive) return;
 
     const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
     
     websocketService.sendControlMessage({
       action: 'mouse_click',
       deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
+      sessionId: pageSessionId,
       payload: {
         x: relativeX,
         y: relativeY,
@@ -515,7 +494,7 @@ const RemoteControlPage: React.FC = () => {
   
   // Unified gesture handling for both mouse and touch
   const handleGestureStart = (clientX: number, clientY: number) => {
-    if (!videoRef.current || !sessionIdFromUrl) return;
+    if (!videoRef.current || !pageSessionId) return;
     
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
@@ -524,7 +503,7 @@ const RemoteControlPage: React.FC = () => {
   };
   
   const handleGestureEnd = (clientX: number, clientY: number) => {
-    if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
+    if (!isGestureActive || !videoRef.current || !pageSessionId) {
       setIsGestureActive(false);
       return;
     }
@@ -545,7 +524,7 @@ const RemoteControlPage: React.FC = () => {
       websocketService.sendControlMessage({
         action: 'mouse_click',
         deviceId: deviceIdFromUrl,
-        sessionId: sessionIdFromUrl,
+        sessionId: pageSessionId,
         payload: {
           x: relativeX,
           y: relativeY,
@@ -571,7 +550,7 @@ const RemoteControlPage: React.FC = () => {
       websocketService.sendControlMessage({
         action: 'swipe',
         deviceId: deviceIdFromUrl,
-        sessionId: sessionIdFromUrl,
+        sessionId: pageSessionId,
         payload: {
           startX: startCoords.relativeX,
           startY: startCoords.relativeY,
@@ -604,7 +583,7 @@ const RemoteControlPage: React.FC = () => {
       event.preventDefault();
       
       // Ako je srednji klik aktivan, pošaljite swipe informacije u realnom vremenu
-      if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+      if (videoRef.current && pageSessionId && deviceIdFromUrl) {
         const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
         const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
         
@@ -621,7 +600,7 @@ const RemoteControlPage: React.FC = () => {
           websocketService.sendControlMessage({
             action: 'swipe',
             deviceId: deviceIdFromUrl,
-            sessionId: sessionIdFromUrl,
+            sessionId: pageSessionId,
             payload: {
               startX: startCoords.relativeX,
               startY: startCoords.relativeY,

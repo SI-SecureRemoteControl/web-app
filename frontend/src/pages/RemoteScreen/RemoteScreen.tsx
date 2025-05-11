@@ -4,7 +4,7 @@ import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation/*, useNavigate*/ } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
-import { WifiOff/*, Loader2 */} from 'lucide-react'; 
+//import { WifiOff/*, Loader2 */} from 'lucide-react'; 
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -628,7 +628,7 @@ const RemoteControlPage: React.FC = () => {
           <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
         </div>
-        <div className="flex justify-center relative min-h-[300px]">
+        <div className="flex justify-center">
           {/* Always render the video element, but hide it if no stream */}
           <video
             ref={videoRef}
@@ -642,10 +642,9 @@ const RemoteControlPage: React.FC = () => {
             autoPlay
             playsInline
             style={{
-              display: remoteStreamState ? 'block' : 'none',
+              display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              minHeight: '300px',
               touchAction: 'manipulation',
               pointerEvents: 'auto',
               userSelect: 'none',
@@ -655,12 +654,6 @@ const RemoteControlPage: React.FC = () => {
               cursor: 'pointer'
             }}
           />
-          {!remoteStreamState && (
-            <div className="flex flex-col items-center justify-center text-gray-500 absolute inset-0 bg-white bg-opacity-80 rounded-xl">
-              <WifiOff size={48} className="mb-4" />
-              <p className="text-lg font-medium">{pageSessionId ? 'Povezivanje ili sesija prekinuta.' : 'Nema aktivne sesije.'}</p>
-            </div>
-          )}
         </div>
         <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
           Loading...

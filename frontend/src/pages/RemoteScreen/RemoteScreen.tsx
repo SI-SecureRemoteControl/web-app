@@ -16,7 +16,6 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
   
-  const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -67,7 +66,6 @@ const RemoteControlPage: React.FC = () => {
         service.handleAnswer(data.payload);
 
         // Set latency to 0 temporarily when answer is received
-        setLatency(0);
       } else if (data.type === 'ice-candidate' && data.payload?.sessionId === sessionId) {
         console.log('Primljen ICE kandidat:', data.payload);
         service.addIceCandidate(data.payload);
@@ -94,11 +92,10 @@ const RemoteControlPage: React.FC = () => {
           if (!stats) return;
 
           stats.forEach((stat) => {
-            if (stat.currentRoundTripTime) {
-              const latencyValue = Math.round(stat.currentRoundTripTime * 1000); // Convert to ms
+            if (stat.fps !== undefined && stat.droppedFrames !== undefined && stat.avgResponseTime !== undefined) {
               const latencyElement = document.getElementById('latency-display');
               if (latencyElement) {
-                latencyElement.textContent = `Latency: ${latencyValue} ms`;
+                latencyElement.textContent = `FPS: ${stat.fps}, Dropped Frames: ${stat.droppedFrames}, Avg Response Time: ${stat.avgResponseTime} ms`;
               }
             }
           });
@@ -528,9 +525,6 @@ const RemoteControlPage: React.FC = () => {
         </div>
         <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
           Latency: Calculating...
-        </div>
-        <div className="text-sm text-gray-600 text-center mt-2">
-            <p>Data is sending to mobile with <span className="font-medium">{latency} ms</span> latency</p>
         </div>
       </div>
     </div>

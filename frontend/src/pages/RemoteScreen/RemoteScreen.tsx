@@ -13,6 +13,7 @@ const RemoteControlPage: React.FC = () => {
   const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
   const [showVideo, setShowVideo] = useState<boolean>(false); // Controls visibility
   const [displayMessage, setDisplayMessage] = useState<string>("Inicijalizacija...");
+  const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
   //const navigate = useNavigate();
@@ -49,6 +50,7 @@ const RemoteControlPage: React.FC = () => {
     setDisplayMessage(`Povezivanje na sesiju: ${pageSessionId}...`);
     setShowVideo(false);
     setRemoteStreamState(null);
+    setIsLoading(true); // Start loading on mount or session change
 
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
@@ -59,6 +61,7 @@ const RemoteControlPage: React.FC = () => {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
         setRemoteStreamState(stream);
         setDisplayMessage("Video stream aktivan.");
+        setIsLoading(false); // Video is ready, stop loading
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();
 
@@ -83,6 +86,7 @@ const RemoteControlPage: React.FC = () => {
         console.warn(`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>.`, "color: red;");
         setDisplayMessage("Veza sa uređajem je prekinuta (ICE).");
         cleanupLocalWebRTCResources('ICE disconnected'); // Clean up local resources
+        setIsLoading(false); // Stop loading on disconnect
       }
     });
 
@@ -122,6 +126,7 @@ const RemoteControlPage: React.FC = () => {
         webRTCServiceRef.current = null;
       }
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
+      setIsLoading(false); // Stop loading on cleanup
     };
   }, [location.search, cleanupLocalWebRTCResources]);
   
@@ -638,41 +643,44 @@ const RemoteControlPage: React.FC = () => {
           <p><span className="font-medium">Status:</span> {displayMessage}</p>
         </div>
         <div className="flex justify-center">
-          <video
-            ref={videoRef}
-            onClick={handleVideoClick}
-            onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            tabIndex={0}
-            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
-            autoPlay
-            playsInline
-            style={{
-              display: 'block',
-              maxWidth: '100%',
-              height: 'auto',
-              touchAction: 'manipulation',
-              pointerEvents: 'auto',
-              userSelect: 'none',
-              WebkitUserSelect: 'none',
-              WebkitTapHighlightColor: 'rgba(0,0,0,0)',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          {!showVideo && ( // Placeholder when video is hidden
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center text-gray-500">
-              {displayMessage === "Video stream aktivan." || displayMessage === "Povezivanje na sesiju..." || displayMessage === "WebRTC ponuda poslana. Čekanje odgovora..." || displayMessage === "Video stream primljen. Priprema prikaza..." ? (
-                <Loader2 size={48} className="mb-4 animate-spin" />
-              ) : (
-                <WifiOff size={48} className="mb-4" />
-              )}
+              <Loader2 size={48} className="mb-4 animate-spin" />
+              <p className="text-lg font-medium">{displayMessage}</p>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              onClick={handleVideoClick}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              tabIndex={0}
+              className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
+              autoPlay
+              playsInline
+              style={{
+                display: 'block',
+                maxWidth: '100%',
+                height: 'auto',
+                touchAction: 'manipulation',
+                pointerEvents: 'auto',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          )}
+          {!showVideo && !isLoading && (
+            <div className="flex flex-col items-center justify-center text-gray-500">
+              <WifiOff size={48} className="mb-4" />
               <p className="text-lg font-medium">
                 {displayMessage.includes("Greška") || displayMessage.includes("prekinuta") ?
                     displayMessage :
-                    (remoteStreamState ? "Povezivanje video prikaza..." : displayMessage) // Show current displayMessage
+                    (remoteStreamState ? "Povezivanje video prikaza..." : displayMessage)
                 }
               </p>
               {/* ... error button ... */}

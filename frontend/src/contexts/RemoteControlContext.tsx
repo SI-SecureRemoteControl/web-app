@@ -48,15 +48,22 @@ type RemoteControlAction =
   | { type: 'RESET_NAVIGATION' };
 
 // Initial state
-const initialState: RemoteControlState = {
-  requests: [],
-  activeSession: null,
-  notification: null,
-  isConnected: false,
-  navigateToWebRTC: false,
-  currentSessionId: undefined,
-  currentDeviceId: undefined
+const getInitialState = (): RemoteControlState => {
+  const savedSession = localStorage.getItem('activeSession');
+  const savedSessionId = localStorage.getItem('currentSessionId');
+  const savedDeviceId = localStorage.getItem('currentDeviceId');
+  return {
+    requests: [],
+    activeSession: savedSession ? JSON.parse(savedSession) : null,
+    notification: null,
+    isConnected: false,
+    navigateToWebRTC: false,
+    currentSessionId: savedSessionId || undefined,
+    currentDeviceId: savedDeviceId || undefined
+  };
 };
+
+const initialState: RemoteControlState = getInitialState();
 
 // Reducer function
 function reducer(state: RemoteControlState, action: RemoteControlAction): RemoteControlState {
@@ -85,22 +92,27 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           message: `New remote control request from ${action.payload.deviceName}`
         }
       };
-      case 'ACCEPT_REQUEST':
+      case 'ACCEPT_REQUEST': {
+        const newSession: ActiveSession = {
+          status: 'pending',
+          requestId: action.payload.requestId,
+          deviceId: action.payload.deviceId,
+          deviceName: action.payload.deviceName,
+          sessionId: action.payload.sessionId
+        };
+        localStorage.setItem('activeSession', JSON.stringify(newSession));
+        localStorage.setItem('currentSessionId', action.payload.sessionId);
+        localStorage.setItem('currentDeviceId', action.payload.deviceId);
         return {
           ...state,
           requests: state.requests.filter(req => req.requestId !== action.payload.requestId),
-          activeSession: {
-            status: 'pending',
-            requestId: action.payload.requestId,
-            deviceId: action.payload.deviceId,
-            deviceName: action.payload.deviceName,
-            sessionId: action.payload.sessionId
-          },
+          activeSession: newSession,
           currentSessionId: action.payload.sessionId,
           currentDeviceId: action.payload.deviceId,
           notification: { type: 'info', message: `Connecting to ${action.payload.deviceName}...` },
           navigateToWebRTC: false // Don't navigate immediately
         };
+      }
     case 'DECLINE_REQUEST':
       return {
         ...state,
@@ -126,6 +138,10 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
       const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found'].includes(backendStatus);
         if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
               console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
+        // Clear persisted session on terminal
+        localStorage.removeItem('activeSession');
+        localStorage.removeItem('currentSessionId');
+        localStorage.removeItem('currentDeviceId');
         return {
             ...state,
             activeSession: null,
@@ -161,13 +177,18 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
             frontendStatus = 'pending'; // Or update as needed
         }
 
+        // Persist session on update
+        const updatedSession: ActiveSession = {
+          ...state.activeSession,
+          status: frontendStatus,
+          deviceId: payloadDeviceId || state.activeSession.deviceId,
+        };
+        localStorage.setItem('activeSession', JSON.stringify(updatedSession));
+        localStorage.setItem('currentSessionId', payloadSessionId);
+        localStorage.setItem('currentDeviceId', payloadDeviceId || state.activeSession.deviceId);
         return {
             ...state,
-            activeSession: {
-                ...state.activeSession,
-                status: frontendStatus,
-                deviceId: payloadDeviceId || state.activeSession.deviceId,
-            },
+            activeSession: updatedSession,
             notification: { type: notificationType, message: notificationMsg },
             navigateToWebRTC: shouldNavigate,
             currentSessionId: payloadSessionId,
@@ -436,20 +457,33 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
 
       const deviceId = currentActiveSession.deviceId;
 
+      // Immediately clear the session from state for instant UI update
+      dispatch({
+        type: 'SESSION_STATUS_UPDATE',
+        payload: {
+          sessionId,
+          status: 'terminated',
+          message: 'Session terminated by user.'
+        }
+      });
+
+      // Then send the termination message to backend
       const success = sendWebSocketMessage('terminate_session', {
         sessionId,
         deviceId
       });
 
-      dispatch({
-        type: 'SESSION_STATUS_UPDATE',
-        payload: {
-          sessionId,
-          status: 'terminated', // Use backend status string
-          message: success ? 'Session termination requested...' : 'Failed to send termination request. Session may still be active.'
-        }
-      });
-
+      // Optionally, show a notification if sending failed (but session is already cleared from UI)
+      if (!success) {
+        dispatch({
+          type: 'CLEAR_NOTIFICATION'
+        });
+        dispatch({
+          type: 'CONNECTION_CHANGE',
+          payload: { connected: false }
+        });
+        console.error('Failed to send termination request');
+      }
     };
 
     const clearNotification = () => {

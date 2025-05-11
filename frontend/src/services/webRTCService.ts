@@ -161,6 +161,29 @@ class WebRTCService {
     }
   }
 
+  async getLatency(): Promise<number | null> {
+    if (!this.peerConnection) {
+      console.warn('PeerConnection is not initialized.');
+      return null;
+    }
+  
+    try {
+      const stats = await this.peerConnection.getStats();
+      let latency: number | null = null;
+  
+      stats.forEach((stat) => {
+        if (stat.type === 'candidate-pair' && stat.currentRoundTripTime !== undefined) {
+          latency = stat.currentRoundTripTime * 1000; // Convert seconds to milliseconds
+        }
+      });
+  
+      return latency;
+    } catch (error) {
+      console.error('Error fetching WebRTC latency:', error);
+      return null;
+    }
+  }
+
   closeConnection() {
     if (this.peerConnection) {
       this.peerConnection.close();

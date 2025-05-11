@@ -83,27 +83,46 @@ const RemoteControlPage: React.FC = () => {
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
-    if (sessionIdFromUrl && deviceIdFromUrl) {
-      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+   if (sessionIdFromUrl && deviceIdFromUrl) {
+  const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
 
-      intervalId = setInterval(async () => {
-        try {
-          const stats = await service.getStats();
-          if (!stats) return;
+  intervalId = setInterval(async () => {
+    try {
+      const stats = await service.getStats();
+      const latency = await service.getLatency();
+      if (!stats) return;
 
-          stats.forEach((stat) => {
-            if (stat.fps !== undefined && stat.droppedFrames !== undefined && stat.avgResponseTime !== undefined) {
-              const latencyElement = document.getElementById('latency-display');
-              if (latencyElement) {
-                latencyElement.textContent = `FPS: ${stat.fps}, Dropped Frames: ${stat.droppedFrames}, Avg Response Time: ${stat.avgResponseTime} ms`;
-              }
-            }
-          });
-        } catch (error) {
-          console.error('Error fetching WebRTC stats:', error);
-        }
-      }, 1000); // Update every second
+      let fps: number | null = null;
+      let droppedFrames: number | null = null;
+      let frameWidth: number | null = null;
+      let frameHeight: number | null = null;
+      let packetsLost: number | null = null;
+      let jitter: string | null = null;
+
+      stats.forEach((stat) => {
+        if ('framesPerSecond' in stat) fps = stat.framesPerSecond;
+        if ('framesDropped' in stat) droppedFrames = stat.framesDropped;
+        if ('frameWidth' in stat) frameWidth = stat.frameWidth;
+        if ('frameHeight' in stat) frameHeight = stat.frameHeight;
+        if ('packetsLost' in stat) packetsLost = stat.packetsLost;
+        if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2); 
+      });
+
+      const latencyElement = document.getElementById('latency-display');
+      if (latencyElement) {
+        latencyElement.textContent =
+          `FPS: ${fps ?? 'N/A'}, Dropped: ${droppedFrames ?? 'N/A'}, ` +
+          `Resolution: ${frameWidth ?? '?'}x${frameHeight ?? '?'}, ` +
+          `Lost Packets: ${packetsLost ?? 'N/A'}, Jitter: ${jitter ?? 'N/A'} ms`+
+          `Latency: ${latency !== null ? latency.toFixed(2) : 'N/A'} ms`;
+      }
+
+    } catch (error) {
+      console.error('Error fetching WebRTC stats:', error);
     }
+  }, 1000); // Update every second
+}
+
 
     return () => {
       if (intervalId) clearInterval(intervalId);

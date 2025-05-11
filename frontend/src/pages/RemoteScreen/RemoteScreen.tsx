@@ -4,13 +4,10 @@ import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
-//import { WifiOff/*, Loader2 */} from 'lucide-react'; 
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
-
-  //const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
 
@@ -37,7 +34,6 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartTime, setGestureStartTime] = useState(0);
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
-  //const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
 
@@ -114,92 +110,7 @@ const RemoteControlPage: React.FC = () => {
     }
   }, [activeSession, pageSessionId, cleanupLocalWebRTCResources]);
 
-  // Stats and Latency useEffects (treba fix)
- /* useEffect(() => {
-
-    let intervalId: NodeJS.Timeout | null = null;
-    //let statsServiceInstance: WebRTCService | null = null;
-
-    if (pageSessionId && deviceIdFromUrl) {
-    //statsServiceInstance = new WebRTCService(deviceIdFromUrl, pageSessionId); 
-      const currentService = webRTCServiceRef.current; // Use the main service instance
-      if (!currentService) return;
-
-      intervalId = setInterval(async () => {
-        try {
-          // const stats = await service.getStats();
-          //console.log('WebRTC stats that is inside:', stats);
-          //const latencyVal = await currentService.getLatency();
-         // console.log('WebRTC latency that is inside:', latency);
-        //  setLatency(latencyVal);
-
-          let fps: number | null = null;
-          let droppedFrames: number | null = null;
-          let frameWidth: number | null = null;
-          let frameHeight: number | null = null;
-          let packetsLost: number | null = null;
-          let jitter: string | null = null;
-
-          // Try to extract from all stats entries
-          //stats.forEach((stat) => {
-            // FPS: try both framesPerSecond and fps
-            //if ('framesPerSecond' in stat && stat.framesPerSecond != null) fps = stat.framesPerSecond;
-            //if ('fps' in stat && stat.fps != null) fps = stat.fps;
-            // Dropped frames: try both framesDropped and droppedFrames
-            //if ('framesDropped' in stat && stat.framesDropped != null) droppedFrames = stat.framesDropped;
-            //if ('droppedFrames' in stat && stat.droppedFrames != null) droppedFrames = stat.droppedFrames;
-            // Resolution
-            //if ('frameWidth' in stat && stat.frameWidth != null) frameWidth = stat.frameWidth;
-            //if ('frameHeight' in stat && stat.frameHeight != null) frameHeight = stat.frameHeight;
-            // Packets lost
-            //if ('packetsLost' in stat && stat.packetsLost != null) packetsLost = stat.packetsLost;
-            // Jitter
-            //if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2);
-          //});
-
-          const latencyElement = document.getElementById('latency-display');
-          if (latencyElement) {
-            latencyElement.textContent =
-              `FPS: ${fps ?? 'N/A'}, Dropped: ${droppedFrames ?? 'N/A'}, ` +
-              `Resolution: ${frameWidth ?? '?'}x${frameHeight ?? '?'}, ` +
-              `Lost Packets: ${packetsLost ?? 'N/A'}, Jitter: ${jitter ?? 'N/A'} ms, ` +
-              `Latency: ${latency !== null ? latency.toFixed(2) : 'N/A'} ms`;
-          }
-        } catch (error) {
-          console.error('Error fetching WebRTC stats:', error);
-          setLatency(null);
-        }
-      }, 1000); // Update every second
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [pageSessionId, deviceIdFromUrl]);*/
-
-  // Setup for global event listeners for touch/gestures and keyboard
-  /*useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-
-    if (pageSessionId && deviceIdFromUrl) {
-      const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
-
-
-      intervalId = setInterval(async () => {
-        try {
-          const latencyValue = await service.getLatency();
-          setLatency(latencyValue);
-        } catch (error) {
-          setLatency(null);
-        }
-      }, 1000);
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [pageSessionId, deviceIdFromUrl]);*/
-
+ 
   // Set up touch-friendly environment and add wheel event listeners
   useEffect(() => {
     // Set touch-friendly styles
@@ -631,14 +542,6 @@ const RemoteControlPage: React.FC = () => {
             }}
           />
         </div>
-        {/*<div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
-          Loading...
-        </div>*/}
-        {/* <div className="text-sm text-gray-600 text-center">
-          {latency !== null
-            ? `Trenutno zbog konekcije, latency je ${latency >= 1000 ? (latency / 1000).toFixed(1) + 's' : latency.toFixed(0) + 'ms'}`
-            : 'Latency: Calculating...'}
-        </div> */}
       </div>
     </div>
   );

@@ -648,7 +648,7 @@ const RemoteControlPage: React.FC = () => {
               <Loader2 size={48} className="mb-4 animate-spin" />
               <p className="text-lg font-medium">{displayMessage}</p>
             </div>
-          ) : (
+          ) : showVideo ? (
             <video
               ref={videoRef}
               onClick={handleVideoClick}
@@ -673,8 +673,7 @@ const RemoteControlPage: React.FC = () => {
                 cursor: 'pointer'
               }}
             />
-          )}
-          {!showVideo && !isLoading && (
+          ) : (
             <div className="flex flex-col items-center justify-center text-gray-500">
               <WifiOff size={48} className="mb-4" />
               <p className="text-lg font-medium">

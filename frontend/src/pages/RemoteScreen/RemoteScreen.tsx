@@ -85,6 +85,39 @@ const RemoteControlPage: React.FC = () => {
     };
   }, [location.search]);
 
+  // Set up touch-friendly environment as soon as component mounts
+  useEffect(() => {
+    // Always set these touch-friendly styles regardless of mode
+    document.body.style.touchAction = 'manipulation';
+    document.body.style.overscrollBehavior = 'contain';
+    
+    // Add these meta tags programmatically to improve touch handling
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.setAttribute('name', 'viewport');
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    
+    return () => {
+      // Cleanup when component unmounts
+      document.body.style.touchAction = '';
+      document.body.style.overscrollBehavior = '';
+    };
+  }, []); // Note: Run only once on mount
+
+  // Additional useEffect for any isTouchEmulationEnabled specific behaviors
+  useEffect(() => {
+    // Apply any additional configuration specific to touch emulation mode
+    if (isTouchEmulationEnabled) {
+      // Add any special handling for explicit touch emulation mode
+      console.log('Touch emulation mode enabled');
+    } else {
+      console.log('Touch emulation mode disabled');
+    }
+  }, [isTouchEmulationEnabled]);
+
   const handleDocumentKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
       return;
@@ -135,7 +168,6 @@ const RemoteControlPage: React.FC = () => {
     const boundingRect = videoElement.getBoundingClientRect();
     console.log('Bounding rect:', boundingRect);
 
-
     const clickX = clientX - boundingRect.left;
     const clickY = clientY - boundingRect.top;
 
@@ -144,7 +176,6 @@ const RemoteControlPage: React.FC = () => {
 
     const naturalWidth = videoElement.videoWidth;
     const naturalHeight = videoElement.videoHeight;
-
 
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
@@ -157,19 +188,6 @@ const RemoteControlPage: React.FC = () => {
 
     return { relativeX, relativeY };
   };
-
-  // For emulating Chrome's device toolbar behavior
-  useEffect(() => {
-    if (isTouchEmulationEnabled) {
-      // Apply CSS to the body to make everything behave more like touch device
-      document.body.style.touchAction = 'manipulation';
-      document.body.style.overscrollBehavior = 'contain';
-    } else {
-      // Reset CSS when not in emulation mode
-      document.body.style.touchAction = '';
-      document.body.style.overscrollBehavior = '';
-    }
-  }, [isTouchEmulationEnabled]);
   
   useEffect(() => {
     document.addEventListener('keydown', handleDocumentKeyDown);
@@ -202,6 +220,7 @@ const RemoteControlPage: React.FC = () => {
       }
     });
   };
+  
   // Handle mouse down to start gesture tracking
   const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
@@ -315,11 +334,9 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
-    // Only prevent default if not in touch emulation mode
-    if (!isTouchEmulationEnabled) {
-      event.preventDefault();
-    }
-
+    // Don't prevent default here - let the browser handle normal touch behavior
+    // This is key to making swipes work correctly
+    
     const touch = event.touches[0];
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
@@ -328,34 +345,32 @@ const RemoteControlPage: React.FC = () => {
   };
 
   // Handle touch move - important to prevent default scrolling behavior
-  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
-    if (isGestureActive && !isTouchEmulationEnabled) {
-      // Only prevent default if not in touch emulation mode
-      event.preventDefault();
-    }
+  const handleTouchMove = (_event: React.TouchEvent<HTMLVideoElement>) => {
+    // Don't prevent default here either - crucial for swipes to work
+    // We just want to track the movement but let the browser handle the gesture
   };
+
   // Handle touch end
   const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
     console.log('handleTouchEnd triggered');
-    // Check if the gesture is active and if the session ID is available
+    
     if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
       setIsGestureActive(false);
       return;
     }
     
-    // Only prevent default if not in touch emulation mode
-    if (!isTouchEmulationEnabled) {
-      event.preventDefault();
-    }
-    
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
 
-    // Use the last known position if there are no touches left
     const touch = event.changedTouches[0];
     const distanceX = touch.clientX - gestureStartX;
     const distanceY = touch.clientY - gestureStartY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+    // If we detect a valid swipe or click gesture, then prevent default
+    if (distance > 10 || (distance < 10 && duration < 300)) {
+      event.preventDefault();
+    }
 
     // If movement is small, treat as a click in toggle mode
     // In standard mode, only if quick and small
@@ -498,16 +513,15 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              touchAction: isTouchEmulationEnabled ? 'manipulation' : 'none',  /* Use manipulation in emulation mode */
+              touchAction: 'manipulation', // Always use manipulation
               pointerEvents: 'auto',
               userSelect: 'none',
               WebkitUserSelect: 'none',
               WebkitTapHighlightColor: 'rgba(0,0,0,0)', /* Remove tap highlight on mobile */
               outline: 'none', /* Remove focus outline */
-              cursor: isTouchEmulationEnabled ? 'pointer' : 'default'
+              cursor: 'pointer'
             }}
           />
-
         </div>
       </div>
     </div>

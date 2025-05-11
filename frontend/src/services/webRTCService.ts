@@ -169,6 +169,11 @@ class WebRTCService {
   
     try {
       const stats = await this.peerConnection.getStats();
+      console.log('RTCStatsReport:', stats);
+      // Print all stats entries for debugging
+      stats.forEach((stat) => {
+        console.log('WebRTC stat entry:', stat);
+      });
       let minRtt: number | null = null;
   
       // Try to get RTT from remote-inbound-rtp or outbound-rtp stats

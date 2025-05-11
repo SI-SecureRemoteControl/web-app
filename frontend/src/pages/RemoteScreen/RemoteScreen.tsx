@@ -89,9 +89,9 @@ const RemoteControlPage: React.FC = () => {
       intervalId = setInterval(async () => {
         try {
           const stats = await service.getStats();
-          console.log('WebRTC stats that is inside:', stats);
+          //console.log('WebRTC stats that is inside:', stats);
           const latency = await service.getLatency();
-          console.log('WebRTC latency that is inside:', latency);
+         // console.log('WebRTC latency that is inside:', latency);
           if (!stats) return;
 
           let fps: number | null = null;

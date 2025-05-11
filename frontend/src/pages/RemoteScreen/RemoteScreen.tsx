@@ -94,12 +94,8 @@ const RemoteControlPage: React.FC = () => {
           if (!stats) return;
 
           stats.forEach((stat) => {
-            if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
-              console.log('Found candidate-pair:', stat);
-              const candidatePair = stat as RTCIceCandidatePairStats;
-              if (candidatePair.currentRoundTripTime) {
-                setLatency(Math.round(candidatePair.currentRoundTripTime * 1000)); // Convert to ms
-              }
+            if (stat.currentRoundTripTime) {
+              setLatency(Math.round(stat.currentRoundTripTime * 1000)); // Convert to ms
             }
           });
         } catch (error) {

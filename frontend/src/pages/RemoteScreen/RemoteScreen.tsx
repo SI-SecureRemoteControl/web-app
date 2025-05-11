@@ -640,6 +640,7 @@ const RemoteControlPage: React.FC = () => {
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer bg-black"
             autoPlay
             playsInline
+            muted // <-- Add this to allow autoplay on all browsers
             style={{
               display: 'block',
               maxWidth: '100%',

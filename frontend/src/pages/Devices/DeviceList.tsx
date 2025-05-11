@@ -70,31 +70,46 @@ const DeviceList: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {devices
-                .filter((device: Device) => device.status !== 'pending')
-                .map((device: Device) => (
-                    <DeviceCard key={device._id} device={device} />
-                ))}
+                {devices.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center text-gray-500 py-8">
+                        <div className="h-12 w-12 mb-4 text-gray-400">
+                            <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                        </div>
+                        <p className="text-lg font-semibold">No devices found</p>
+                    </div>
+                ) : (
+                    devices
+                        .filter((device: Device) => device.status !== 'pending')
+                        .map((device: Device) => (
+                            <DeviceCard key={device._id} device={device} />
+                        ))
+                )}
             </div>
 
             {/* Pagination */}
-            <div className="mt-4 flex justify-between">
-                <button
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page <= 1}
-                    className="bg-gray-300 p-2 rounded"
-                >
-                    Previous
-                </button>
-                <span>Page {page} of {totalPages}</span>
-                <button
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= totalPages}
-                    className="bg-gray-300 p-2 rounded"
-                >
-                    Next
-                </button>
-            </div>
+            {devices.length > 0 && (
+                <div className="mt-4 flex justify-between">
+                    <button
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page <= 1}
+                        className="bg-gray-300 p-2 rounded"
+                    >
+                        Previous
+                    </button>
+                    <span>Page {page} of {totalPages}</span>
+                    <button
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page >= totalPages}
+                        className="bg-gray-300 p-2 rounded"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

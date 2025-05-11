@@ -146,6 +146,67 @@ class WebRTCService {
     }
   }
 
+  async getStats(): Promise<RTCStatsReport | null> {
+    if (!this.peerConnection) {
+      console.warn('PeerConnection is not initialized.');
+      return null;
+    }
+
+    try {
+      const stats = await this.peerConnection.getStats();
+      return stats;
+    } catch (error) {
+      console.error('Error fetching WebRTC stats:', error);
+      return null;
+    }
+  }
+
+  async getLatency(): Promise<number | null> {
+    if (!this.peerConnection) {
+      console.warn('PeerConnection is not initialized.');
+      return null;
+    }
+  
+    try {
+      const stats = await this.peerConnection.getStats();
+      console.log('RTCStatsReport:', stats);
+      // Print all stats entries for debugging
+      stats.forEach((stat) => {
+        console.log('WebRTC stat entry:', stat);
+      });
+      let minRtt: number | null = null;
+  
+      // Try to get RTT from remote-inbound-rtp or outbound-rtp stats
+      stats.forEach((stat) => {
+        // remote-inbound-rtp: roundTripTime (seconds)
+        if (stat.type === 'remote-inbound-rtp' && stat.roundTripTime !== undefined) {
+          const rttMs = stat.roundTripTime * 1000;
+          if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+        }
+        // outbound-rtp: roundTripTime (seconds, sometimes present)
+        if (stat.type === 'outbound-rtp' && stat.roundTripTime !== undefined) {
+          const rttMs = stat.roundTripTime * 1000;
+          if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+        }
+        // inbound-rtp: totalRoundTripTime/roundTripTime (Chrome sometimes)
+        if (stat.type === 'inbound-rtp' && stat.roundTripTime !== undefined) {
+          const rttMs = stat.roundTripTime * 1000;
+          if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+        }
+        // fallback: avgResponseTime (custom stat, if present)
+        if ('avgResponseTime' in stat && stat.avgResponseTime !== undefined) {
+          const rttMs = stat.avgResponseTime;
+          if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+        }
+      });
+  
+      return minRtt;
+    } catch (error) {
+      console.error('Error fetching WebRTC latency:', error);
+      return null;
+    }
+  }
+
   closeConnection() {
     if (this.peerConnection) {
       this.peerConnection.close();

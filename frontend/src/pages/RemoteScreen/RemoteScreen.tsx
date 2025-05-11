@@ -50,6 +50,13 @@ const RemoteControlPage: React.FC = () => {
     setShowVideo(false);
    }, [pageSessionId]);
 
+  // States for gesture tracking
+  const [isGestureActive, setIsGestureActive] = useState(false);
+  const [gestureStartTime, setGestureStartTime] = useState(0);
+  const [gestureStartX, setGestureStartX] = useState(0);
+  const [gestureStartY, setGestureStartY] = useState(0);
+  const [latency, setLatency] = useState<number | null>(null);
+
   useEffect(() => {
 
     if (!pageSessionId || !deviceIdFromUrl) {
@@ -84,7 +91,6 @@ const RemoteControlPage: React.FC = () => {
           videoRef.current.height = settings.height;
         }
 
-        // Alternativno (ako `settings` ne daje tačne dimenzije odmah), koristi `loadedmetadata`:
         videoRef.current.onloadedmetadata = () => {
           if(videoRef.current && isEffectMounted){
            videoRef.current!.width = videoRef.current!.videoWidth;
@@ -128,13 +134,19 @@ const RemoteControlPage: React.FC = () => {
         webRTCServiceRef.current?.handleAnswer(data.payload);
       } else if (data.type === 'ice-candidate') {
         webRTCServiceRef.current?.addIceCandidate(data.payload);
+    const handleControlMessage = (data: any) => {
+      if (data.type === 'answer' && data.payload?.sessionId === sessionId) {
+        console.log('Primljen SDP odgovor:', data.payload);
+        service.handleAnswer(data.payload);
+
+        // Set latency to 0 temporarily when answer is received
+      } else if (data.type === 'ice-candidate' && data.payload?.sessionId === sessionId) {
+        console.log('Primljen ICE kandidat:', data.payload);
+        service.addIceCandidate(data.payload);
       }
     };
 
     websocketService.addControlMessageListener(handleWebSocketMessagesForThisSession);
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
 
     return () => {
       isEffectMounted = false;
@@ -146,6 +158,9 @@ const RemoteControlPage: React.FC = () => {
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+
+      service.closeConnection();
+      websocketService.removeControlMessageListener(handleControlMessage);
     };
   }, [location.search, handleKeyDown, handleKeyUp, cleanupLocalWebRTCResources]);
   
@@ -185,48 +200,187 @@ const RemoteControlPage: React.FC = () => {
     }
   }, [activeSession, pageSessionId, showVideo, navigate]);
 
-  /*const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !sessionIdFromUrl) {
-      return;
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+
+    if (sessionIdFromUrl && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
+
+      intervalId = setInterval(async () => {
+        try {
+          const stats = await service.getStats();
+          //console.log('WebRTC stats that is inside:', stats);
+          const latency = await service.getLatency();
+         // console.log('WebRTC latency that is inside:', latency);
+          if (!stats) return;
+
+          let fps: number | null = null;
+          let droppedFrames: number | null = null;
+          let frameWidth: number | null = null;
+          let frameHeight: number | null = null;
+          let packetsLost: number | null = null;
+          let jitter: string | null = null;
+
+          // Try to extract from all stats entries
+          stats.forEach((stat) => {
+            // FPS: try both framesPerSecond and fps
+            if ('framesPerSecond' in stat && stat.framesPerSecond != null) fps = stat.framesPerSecond;
+            if ('fps' in stat && stat.fps != null) fps = stat.fps;
+            // Dropped frames: try both framesDropped and droppedFrames
+            if ('framesDropped' in stat && stat.framesDropped != null) droppedFrames = stat.framesDropped;
+            if ('droppedFrames' in stat && stat.droppedFrames != null) droppedFrames = stat.droppedFrames;
+            // Resolution
+            if ('frameWidth' in stat && stat.frameWidth != null) frameWidth = stat.frameWidth;
+            if ('frameHeight' in stat && stat.frameHeight != null) frameHeight = stat.frameHeight;
+            // Packets lost
+            if ('packetsLost' in stat && stat.packetsLost != null) packetsLost = stat.packetsLost;
+            // Jitter
+            if ('jitter' in stat && stat.jitter != null) jitter = (stat.jitter * 1000).toFixed(2);
+          });
+
+          const latencyElement = document.getElementById('latency-display');
+          if (latencyElement) {
+            latencyElement.textContent =
+              `FPS: ${fps ?? 'N/A'}, Dropped: ${droppedFrames ?? 'N/A'}, ` +
+              `Resolution: ${frameWidth ?? '?'}x${frameHeight ?? '?'}, ` +
+              `Lost Packets: ${packetsLost ?? 'N/A'}, Jitter: ${jitter ?? 'N/A'} ms, ` +
+              `Latency: ${latency !== null ? latency.toFixed(2) : 'N/A'} ms`;
+          }
+        } catch (error) {
+          console.error('Error fetching WebRTC stats:', error);
+        }
+      }, 1000); // Update every second
     }
 
-    const rect = videoRef.current.getBoundingClientRect();
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sessionIdFromUrl, deviceIdFromUrl]);
 
-    const relativeX = clickX / rect.width;
-    const relativeY = clickY / rect.height;
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
 
-    console.log('Kliknuto na relativne koordinate:', relativeX, relativeY);
+    if (sessionIdFromUrl && deviceIdFromUrl) {
+      const service = new WebRTCService(deviceIdFromUrl, sessionIdFromUrl);
 
-    websocketService.sendControlMessage({
-      action: 'mouse_click',
-      deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
-      payload: {
-        x: relativeX,
-        y: relativeY,
-        button: 'left'
+
+      intervalId = setInterval(async () => {
+        try {
+          const latencyValue = await service.getLatency();
+          setLatency(latencyValue);
+        } catch (error) {
+          setLatency(null);
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [sessionIdFromUrl, deviceIdFromUrl]);
+
+  // Set up touch-friendly environment and add wheel event listeners
+  useEffect(() => {
+    // Set touch-friendly styles
+    document.body.style.touchAction = 'manipulation';
+    document.body.style.overscrollBehavior = 'contain';
+    
+    // Add viewport meta tag for better touch handling
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.setAttribute('name', 'viewport');
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+    
+    // Add wheel event listener for trackpad gestures
+    if (videoRef.current) {
+      videoRef.current.addEventListener('wheel', handleWheelEvent, { passive: false });
+    }
+    
+    // Setup keyboard listeners
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    document.addEventListener('keyup', handleDocumentKeyUp);
+    
+    return () => {
+      // Cleanup
+      document.body.style.touchAction = '';
+      document.body.style.overscrollBehavior = '';
+      
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('wheel', handleWheelEvent);
       }
-    });
-  };
-  */
-  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
-    if (!videoRef.current || !pageSessionId) {
-      return;
-    }
+      
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+      document.removeEventListener('keyup', handleDocumentKeyUp);
+    };
+  }, [sessionIdFromUrl]);
+
+  useEffect(() => {
+    // Add global mouse event listeners when the component mounts
+    const handleMouseMove = (event: MouseEvent) => {
+      if (isGestureActive) {
+        event.preventDefault();
+        if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+          const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
+          const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+
+          const deltaX = event.clientX - gestureStartX;
+          const deltaY = event.clientY - gestureStartY;
+
+          if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            setGestureStartX(event.clientX);
+            setGestureStartY(event.clientY);
+
+            websocketService.sendControlMessage({
+              action: 'swipe',
+              deviceId: deviceIdFromUrl,
+              sessionId: sessionIdFromUrl,
+              payload: {
+                startX: startCoords.relativeX,
+                startY: startCoords.relativeY,
+                endX: currentCoords.relativeX,
+                endY: currentCoords.relativeY,
+                velocity: 0.5,
+              },
+            });
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      if (isGestureActive) {
+        handleGestureEnd(event.clientX, event.clientY);
+      }
+      setIsGestureActive(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isGestureActive, sessionIdFromUrl, deviceIdFromUrl]);
+
+  // Convert client coordinates to relative coordinates
+  const getRelativeCoordinates = (clientX: number, clientY: number) => {
+    if (!videoRef.current) return { relativeX: 0, relativeY: 0 };
 
     const videoElement = videoRef.current;
-
     const boundingRect = videoElement.getBoundingClientRect();
-    const clickX = event.clientX - boundingRect.left;
-    const clickY = event.clientY - boundingRect.top;
+
+    const clickX = clientX - boundingRect.left;
+    const clickY = clientY - boundingRect.top;
 
     const displayedWidth = boundingRect.width;
     const displayedHeight = boundingRect.height;
 
-    const naturalWidth = videoElement.videoWidth;
-    const naturalHeight = videoElement.videoHeight;
+    const naturalWidth = videoElement.videoWidth || displayedWidth;
+    const naturalHeight = videoElement.videoHeight || displayedHeight;
 
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
@@ -237,16 +391,77 @@ const RemoteControlPage: React.FC = () => {
     const relativeX = correctedX / naturalWidth;
     const relativeY = correctedY / naturalHeight;
 
-    console.log('Kliknuto na korigirane relativne koordinate:', relativeX, relativeY);
+    return { relativeX, relativeY };
+  };
+
+  // Handle wheel events (MacBook trackpad gestures)
+  const handleWheelEvent = (event: WheelEvent) => {
+    if (!videoRef.current || !sessionIdFromUrl || !deviceIdFromUrl) return;
+    
+    // Prevent default scrolling behavior
+    event.preventDefault();
+    
+    // Only process if movement is significant enough
+    const threshold = 20; // Adjust based on sensitivity needed
+    
+    if (Math.abs(event.deltaX) > threshold || Math.abs(event.deltaY) > threshold) {
+      // Get current cursor position
+      const rect = videoRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      // Calculate end position based on wheel deltas
+      const scaleMultiplier = 3; // Amplify the gesture
+      const endX = centerX + (event.deltaX * scaleMultiplier);
+      const endY = centerY + (event.deltaY * scaleMultiplier);
+      
+      // Convert to relative coordinates
+      const startCoords = getRelativeCoordinates(centerX, centerY);
+      const endCoords = getRelativeCoordinates(endX, endY);
+      
+      // Calculate velocity
+      const velocity = Math.sqrt(event.deltaX * event.deltaX + event.deltaY * event.deltaY) / 100;
+      
+      console.log('Scroll swipe detected:', {
+        start: startCoords,
+        end: endCoords,
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        velocity
+      });
+      
+      // Send swipe event
+      websocketService.sendControlMessage({
+        action: 'swipe',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          startX: startCoords.relativeX,
+          startY: startCoords.relativeY,
+          endX: endCoords.relativeX,
+          endY: endCoords.relativeY,
+          velocity: velocity
+        }
+      });
+    }
+  };
+
+  // Handle keyboard events
+  const handleDocumentKeyDown = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) return;
 
     websocketService.sendControlMessage({
-      action: 'mouse_click',
+      action: 'keyboard',
       deviceId: deviceIdFromUrl,
       sessionId: pageSessionId,
       payload: {
-        x: relativeX,
-        y: relativeY,
-        button: 'left'
+        key: event.key,
+        code: event.code,
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
     });
   };
@@ -261,7 +476,197 @@ const RemoteControlPage: React.FC = () => {
         </div>
     );
   }
+  const handleDocumentKeyUp = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) return;
 
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
+  
+  // Handle video click
+  const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (!videoRef.current || !sessionIdFromUrl || isGestureActive) return;
+
+    const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
+    
+    websocketService.sendControlMessage({
+      action: 'mouse_click',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        x: relativeX,
+        y: relativeY,
+        button: 'left'
+      }
+    });
+  };
+  
+  // Unified gesture handling for both mouse and touch
+  const handleGestureStart = (clientX: number, clientY: number) => {
+    if (!videoRef.current || !sessionIdFromUrl) return;
+    
+    setIsGestureActive(true);
+    setGestureStartTime(Date.now());
+    setGestureStartX(clientX);
+    setGestureStartY(clientY);
+  };
+  
+  const handleGestureEnd = (clientX: number, clientY: number) => {
+    if (!isGestureActive || !videoRef.current || !sessionIdFromUrl) {
+      setIsGestureActive(false);
+      return;
+    }
+    
+    const endTime = Date.now();
+    const duration = endTime - gestureStartTime;
+    const distanceX = clientX - gestureStartX;
+    const distanceY = clientY - gestureStartY;
+    const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+    
+    // Detect clicks vs swipes
+    const MIN_SWIPE_DISTANCE = 5;
+    
+    if (distance < MIN_SWIPE_DISTANCE) {
+      // Handle as a click
+      const { relativeX, relativeY } = getRelativeCoordinates(clientX, clientY);
+      
+      websocketService.sendControlMessage({
+        action: 'mouse_click',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          x: relativeX,
+          y: relativeY,
+          button: 'left'
+        }
+      });
+    } else {
+      // Handle as a swipe
+      const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+      const endCoords = getRelativeCoordinates(clientX, clientY);
+      
+      // Calculate velocity
+      const velocity = distance / Math.max(duration, 1);
+      
+      console.log('Swipe detected:', {
+        start: startCoords,
+        end: endCoords,
+        distance,
+        duration,
+        velocity
+      });
+      
+      websocketService.sendControlMessage({
+        action: 'swipe',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          startX: startCoords.relativeX,
+          startY: startCoords.relativeY,
+          endX: endCoords.relativeX,
+          endY: endCoords.relativeY,
+          velocity: velocity
+        }
+      });
+    }
+    
+    setIsGestureActive(false);
+  };
+  
+  // Mouse event handlers
+  const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
+    if (event.button === 0) { // Left mouse button
+      handleGestureStart(event.clientX, event.clientY);
+    }
+
+    // Add event listeners for mouse move and mouse up immediately
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    // Prevent default behavior to avoid issues
+    event.preventDefault();
+  };
+  
+  const handleMouseMove = (event: MouseEvent) => {
+    if (isGestureActive) {
+      event.preventDefault();
+      
+      // Ako je srednji klik aktivan, pošaljite swipe informacije u realnom vremenu
+      if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+        const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
+        const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+        
+        // Izračunajte razliku između početne i trenutne pozicije
+        const deltaX = event.clientX - gestureStartX;
+        const deltaY = event.clientY - gestureStartY;
+        
+        // Ako je pomak dovoljno velik, pošaljite swipe poruku
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          // Resetirajte početnu poziciju za kontinuirani swipe
+          setGestureStartX(event.clientX);
+          setGestureStartY(event.clientY);
+          
+          websocketService.sendControlMessage({
+            action: 'swipe',
+            deviceId: deviceIdFromUrl,
+            sessionId: sessionIdFromUrl,
+            payload: {
+              startX: startCoords.relativeX,
+              startY: startCoords.relativeY,
+              endX: currentCoords.relativeX,
+              endY: currentCoords.relativeY,
+              velocity: 0.5 // Možete prilagoditi brzinu prema potrebi
+            }
+          });
+        }
+      }
+    }
+  };
+  
+  const handleMouseUp = (event: MouseEvent) => {
+    if (isGestureActive) {
+      handleGestureEnd(event.clientX, event.clientY);
+    }
+
+    // Cleanup event listeners immediately
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+  
+  // Touch event handlers
+  const handleTouchStart = (event: React.TouchEvent<HTMLVideoElement>) => {
+   // if (event.touches.length !== 1) return;
+    
+    const touch = event.touches[0];
+    handleGestureStart(touch.clientX, touch.clientY);
+  };
+  
+  const handleTouchMove = (_event: React.TouchEvent<HTMLVideoElement>) => {
+    // No need to do anything here, just tracking
+  };
+  
+  const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (event.changedTouches.length === 0) {
+      setIsGestureActive(false);
+      return;
+    }
+    
+    const touch = event.changedTouches[0];
+    handleGestureEnd(touch.clientX, touch.clientY);
+  };
+  
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">
@@ -271,17 +676,30 @@ const RemoteControlPage: React.FC = () => {
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
           <p><span className="font-medium">Status:</span> {displayMessage}</p>
         </div>
-
-        <div className="flex justify-center items-center min-h-[300px] bg-gray-200 rounded-xl"> {/* Container for video or placeholder */}
-          {/* Video element is always in the DOM, visibility controlled by CSS/wrapper */}
+        <div className="flex justify-center">
           <video
             ref={videoRef}
             onClick={handleVideoClick}
-            className={`rounded-xl shadow-lg border border-gray-300 cursor-pointer bg-black ${showVideo ? 'block' : 'hidden'}`} // Toggle visibility
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            tabIndex={0}
+            className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
-            muted
-            style={{ maxWidth: '100%', height: 'auto' }}
+            style={{
+              display: 'block',
+              maxWidth: '100%',
+              height: 'auto',
+              touchAction: 'manipulation',
+              pointerEvents: 'auto',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
           />
           {!showVideo && ( // Placeholder when video is hidden
             <div className="flex flex-col items-center justify-center text-gray-500">
@@ -299,6 +717,14 @@ const RemoteControlPage: React.FC = () => {
               {/* ... error button ... */}
             </div>
           )}
+        </div>
+        <div id="latency-display" className="text-sm text-gray-600 text-center mt-2">
+          Loading...
+        </div>
+        <div className="text-sm text-gray-600 text-center">
+          {latency !== null
+            ? `Trenutno zbog konekcije, latency je ${latency >= 1000 ? (latency / 1000).toFixed(1) + 's' : latency.toFixed(0) + 'ms'}`
+            : 'Latency: Calculating...'}
         </div>
       </div>
     </div>

@@ -146,8 +146,10 @@ wssControl.on('connection', (ws) => {
                 handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.type === 'terminate_session') {
                 handleTerminateSessionRequest(parsedMessage);
-            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action === 'keyboard') {
+            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action == 'swipe') {
                 handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
+            } else if (parsedMessage.action === 'keyboard') {
+                handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
             }
             else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
@@ -364,9 +366,30 @@ function handleWebRTCSignaling(sessionId, parsedMessage) {
 }
 
 function handleRemoteClicks(sessionId, parsedMessage) {
-  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, sessionId: sessionId, payload: parsedMessage.payload, type: parsedMessage.action};
+  var message = {
+      fromId:"webadmin",
+      toId:parsedMessage.deviceId,
+      sessionId: sessionId,
+      payload: parsedMessage.payload,
+      type: parsedMessage.action
+  };
   sendToCommLayer(sessionId, message);
 }
+
+function handleRemoteKeyboard(sessionId, parsedMessage) {
+    const message = {
+        fromId: "webadmin",
+        toId: parsedMessage.deviceId,
+        sessionId: sessionId,
+        payload: parsedMessage.payload,
+        type: parsedMessage.action // 'keyboard'
+    };
+    sendToCommLayer(sessionId, message);
+}
+
+
+
+
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
  function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);

@@ -65,6 +65,9 @@ const RemoteControlPage: React.FC = () => {
       if (data.type === 'answer' && data.payload?.sessionId === sessionId) {
         console.log('Primljen SDP odgovor:', data.payload);
         service.handleAnswer(data.payload);
+
+        // Set latency to 0 temporarily when answer is received
+        setLatency(0);
       } else if (data.type === 'ice-candidate' && data.payload?.sessionId === sessionId) {
         console.log('Primljen ICE kandidat:', data.payload);
         service.addIceCandidate(data.payload);
@@ -92,6 +95,7 @@ const RemoteControlPage: React.FC = () => {
 
           stats.forEach((stat) => {
             if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
+              console.log('Found candidate-pair:', stat);
               const candidatePair = stat as RTCIceCandidatePairStats;
               if (candidatePair.currentRoundTripTime) {
                 setLatency(Math.round(candidatePair.currentRoundTripTime * 1000)); // Convert to ms

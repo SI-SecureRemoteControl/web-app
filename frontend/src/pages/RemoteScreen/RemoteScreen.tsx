@@ -93,7 +93,10 @@ const RemoteControlPage: React.FC = () => {
       console.log(`%c[${pageSessionId}] MainEffect: CLEANUP.`, "color: blue;");
       cleanupLocalWebRTCResources('main effect unmount/deps change');
       setRemoteStream(null); // Ensure remoteStream is reset on cleanup
-       if (webRTCServiceRef.current) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = null; // Defensive: always clear video element
+      }
+      if (webRTCServiceRef.current) {
         webRTCServiceRef.current.closeConnection();
         webRTCServiceRef.current = null;
       }

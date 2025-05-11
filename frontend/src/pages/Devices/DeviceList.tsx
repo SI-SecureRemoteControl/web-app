@@ -71,7 +71,12 @@ const DeviceList: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-4">
                 {devices.length === 0 ? (
-                    <p className="text-center text-gray-500">No logs found</p>
+                    <div className="flex flex-col items-center justify-center text-gray-500 py-8">
+                        <div className="h-12 w-12 mb-4 text-gray-400">
+                            <i className="fas fa-exclamation-circle text-4xl"></i>
+                        </div>
+                        <p className="text-lg font-semibold">No logs found</p>
+                    </div>
                 ) : (
                     devices
                         .filter((device: Device) => device.status !== 'pending')

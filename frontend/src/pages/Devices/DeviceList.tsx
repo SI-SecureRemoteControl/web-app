@@ -70,31 +70,37 @@ const DeviceList: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-                {devices
-                .filter((device: Device) => device.status !== 'pending')
-                .map((device: Device) => (
-                    <DeviceCard key={device._id} device={device} />
-                ))}
+                {devices.length === 0 ? (
+                    <p className="text-center text-gray-500">No logs found</p>
+                ) : (
+                    devices
+                        .filter((device: Device) => device.status !== 'pending')
+                        .map((device: Device) => (
+                            <DeviceCard key={device._id} device={device} />
+                        ))
+                )}
             </div>
 
             {/* Pagination */}
-            <div className="mt-4 flex justify-between">
-                <button
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page <= 1}
-                    className="bg-gray-300 p-2 rounded"
-                >
-                    Previous
-                </button>
-                <span>Page {page} of {totalPages}</span>
-                <button
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= totalPages}
-                    className="bg-gray-300 p-2 rounded"
-                >
-                    Next
-                </button>
-            </div>
+            {devices.length > 0 && (
+                <div className="mt-4 flex justify-between">
+                    <button
+                        onClick={() => handlePageChange(page - 1)}
+                        disabled={page <= 1}
+                        className="bg-gray-300 p-2 rounded"
+                    >
+                        Previous
+                    </button>
+                    <span>Page {page} of {totalPages}</span>
+                    <button
+                        onClick={() => handlePageChange(page + 1)}
+                        disabled={page >= totalPages}
+                        className="bg-gray-300 p-2 rounded"
+                    >
+                        Next
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

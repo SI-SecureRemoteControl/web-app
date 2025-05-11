@@ -10,7 +10,6 @@ const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
-  const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
   //const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
@@ -29,7 +28,6 @@ const RemoteControlPage: React.FC = () => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setRemoteStreamState(null); 
    }, [pageSessionId]);
 
   // States for gesture tracking
@@ -43,9 +41,7 @@ const RemoteControlPage: React.FC = () => {
 
     if(!pageSessionId || !deviceIdFromUrl) {return;}
     console.log(`%c[${pageSessionId}] MainEffect: START/RE-START. Setting up.`, "color: blue;");
-    setRemoteStreamState(null);
-    //setIsLoading(true); // Start loading on mount or session change
-
+    // No need to set remoteStreamState for video display
     const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
     webRTCServiceRef.current = service;
     let isEffectMounted = true;
@@ -53,24 +49,19 @@ const RemoteControlPage: React.FC = () => {
     service.setOnRemoteStream((stream) => {
       if (isEffectMounted && videoRef.current) {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
-        setRemoteStreamState(stream);
-       // setIsLoading(false); // Video is ready, stop loading
+        videoRef.current.srcObject = stream;
         const videoTrack = stream.getVideoTracks()[0];
         const settings = videoTrack.getSettings();
-
         if (settings.width && settings.height) {
           videoRef.current.width = settings.width;
           videoRef.current.height = settings.height;
         }
-
         videoRef.current.onloadedmetadata = () => {
           if(videoRef.current && isEffectMounted){
-           videoRef.current!.width = videoRef.current!.videoWidth;
-            videoRef.current!.height = videoRef.current!.videoHeight;
+            videoRef.current.width = videoRef.current.videoWidth;
+            videoRef.current.height = videoRef.current.videoHeight;
           }
         };
-      } else {
-        console.warn(`%c[${pageSessionId}] MainEffect: onRemoteStream callback - conditions NOT MET. isEffectMounted: ${isEffectMounted}, videoRef.current: ${!!videoRef.current}`, "color: orange;");
       }
     });
 
@@ -120,22 +111,6 @@ const RemoteControlPage: React.FC = () => {
     };
   }, [location.search, cleanupLocalWebRTCResources]);
   
-  useEffect(() => {
-    if (remoteStreamState && videoRef.current) {
-      console.log(`%c[${pageSessionId}] StreamEffect: Attaching stream.`, "color: green;");
-      videoRef.current.srcObject = remoteStreamState;
-      videoRef.current.onloadedmetadata = () => {
-        if (videoRef.current) { // Check ref again inside async callback
-          videoRef.current.width = videoRef.current.videoWidth;
-          videoRef.current.height = videoRef.current.videoHeight;
-          console.log(`%c[${pageSessionId}] StreamEffect: Video metadata loaded. Dimensions set.`, "color: green;");
-        }
-      };
-    } else if (!remoteStreamState) {
-      if (videoRef.current) videoRef.current.srcObject = null; 
-    }
-  }, [remoteStreamState, pageSessionId]); 
-
   useEffect(() => {
     const service = webRTCServiceRef.current; 
     if (!pageSessionId || !service) return;

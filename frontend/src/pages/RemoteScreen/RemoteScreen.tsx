@@ -19,6 +19,9 @@ const RemoteControlPage: React.FC = () => {
   
   // Toggle for mouse mode (standard vs toggle mode)
   const [isToggleMode, setIsToggleMode] = useState(false);
+  
+  // State for touch emulation mode (similar to Chrome DevTools)
+  const [isTouchEmulationEnabled, setIsTouchEmulationEnabled] = useState(false);
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -76,17 +79,53 @@ const RemoteControlPage: React.FC = () => {
 
     websocketService.addControlMessageListener(handleControlMessage);
 
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-
     return () => {
       service.closeConnection();
       websocketService.removeControlMessageListener(handleControlMessage);
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-      cleanupMouseEvents();
     };
   }, [location.search]);
+
+  const handleDocumentKeyDown = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
+
+  const handleDocumentKeyUp = (event: KeyboardEvent) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
 
   // Convert client coordinates to relative coordinates
   const getRelativeCoordinates = (clientX: number, clientY: number) => {
@@ -119,6 +158,29 @@ const RemoteControlPage: React.FC = () => {
     return { relativeX, relativeY };
   };
 
+  // For emulating Chrome's device toolbar behavior
+  useEffect(() => {
+    if (isTouchEmulationEnabled) {
+      // Apply CSS to the body to make everything behave more like touch device
+      document.body.style.touchAction = 'manipulation';
+      document.body.style.overscrollBehavior = 'contain';
+    } else {
+      // Reset CSS when not in emulation mode
+      document.body.style.touchAction = '';
+      document.body.style.overscrollBehavior = '';
+    }
+  }, [isTouchEmulationEnabled]);
+  
+  useEffect(() => {
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    document.addEventListener('keyup', handleDocumentKeyUp);
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+      document.removeEventListener('keyup', handleDocumentKeyUp);
+    };
+  }, [sessionIdFromUrl]);
+  
   const handleVideoClick = (event: React.MouseEvent<HTMLVideoElement>) => {
     // In toggle mode, clicks are handled by gesture system instead
     if (!videoRef.current || !sessionIdFromUrl || isGestureActive || isToggleMode) {
@@ -128,7 +190,7 @@ const RemoteControlPage: React.FC = () => {
     const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
 
     console.log('Clicked at corrected relative coordinates:', relativeX, relativeY);
-
+    
     websocketService.sendControlMessage({
       action: 'mouse_click',
       deviceId: deviceIdFromUrl,
@@ -140,7 +202,6 @@ const RemoteControlPage: React.FC = () => {
       }
     });
   };
-
   // Handle mouse down to start gesture tracking
   const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
     if (!videoRef.current || !sessionIdFromUrl) {
@@ -162,8 +223,11 @@ const RemoteControlPage: React.FC = () => {
   };
 
   // Handle mouse move during gesture
-  const handleMouseMove = (_event: MouseEvent) => {
-    // Just track movement, no action needed until mouse up
+  const handleMouseMove = (event: MouseEvent) => {
+    // Prevent default to avoid text selection during swipe
+    if (isGestureActive) {
+      event.preventDefault();
+    }
   };
 
   // Handle mouse up to complete the gesture
@@ -250,26 +314,26 @@ const RemoteControlPage: React.FC = () => {
     if (!videoRef.current || !sessionIdFromUrl || event.touches.length !== 1) {
       return;
     }
+    
+    // Only prevent default if not in touch emulation mode
+    if (!isTouchEmulationEnabled) {
+      event.preventDefault();
+    }
 
     const touch = event.touches[0];
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
     setGestureStartX(touch.clientX);
     setGestureStartY(touch.clientY);
-
-    // Prevent default to avoid scrolling
-    //event.preventDefault();
   };
 
-  // Handle touch move
- /* const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
-    console.log('handleTouchMove triggered');
-    // Just track movement, action happens on touch end
-    //if (isGestureActive) {
-      //event.preventDefault(); // Prevent scrolling while swiping
-    //}
+  // Handle touch move - important to prevent default scrolling behavior
+  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (isGestureActive && !isTouchEmulationEnabled) {
+      // Only prevent default if not in touch emulation mode
+      event.preventDefault();
+    }
   };
-*/
   // Handle touch end
   const handleTouchEnd = (event: React.TouchEvent<HTMLVideoElement>) => {
     console.log('handleTouchEnd triggered');
@@ -278,7 +342,12 @@ const RemoteControlPage: React.FC = () => {
       setIsGestureActive(false);
       return;
     }
-
+    
+    // Only prevent default if not in touch emulation mode
+    if (!isTouchEmulationEnabled) {
+      event.preventDefault();
+    }
+    
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
 
@@ -323,7 +392,7 @@ const RemoteControlPage: React.FC = () => {
       duration,
       velocity
     });
-
+    
     // Send swipe event
     websocketService.sendControlMessage({
       action: 'swipe',
@@ -337,11 +406,34 @@ const RemoteControlPage: React.FC = () => {
         velocity: velocity
       }
     });
-
+    
     setIsGestureActive(false);
   };
 
-  const handleKeyDown = (event: KeyboardEvent) => {
+  // Handle keyboard events from video element
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLVideoElement>) => {
+    if (!sessionIdFromUrl) {
+      return;
+    }
+    
+    websocketService.sendControlMessage({
+      action: 'keyboard',
+      deviceId: deviceIdFromUrl,
+      sessionId: sessionIdFromUrl,
+      payload: {
+        key: event.key,
+        code: event.code,
+        type: 'keydown',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
+      }
+    });
+  };
+  
+  // Handle key up events from video element
+  const handleKeyUp = (event: React.KeyboardEvent<HTMLVideoElement>) => {
     if (!sessionIdFromUrl) {
       return;
     }
@@ -353,28 +445,15 @@ const RemoteControlPage: React.FC = () => {
       payload: {
         key: event.key,
         code: event.code,
-        type: 'keydown'
+        type: 'keyup',
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+        meta: event.metaKey,
       }
     });
   };
-
-  const handleKeyUp = (event: KeyboardEvent) => {
-    if (!sessionIdFromUrl) {
-      return;
-    }
-
-    websocketService.sendControlMessage({
-      action: 'keyboard',
-      deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
-      payload: {
-        key: event.key,
-        code: event.code,
-        type: 'keyup'
-      }
-    });
-  };
-
+  
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">
@@ -392,14 +471,26 @@ const RemoteControlPage: React.FC = () => {
           />
           <span className="text-sm font-medium text-gray-700">Toggle Mode</span>
         </div>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="text-sm font-medium text-gray-700">Normal Mode</span>
+          <Switch 
+            checked={isTouchEmulationEnabled} 
+            onCheckedChange={setIsTouchEmulationEnabled} 
+            id="touch-emulation-switch"
+          />
+          <span className="text-sm font-medium text-gray-700">Touch Emulation</span>
+        </div>
         <div className="flex justify-center">
           <video
             ref={videoRef}
             onClick={handleVideoClick}
+            onKeyDown={handleKeyDown}
+            onKeyUp={handleKeyUp}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
-           // onTouchMove={handleTouchMove}
+            onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            tabIndex={0}
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer"
             autoPlay
             playsInline
@@ -407,9 +498,13 @@ const RemoteControlPage: React.FC = () => {
               display: 'block',
               maxWidth: '100%',
               height: 'auto',
-              touchAction: 'none',
+              touchAction: isTouchEmulationEnabled ? 'manipulation' : 'none',  /* Use manipulation in emulation mode */
               pointerEvents: 'auto',
               userSelect: 'none',
+              WebkitUserSelect: 'none',
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)', /* Remove tap highlight on mobile */
+              outline: 'none', /* Remove focus outline */
+              cursor: isTouchEmulationEnabled ? 'pointer' : 'default'
             }}
           />
 

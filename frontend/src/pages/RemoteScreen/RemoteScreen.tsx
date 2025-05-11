@@ -16,9 +16,6 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
   
-  // State za srednji klik miša
-  const [isMiddleButtonActive, setIsMiddleButtonActive] = useState(false);
-
   const [latency, setLatency] = useState<number | null>(null);
 
   useEffect(() => {
@@ -361,19 +358,15 @@ const RemoteControlPage: React.FC = () => {
   
   // Mouse event handlers
   const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
-    // Srednji klik miša ima button vrijednost 1
-    if (event.button === 1) {
-      setIsMiddleButtonActive(true);
-      handleGestureStart(event.clientX, event.clientY);
-    } else {
+    if (event.button === 0) { // Left mouse button
       handleGestureStart(event.clientX, event.clientY);
     }
-    
-    // Dodajte event listenere za mouse move i mouse up
+
+    // Add event listeners for mouse move and mouse up
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
-    // Spriječite default ponašanje da izbjegnete probleme
+
+    // Prevent default behavior to avoid issues
     event.preventDefault();
   };
   
@@ -382,7 +375,7 @@ const RemoteControlPage: React.FC = () => {
       event.preventDefault();
       
       // Ako je srednji klik aktivan, pošaljite swipe informacije u realnom vremenu
-      if (isMiddleButtonActive && videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+      if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
         const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
         const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
         
@@ -414,16 +407,11 @@ const RemoteControlPage: React.FC = () => {
   };
   
   const handleMouseUp = (event: MouseEvent) => {
-    // Ako je srednji klik bio aktivan, samo resetirajmo status
-    if (isMiddleButtonActive) {
-      setIsMiddleButtonActive(false);
-      setIsGestureActive(false);
-    } else {
-      // Inače obradite kao normalni klik/swipe
+    if (isGestureActive) {
       handleGestureEnd(event.clientX, event.clientY);
     }
-    
-    // Čišćenje
+
+    // Cleanup
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };
@@ -486,9 +474,7 @@ const RemoteControlPage: React.FC = () => {
           />
         </div>
         <div className="text-sm text-gray-600 text-center mt-2">
-          {latency !== null && (
             <p>Data is sending to mobile with <span className="font-medium">{latency} ms</span> latency</p>
-          )}
         </div>
       </div>
     </div>

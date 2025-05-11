@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState, useCallback} from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
-import { useLocation/*, useNavigate*/ } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
 //import { WifiOff/*, Loader2 */} from 'lucide-react'; 
 
@@ -14,7 +14,6 @@ const RemoteControlPage: React.FC = () => {
   //const [isLoading, setIsLoading] = useState(true);
 
   const location = useLocation();
-  //const navigate = useNavigate();
 
   const queryParams = new URLSearchParams(location.search);
   const deviceIdFromUrl = queryParams.get('deviceId');

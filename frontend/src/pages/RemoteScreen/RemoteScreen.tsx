@@ -15,6 +15,9 @@ const RemoteControlPage: React.FC = () => {
   const [gestureStartTime, setGestureStartTime] = useState(0);
   const [gestureStartX, setGestureStartX] = useState(0);
   const [gestureStartY, setGestureStartY] = useState(0);
+  
+  // State za srednji klik miša
+  const [isMiddleButtonActive, setIsMiddleButtonActive] = useState(false);
 
   const [latency, setLatency] = useState<number | null>(null);
 
@@ -91,10 +94,10 @@ const RemoteControlPage: React.FC = () => {
           if (!stats) return;
 
           stats.forEach((stat) => {
-            if (stat.type === 'ice-candidate' && stat.state === 'connected') {
-              const iceCandidate = stat as RTCIceCandidatePairStats;
-              if (iceCandidate.currentRoundTripTime) {
-                setLatency(Math.round(iceCandidate.currentRoundTripTime * 1000)); // Convert to ms
+            if (stat.type === 'candidate-pair' && stat.state === 'succeeded') {
+              const candidatePair = stat as RTCIceCandidatePairStats;
+              if (candidatePair.currentRoundTripTime) {
+                setLatency(Math.round(candidatePair.currentRoundTripTime * 1000)); // Convert to ms
               }
             }
           });
@@ -358,26 +361,69 @@ const RemoteControlPage: React.FC = () => {
   
   // Mouse event handlers
   const handleMouseDown = (event: React.MouseEvent<HTMLVideoElement>) => {
-    handleGestureStart(event.clientX, event.clientY);
+    // Srednji klik miša ima button vrijednost 1
+    if (event.button === 1) {
+      setIsMiddleButtonActive(true);
+      handleGestureStart(event.clientX, event.clientY);
+    } else {
+      handleGestureStart(event.clientX, event.clientY);
+    }
     
-    // Add event listeners for mouse move and mouse up
+    // Dodajte event listenere za mouse move i mouse up
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     
-    // Prevent default to avoid text selection
+    // Spriječite default ponašanje da izbjegnete probleme
     event.preventDefault();
   };
   
   const handleMouseMove = (event: MouseEvent) => {
     if (isGestureActive) {
       event.preventDefault();
+      
+      // Ako je srednji klik aktivan, pošaljite swipe informacije u realnom vremenu
+      if (isMiddleButtonActive && videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+        const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
+        const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+        
+        // Izračunajte razliku između početne i trenutne pozicije
+        const deltaX = event.clientX - gestureStartX;
+        const deltaY = event.clientY - gestureStartY;
+        
+        // Ako je pomak dovoljno velik, pošaljite swipe poruku
+        if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+          // Resetirajte početnu poziciju za kontinuirani swipe
+          setGestureStartX(event.clientX);
+          setGestureStartY(event.clientY);
+          
+          websocketService.sendControlMessage({
+            action: 'swipe',
+            deviceId: deviceIdFromUrl,
+            sessionId: sessionIdFromUrl,
+            payload: {
+              startX: startCoords.relativeX,
+              startY: startCoords.relativeY,
+              endX: currentCoords.relativeX,
+              endY: currentCoords.relativeY,
+              velocity: 0.5 // Možete prilagoditi brzinu prema potrebi
+            }
+          });
+        }
+      }
     }
   };
   
   const handleMouseUp = (event: MouseEvent) => {
-    handleGestureEnd(event.clientX, event.clientY);
+    // Ako je srednji klik bio aktivan, samo resetirajmo status
+    if (isMiddleButtonActive) {
+      setIsMiddleButtonActive(false);
+      setIsGestureActive(false);
+    } else {
+      // Inače obradite kao normalni klik/swipe
+      handleGestureEnd(event.clientX, event.clientY);
+    }
     
-    // Clean up
+    // Čišćenje
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
   };

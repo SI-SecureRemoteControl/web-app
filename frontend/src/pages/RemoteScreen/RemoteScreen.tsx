@@ -151,6 +151,55 @@ const RemoteControlPage: React.FC = () => {
     };
   }, [sessionIdFromUrl]);
 
+  useEffect(() => {
+    // Add global mouse event listeners when the component mounts
+    const handleMouseMove = (event: MouseEvent) => {
+      if (isGestureActive) {
+        event.preventDefault();
+        if (videoRef.current && sessionIdFromUrl && deviceIdFromUrl) {
+          const currentCoords = getRelativeCoordinates(event.clientX, event.clientY);
+          const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+
+          const deltaX = event.clientX - gestureStartX;
+          const deltaY = event.clientY - gestureStartY;
+
+          if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+            setGestureStartX(event.clientX);
+            setGestureStartY(event.clientY);
+
+            websocketService.sendControlMessage({
+              action: 'swipe',
+              deviceId: deviceIdFromUrl,
+              sessionId: sessionIdFromUrl,
+              payload: {
+                startX: startCoords.relativeX,
+                startY: startCoords.relativeY,
+                endX: currentCoords.relativeX,
+                endY: currentCoords.relativeY,
+                velocity: 0.5,
+              },
+            });
+          }
+        }
+      }
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      if (isGestureActive) {
+        handleGestureEnd(event.clientX, event.clientY);
+      }
+      setIsGestureActive(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isGestureActive, sessionIdFromUrl, deviceIdFromUrl]);
+
   // Convert client coordinates to relative coordinates
   const getRelativeCoordinates = (clientX: number, clientY: number) => {
     if (!videoRef.current) return { relativeX: 0, relativeY: 0 };

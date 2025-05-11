@@ -21,7 +21,11 @@ const RemoteControlPage: React.FC = () => {
   const [isToggleMode, setIsToggleMode] = useState(false);
   
   // State for touch emulation mode (similar to Chrome DevTools)
-  const [isTouchEmulationEnabled, setIsTouchEmulationEnabled] = useState(false);
+  const [isTouchEmulationEnabled, setIsTouchEmulationEnabled] = useState(true); // Set to true by default
+
+  // Debug state
+  const [lastEventType, setLastEventType] = useState<string>("");
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
   useEffect(() => {
     websocketService.connectControlSocket();
@@ -87,7 +91,7 @@ const RemoteControlPage: React.FC = () => {
 
   // Set up touch-friendly environment as soon as component mounts
   useEffect(() => {
-    // Always set these touch-friendly styles regardless of mode
+    // Always set these touch-friendly styles
     document.body.style.touchAction = 'manipulation';
     document.body.style.overscrollBehavior = 'contain';
     
@@ -100,23 +104,78 @@ const RemoteControlPage: React.FC = () => {
     }
     viewportMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
     
+    // *** NEW: Add event listeners for wheel events to detect trackpad gestures ***
+    if (videoRef.current) {
+      videoRef.current.addEventListener('wheel', handleWheelEvent, { passive: false });
+    }
+    
     return () => {
       // Cleanup when component unmounts
       document.body.style.touchAction = '';
       document.body.style.overscrollBehavior = '';
+      
+      if (videoRef.current) {
+        videoRef.current.removeEventListener('wheel', handleWheelEvent);
+      }
     };
-  }, []); // Note: Run only once on mount
+  }, []);
 
-  // Additional useEffect for any isTouchEmulationEnabled specific behaviors
-  useEffect(() => {
-    // Apply any additional configuration specific to touch emulation mode
-    if (isTouchEmulationEnabled) {
-      // Add any special handling for explicit touch emulation mode
-      console.log('Touch emulation mode enabled');
-    } else {
-      console.log('Touch emulation mode disabled');
+  // *** NEW: Wheel event handler for trackpad gestures ***
+  const handleWheelEvent = (event: WheelEvent) => {
+    if (!videoRef.current || !sessionIdFromUrl || !deviceIdFromUrl) return;
+    
+    // Prevent default scrolling behavior
+    event.preventDefault();
+    
+    setLastEventType("wheel");
+    setDebugInfo(`deltaX: ${event.deltaX}, deltaY: ${event.deltaY}`);
+    
+    // Threshold to determine if this is a significant gesture
+    const threshold = 50;
+    
+    // Only process if movement is significant enough
+    if (Math.abs(event.deltaX) > threshold || Math.abs(event.deltaY) > threshold) {
+      // Get current cursor position
+      const rect = videoRef.current.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      // Calculate end position based on wheel deltas
+      // Scale the deltas to make the swipe more noticeable
+      const scaleMultiplier = 2;
+      const endX = centerX + (event.deltaX * scaleMultiplier);
+      const endY = centerY + (event.deltaY * scaleMultiplier);
+      
+      // Convert to relative coordinates
+      const startCoords = getRelativeCoordinates(centerX, centerY);
+      const endCoords = getRelativeCoordinates(endX, endY);
+      
+      // Calculate velocity based on delta values
+      const velocity = Math.sqrt(event.deltaX * event.deltaX + event.deltaY * event.deltaY) / 100;
+      
+      console.log('Trackpad swipe detected:', {
+        start: startCoords,
+        end: endCoords,
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        velocity
+      });
+      
+      // Send swipe event
+      websocketService.sendControlMessage({
+        action: 'swipe',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          startX: startCoords.relativeX,
+          startY: startCoords.relativeY,
+          endX: endCoords.relativeX,
+          endY: endCoords.relativeY,
+          velocity: velocity
+        }
+      });
     }
-  }, [isTouchEmulationEnabled]);
+  };
 
   const handleDocumentKeyDown = (event: KeyboardEvent) => {
     if (!sessionIdFromUrl) {
@@ -174,8 +233,8 @@ const RemoteControlPage: React.FC = () => {
     const displayedWidth = boundingRect.width;
     const displayedHeight = boundingRect.height;
 
-    const naturalWidth = videoElement.videoWidth;
-    const naturalHeight = videoElement.videoHeight;
+    const naturalWidth = videoElement.videoWidth || displayedWidth;
+    const naturalHeight = videoElement.videoHeight || displayedHeight;
 
     const scaleX = naturalWidth / displayedWidth;
     const scaleY = naturalHeight / displayedHeight;
@@ -205,6 +264,8 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
+    setLastEventType("click");
+    
     const { relativeX, relativeY } = getRelativeCoordinates(event.clientX, event.clientY);
 
     console.log('Clicked at corrected relative coordinates:', relativeX, relativeY);
@@ -227,6 +288,8 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
+    setLastEventType("mousedown");
+    
     // Always start gesture tracking regardless of mode
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
@@ -246,6 +309,8 @@ const RemoteControlPage: React.FC = () => {
     // Prevent default to avoid text selection during swipe
     if (isGestureActive) {
       event.preventDefault();
+      setLastEventType("mousemove");
+      setDebugInfo(`x: ${event.clientX}, y: ${event.clientY}`);
     }
   };
 
@@ -256,11 +321,15 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
 
+    setLastEventType("mouseup");
+    
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
     const distanceX = event.clientX - gestureStartX;
     const distanceY = event.clientY - gestureStartY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+    setDebugInfo(`distance: ${distance.toFixed(2)}, duration: ${duration}ms`);
 
     // If movement is small and quick in toggle mode, or in standard mode, treat as a click
     if ((isToggleMode && distance < 10) || (!isToggleMode && distance < 10 && duration < 300)) {
@@ -282,38 +351,42 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
-    // In toggle mode, we always want to detect swipes - even slower ones
-    // In standard mode, we only detect quick swipes
+    // *** IMPORTANT: Lower the threshold for detecting swipes ***
+    // For MacBook touchbar/trackpad support
+    const MIN_SWIPE_DISTANCE = 5; // Lowered from 10
+    
+    // Only process if movement is significant enough
+    if (distance >= MIN_SWIPE_DISTANCE) {
+      // Get relative coordinates for start and end points
+      const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
+      const endCoords = getRelativeCoordinates(event.clientX, event.clientY);
 
-    // Get relative coordinates for start and end points
-    const startCoords = getRelativeCoordinates(gestureStartX, gestureStartY);
-    const endCoords = getRelativeCoordinates(event.clientX, event.clientY);
+      // Calculate velocity based on distance and duration (pixels per millisecond)
+      const velocity = distance / Math.max(duration, 1); // Avoid division by zero
 
-    // Calculate velocity based on distance and duration (pixels per millisecond)
-    const velocity = distance / duration;
+      console.log('Swipe detected:', {
+        start: startCoords,
+        end: endCoords,
+        distance,
+        duration,
+        velocity,
+        isToggleMode
+      });
 
-    console.log('Swipe detected:', {
-      start: startCoords,
-      end: endCoords,
-      distance,
-      duration,
-      velocity,
-      isToggleMode
-    });
-
-    // Send swipe event
-    websocketService.sendControlMessage({
-      action: 'swipe',
-      deviceId: deviceIdFromUrl,
-      sessionId: sessionIdFromUrl,
-      payload: {
-        startX: startCoords.relativeX,
-        startY: startCoords.relativeY,
-        endX: endCoords.relativeX,
-        endY: endCoords.relativeY,
-        velocity: velocity
-      }
-    });
+      // Send swipe event
+      websocketService.sendControlMessage({
+        action: 'swipe',
+        deviceId: deviceIdFromUrl,
+        sessionId: sessionIdFromUrl,
+        payload: {
+          startX: startCoords.relativeX,
+          startY: startCoords.relativeY,
+          endX: endCoords.relativeX,
+          endY: endCoords.relativeY,
+          velocity: velocity
+        }
+      });
+    }
 
     // Clean up
     cleanupMouseEvents();
@@ -334,20 +407,24 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
-    // Don't prevent default here - let the browser handle normal touch behavior
-    // This is key to making swipes work correctly
+    setLastEventType("touchstart");
     
     const touch = event.touches[0];
     setIsGestureActive(true);
     setGestureStartTime(Date.now());
     setGestureStartX(touch.clientX);
     setGestureStartY(touch.clientY);
+    
+    // Don't prevent default for touch events to allow natural gestures
   };
 
-  // Handle touch move - important to prevent default scrolling behavior
-  const handleTouchMove = (_event: React.TouchEvent<HTMLVideoElement>) => {
-    // Don't prevent default here either - crucial for swipes to work
-    // We just want to track the movement but let the browser handle the gesture
+  // Handle touch move
+  const handleTouchMove = (event: React.TouchEvent<HTMLVideoElement>) => {
+    if (isGestureActive) {
+      setLastEventType("touchmove");
+      setDebugInfo(`touch x: ${event.touches[0].clientX}, y: ${event.touches[0].clientY}`);
+    }
+    // Don't prevent default here to allow natural touch behavior
   };
 
   // Handle touch end
@@ -359,6 +436,8 @@ const RemoteControlPage: React.FC = () => {
       return;
     }
     
+    setLastEventType("touchend");
+    
     const endTime = Date.now();
     const duration = endTime - gestureStartTime;
 
@@ -367,14 +446,13 @@ const RemoteControlPage: React.FC = () => {
     const distanceY = touch.clientY - gestureStartY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    // If we detect a valid swipe or click gesture, then prevent default
-    if (distance > 10 || (distance < 10 && duration < 300)) {
-      event.preventDefault();
-    }
+    setDebugInfo(`touch distance: ${distance.toFixed(2)}, duration: ${duration}ms`);
 
-    // If movement is small, treat as a click in toggle mode
-    // In standard mode, only if quick and small
-    if ((isToggleMode && distance < 10) || (!isToggleMode && distance < 10 && duration < 300)) {
+    // *** IMPORTANT: Reduced threshold for detecting swipes ***
+    const MIN_SWIPE_DISTANCE = 5; // Lowered from 10
+
+    // If movement is small, treat as a click
+    if (distance < MIN_SWIPE_DISTANCE) {
       // Handle as a click instead
       const { relativeX, relativeY } = getRelativeCoordinates(touch.clientX, touch.clientY);
 
@@ -398,7 +476,7 @@ const RemoteControlPage: React.FC = () => {
     const endCoords = getRelativeCoordinates(touch.clientX, touch.clientY);
 
     // Calculate velocity based on distance and duration
-    const velocity = distance / duration;
+    const velocity = distance / Math.max(duration, 1); // Avoid division by zero
 
     console.log('Swipe detected (touch):', {
       start: startCoords,
@@ -495,6 +573,12 @@ const RemoteControlPage: React.FC = () => {
           />
           <span className="text-sm font-medium text-gray-700">Touch Emulation</span>
         </div>
+        
+        {/* Debug info display - helpful for troubleshooting */}
+        <div className="text-xs text-gray-500 text-center">
+          Last event: {lastEventType} {debugInfo && `- ${debugInfo}`}
+        </div>
+        
         <div className="flex justify-center">
           <video
             ref={videoRef}
@@ -517,11 +601,21 @@ const RemoteControlPage: React.FC = () => {
               pointerEvents: 'auto',
               userSelect: 'none',
               WebkitUserSelect: 'none',
-              WebkitTapHighlightColor: 'rgba(0,0,0,0)', /* Remove tap highlight on mobile */
-              outline: 'none', /* Remove focus outline */
+              WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+              outline: 'none',
               cursor: 'pointer'
             }}
           />
+        </div>
+        
+        {/* Instructions for MacBook users */}
+        <div className="text-sm text-gray-600 text-center mt-4">
+          <p className="font-medium mb-1">How to use with MacBook touchbar/trackpad:</p>
+          <ul className="text-left max-w-md mx-auto space-y-1">
+            <li>• <strong>Two-finger swipe</strong>: Swipe on the trackpad with two fingers</li>
+            <li>• <strong>Click</strong>: Normal trackpad click</li>
+            <li>• <strong>Toggle mode</strong>: Enable for easier gesture recognition</li>
+          </ul>
         </div>
       </div>
     </div>

@@ -256,7 +256,7 @@ const RemoteControlPage: React.FC = () => {
       // Calculate velocity
       const velocity = Math.sqrt(event.deltaX * event.deltaX + event.deltaY * event.deltaY) / 100;
       
-      console.log('Trackpad swipe detected:', {
+      console.log('Scroll swipe detected:', {
         start: startCoords,
         end: endCoords,
         deltaX: event.deltaX,

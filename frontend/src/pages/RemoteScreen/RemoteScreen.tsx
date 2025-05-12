@@ -521,7 +521,7 @@ const fetchLatency = async () => {
   const getLatencyStatus = () => {
     if (latency === null) return { color: 'gray', label: 'N/A' };
     if (latency < 100) return { color: 'green', label: 'Good' };
-    if (latency < 300) return { color: 'orange', label: 'Bad' };
+    if (latency < 300) return { color: 'red', label: 'Bad' };
     return { color: 'red', label: 'Ultra Bad' };
   };
 

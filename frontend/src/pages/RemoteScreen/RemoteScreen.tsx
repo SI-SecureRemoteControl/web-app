@@ -4,6 +4,7 @@ import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
 import { useLocation } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
+import { Wifi } from 'lucide-react'; // Import WiFi icon
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -516,6 +517,15 @@ const fetchLatency = async () => {
       videoRef.current.srcObject = remoteStream;
     }
   }, [remoteStream]);
+
+  const getLatencyStatus = () => {
+    if (latency === null) return { color: 'gray', label: 'N/A' };
+    if (latency < 100) return { color: 'green', label: 'Good' };
+    if (latency < 300) return { color: 'orange', label: 'Bad' };
+    return { color: 'red', label: 'Ultra Bad' };
+  };
+
+  const latencyStatus = getLatencyStatus();
   
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -524,7 +534,10 @@ const fetchLatency = async () => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
-          <p><span className="font-medium">Latency:</span> {latency !== null ? `${latency.toFixed(2)} ms` : 'N/A'}</p> 
+          <p className="flex items-center justify-center">
+            <Wifi className={`text-${latencyStatus.color}-500 mr-2`} size={16} />
+            <span className="font-medium">Latency:</span> {latency !== null ? `${latency.toFixed(2)} ms` : 'N/A'} ({latencyStatus.label})
+          </p>
         </div>
         <div className="flex justify-center">
           {/* Always render the video element, but hide it if no stream */}

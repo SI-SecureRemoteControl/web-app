@@ -17,7 +17,7 @@ const RemoteControlPage: React.FC = () => {
   const { activeSession} = useRemoteControl();
 
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-
+  const [latency, setLatency] = useState<number | null>(null);
    const cleanupLocalWebRTCResources = useCallback((reason: string) => {
     console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
     if (webRTCServiceRef.current) {
@@ -83,6 +83,16 @@ const RemoteControlPage: React.FC = () => {
     };
 
     websocketService.addControlMessageListener(handleWebSocketMessagesForThisSession);
+
+
+const fetchLatency = async () => {
+        if (webRTCServiceRef.current) {
+            const latency = await webRTCServiceRef.current.getLatency();
+            setLatency(latency);
+        }
+    };
+    const latencyInterval = setInterval(fetchLatency, 5000); 
+
 
     return () => {
       isEffectMounted = false;
@@ -513,6 +523,7 @@ const RemoteControlPage: React.FC = () => {
         <div className="text-sm text-gray-600 text-center break-words whitespace-normal">
           <p><span className="font-medium">Device ID:</span> {deviceIdFromUrl}</p>
           <p><span className="font-medium">Session ID:</span> {pageSessionId}</p>
+          <p><span className="font-medium">Latency:</span> {latency !== null ? `${latency.toFixed(2)} ms` : 'N/A'}</p> 
         </div>
         <div className="flex justify-center">
           {/* Always render the video element, but hide it if no stream */}

@@ -107,6 +107,7 @@ const fetchLatency = async () => {
         webRTCServiceRef.current = null;
       }
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
+      clearInterval(latencyInterval); 
       //setIsLoading(false); // Stop loading on cleanup
     };
   }, [location.search, cleanupLocalWebRTCResources]);

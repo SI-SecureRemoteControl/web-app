@@ -3,6 +3,7 @@ import { websocketService } from './webSocketService';
 class WebRTCService {
   private peerConnection: RTCPeerConnection | null = null;
   private onRemoteStreamCallback: ((stream: MediaStream) => void) | null = null;
+  private onIceDisconnectedCallback: (() => void) | null = null; // new callback for disconnects coming from android users
   private deviceId: string | null = null;
   private sessionId: string | null = null;
 
@@ -18,7 +19,23 @@ class WebRTCService {
   }
 
   setOnRemoteStream(callback: (stream: MediaStream) => void) {
+    console.log(`%cWebRTCService [${this.sessionId}]: setOnRemoteStream CALLED BY PAGE. Callback function stored.`, "color: purple;");
     this.onRemoteStreamCallback = callback;
+  }
+
+  setOnIceDisconnected(callback: () => void) {
+    console.log(`%cWebRTCService [${this.sessionId}]: setOnIceDisconnected CALLED BY PAGE.`, "color: purple;");
+    this.onIceDisconnectedCallback = callback;
+  }
+  
+  public isConnectionActive(): boolean { 
+    return this.peerConnection !== null &&
+           (this.peerConnection.iceConnectionState === 'connected' ||
+            this.peerConnection.iceConnectionState === 'completed');
+  }
+
+  public getSessionId(): string | null { // Public getter for sessionId
+    return this.sessionId;
   }
 
   private initializePeerConnection() {
@@ -39,23 +56,33 @@ class WebRTCService {
     };
 
     this.peerConnection.ontrack = (event) => {
+      console.log(`%cWebRTCService [${this.sessionId}]: ONTRACK event fired. Track kind: ${event.track.kind}. Number of streams: ${event.streams?.length}`, "color: purple; font-weight: bold;");
       if (event.track.kind === 'video'){
         console.log('Primljen video stream:', event.track);
       }
       if (event.track.kind === 'video' && event.streams && event.streams[0] && this.onRemoteStreamCallback) {
+        console.log(`%cWebRTCService [${this.sessionId}]: --->>> INVOKING onRemoteStreamCallback with stream ID: ${event.streams[0].id}`, "color: purple; font-size: 1.2em;");
         this.onRemoteStreamCallback(event.streams[0]);
-      }
+      } else {
+          console.warn(`%cWebRTCService [${this.sessionId}]: ONTRACK - Conditions to call onRemoteStreamCallback NOT MET. Has streams[0]: ${!!(event.streams && event.streams[0])}, Has callback: ${!!this.onRemoteStreamCallback}`, "color: orange;");
+        }
     };
 
     this.peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE Connection State:', this.peerConnection?.iceConnectionState);
-        if (this.peerConnection?.iceConnectionState === 'connected' || this.peerConnection?.iceConnectionState === 'completed') {
-          console.log('WebRTC veza (ICE) uspješno uspostavljena!');
-        } else if (this.peerConnection?.iceConnectionState === 'failed' || this.peerConnection?.iceConnectionState === 'disconnected' || this.peerConnection?.iceConnectionState === 'closed') {
-          console.log('ICE Connection if not connected or completed:', this.peerConnection?.iceConnectionState);
-          console.error('ICE veza prekinuta ili nije uspjela.');
+      if (!this.peerConnection) return; // Guard against race conditions on close
+      const state = this.peerConnection.iceConnectionState;
+      console.log(`%cWebRTCService [${this.sessionId}]: ICE Connection State: ${state}`, "color: teal;");
+
+      if (state === 'connected' || state === 'completed') {
+        console.log(`%cWebRTCService [${this.sessionId}]: WebRTC veza (ICE) uspješno uspostavljena!`, "color: teal;");
+      } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+        console.error(`%cWebRTCService [${this.sessionId}]: ICE veza prekinuta ili nije uspjela. State: ${state}`, "color: red;");
+        if (this.onIceDisconnectedCallback) { 
+          console.log(`%cWebRTCService [${this.sessionId}]: Invoking onIceDisconnectedCallback.`, "color: red;");
+          this.onIceDisconnectedCallback();
         }
-      };
+      }
+    };
   }
 
   private setupWebSocketListeners() {
@@ -146,11 +173,107 @@ class WebRTCService {
     }
   }
 
+  async getStats(): Promise<RTCStatsReport | null> {
+    if (!this.peerConnection) {
+      console.warn('PeerConnection is not initialized.');
+      return null;
+    }
+
+    try {
+      const stats = await this.peerConnection.getStats();
+      return stats;
+    } catch (error) {
+      console.error('Error fetching WebRTC stats:', error);
+      return null;
+    }
+  }
+
+  async getLatency(): Promise<number | null> {
+    if (!this.peerConnection) {
+        console.warn('PeerConnection is not initialized.');
+        return null;
+    }
+
+    try {
+        const stats = await this.peerConnection.getStats();
+        console.log('RTCStatsReport:', stats);
+
+        let minRtt: number | null = null;
+
+        stats.forEach((stat) => {
+            console.log('WebRTC stat entry:', stat);
+
+            if (stat.type === 'candidate-pair' && stat.currentRoundTripTime !== undefined) {
+                const rttMs = stat.currentRoundTripTime * 1000;
+                if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+            }
+        });
+
+        // Fallback to other stats if candidate-pair is not available
+        if (minRtt === null) {
+            stats.forEach((stat) => {
+                if (stat.type === 'remote-inbound-rtp' && stat.roundTripTime !== undefined) {
+                    const rttMs = stat.roundTripTime * 1000;
+                    if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+                }
+
+                if (stat.type === 'outbound-rtp' && stat.roundTripTime !== undefined) {
+                    const rttMs = stat.roundTripTime * 1000;
+                    if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+                }
+
+                if (stat.type === 'inbound-rtp' && stat.roundTripTime !== undefined) {
+                    const rttMs = stat.roundTripTime * 1000;
+                    if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+                }
+
+                if ('avgResponseTime' in stat && stat.avgResponseTime !== undefined) {
+                    const rttMs = stat.avgResponseTime;
+                    if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
+                }
+            });
+        }
+
+        return minRtt;
+    } catch (error) {
+        console.error('Error fetching WebRTC latency:', error);
+        return null;
+    }
+}
+
+
   closeConnection() {
+    const currentSessionForLog = this.sessionId || 'unknown';
+    console.log(`%cWebRTCService [${currentSessionForLog}]: closeConnection() called.`, "color: brown; font-weight: bold;");
+
+    this.onRemoteStreamCallback = null; // Nullify callbacks first
+    this.onIceDisconnectedCallback = null; 
+
     if (this.peerConnection) {
+      this.peerConnection.onicecandidate = null;
+      this.peerConnection.ontrack = null;
+      this.peerConnection.oniceconnectionstatechange = null;
+      this.peerConnection.onnegotiationneeded = null;
+
+      this.peerConnection.getTransceivers().forEach(transceiver => {
+        if (transceiver.stop) { // Check if stop method exists
+            transceiver.stop();
+        }
+      });
+
       this.peerConnection.close();
       this.peerConnection = null;
+      console.log(`%cWebRTCService [${currentSessionForLog}]: Peer connection closed and nulled.`, "color: brown;");
     }
+    this.isRemoteDescriptionSet = false;
+    this.iceCandidateBuffer = []; 
+
+    // If you had a specific listener added by this service instance:
+    // if (this.webSocketMessageHandler && websocketService.removeControlMessageListener) {
+    //   websocketService.removeControlMessageListener(this.webSocketMessageHandler);
+    //   this.webSocketMessageHandler = null;
+    // }
+    console.log(`WebRTCService [${this.sessionId}]: Cleanup finished.`);
   }
 }
 

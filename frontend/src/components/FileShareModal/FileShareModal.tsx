@@ -1,5 +1,4 @@
 import React from 'react';
-import './FileShareModal.css';
 
 interface FileShareModalProps {
   deviceId: string;
@@ -17,24 +16,24 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ deviceId, sessionId, on
   };
 
   return (
-    <div className="file-share-modal-overlay">
-      <div className="file-share-modal">
-        <div className="file-share-modal-header">
-          <h3>File Sharing Request</h3>
+    <div className="fixed top-0 left-0 w-full h-full flex justify-center items-center pointer-events-none">
+      <div className="bg-white rounded-lg shadow-lg p-4 w-80 pointer-events-auto">
+        <div className="mb-2">
+          <h3 className="text-base font-semibold">File Sharing Request</h3>
         </div>
-        <div className="file-share-modal-body">
-          <p><strong>Device ID:</strong> {deviceId}</p>
-          <p><strong>Session ID:</strong> {sessionId}</p>
+        <div className="mb-4">
+          <p className="text-sm"><strong>Device ID:</strong> {deviceId}</p>
+          <p className="text-sm"><strong>Session ID:</strong> {sessionId}</p>
         </div>
-        <div className="file-share-modal-footer">
+        <div className="flex justify-end space-x-2">
           <button 
-            className="btn-decline" 
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm"
             onClick={handleDecline}
           >
             Decline
           </button>
           <button 
-            className="btn-accept" 
+            className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
             onClick={handleAccept}
           >
             Accept

@@ -12,22 +12,22 @@ export interface LayoutProps {
 }
 
 export function Layout({handleLogout}: LayoutProps) {
-    const { terminateFileShareSession, fileShareRequest } = useRemoteControl();
+    const { terminateSession, activeSession } = useRemoteControl();
     const [deviceName, setDeviceName] = useState<string | null>(null);
 
     useEffect(() => {
-        if (fileShareRequest?.deviceId) {
-            axios.get(`/api/devices/${fileShareRequest.deviceId}`)
+        if (activeSession?.deviceId) {
+            axios.get(`/api/devices/${activeSession.deviceId}`)
                 .then(response => setDeviceName(response.data.name))
                 .catch(error => console.error("Failed to fetch device name:", error));
         } else {
             setDeviceName(null);
         }
-    }, [fileShareRequest?.deviceId]);
+    }, [activeSession?.deviceId]);
 
     const handleTerminateSession = () => {
-        if (fileShareRequest) {
-            terminateFileShareSession(fileShareRequest.deviceId, fileShareRequest.sessionId);
+        if (activeSession) {
+            terminateSession(activeSession.sessionId);
         } else {
             console.error("No active session to terminate.");
         }
@@ -44,7 +44,7 @@ export function Layout({handleLogout}: LayoutProps) {
             <main>
                 <Outlet/>
             </main>
-            {fileShareRequest && (
+            {activeSession && (
                 <div className="fixed bottom-4 right-4 z-50 bg-white p-4 rounded shadow-lg flex items-center space-x-4">
                     <span className="text-gray-700 font-medium">
                         Connected to: {deviceName || "Loading..."}

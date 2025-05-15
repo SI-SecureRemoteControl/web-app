@@ -395,11 +395,17 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     // Navigation Effect
     useEffect(() => {
       if (state.navigateToWebRTC && state.currentDeviceId && state.currentSessionId) {
-        console.log(`Navigating to /remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
-        navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
+        // Ako je file share session, idi na file-browser
+        if (state.activeSession && state.activeSession.status === 'connected') {
+          // Pretpostavljamo da je file share ako je stigao browse_request ili je file share session
+          navigate(`/file-browser?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
+        } else {
+          // Za remote control idi na remote-control
+          navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
+        }
         dispatch({ type: 'RESET_NAVIGATION' });
       }
-    }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, navigate]);
+    }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, state.activeSession, navigate]);
 
     const [fileShareRequest, setFileShareRequest] = useState<{ deviceId: string; sessionId: string } | null>(null);
 

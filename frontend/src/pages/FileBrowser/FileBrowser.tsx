@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { websocketService } from '../../services/webSocketService';
-import { FaFolder, FaFileAlt } from 'react-icons/fa';
+import { FolderOpen, FileText } from 'lucide-react';
 
 type FileEntry = {
   name: string;
@@ -71,7 +71,7 @@ const FileBrowser: React.FC = () => {
   };
 
   const handleGoBack = () => {
-    if (currentPath === '/') return; 
+    if (currentPath === '/') return;
     const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
     websocketService.sendControlMessage({
       type: 'browse_request',
@@ -100,12 +100,19 @@ const FileBrowser: React.FC = () => {
             className="mb-2 cursor-pointer hover:underline flex items-center space-x-2"
             onClick={() => entry.type === 'folder' && handleFolderClick(entry.name)}
           >
-            {entry.type === 'folder' ? <FaFolder className="text-yellow-500" /> : <FaFileAlt className="text-gray-500" />}
+            {entry.type === 'folder' ? (
+              <FolderOpen className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <FileText className="h-5 w-5 text-gray-500" />
+            )}
             <span>{entry.name}</span>
-            {entry.type === 'file' && entry.size && <span className="text-sm text-gray-400">({entry.size} bytes)</span>}
+            {entry.type === 'file' && entry.size && (
+              <span className="text-sm text-gray-400">({entry.size} bytes)</span>
+            )}
           </li>
         ))}
       </ul>
+
     </div>
   );
 };

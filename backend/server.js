@@ -150,8 +150,11 @@ wssControl.on('connection', (ws) => {
                 handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
             } else if (parsedMessage.action === 'keyboard') {
                 handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
-            }
-            else {
+            } else if (parsedMessage.type === 'decision_fileshare') {
+                handleFileShareDecision(parsedMessage);
+            } else if (parsedMessage.type === 'browse_request') {
+                handleBrowseRequest(parsedMessage);
+            } else {
                 console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
             }
         } catch (error) {
@@ -188,6 +191,10 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
+      } else if (parsedMessage.type === 'request_session_fileshare') {
+        handleFileShareRequest(ws, parsedMessage);
+      } else if (parsedMessage.type === 'browse_response') {
+        handleBrowseResponse(parsedMessage);
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -276,7 +283,7 @@ async function handleCommLayerControlRequest(ws, message) {
           sessionId: sessionId
       });
 
-       ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' })); // za debug
+       ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' }));
 
   } catch (error) {
       console.error(`Error handling control request ${sessionId}:`, error);
@@ -382,7 +389,7 @@ function handleRemoteKeyboard(sessionId, parsedMessage) {
         toId: parsedMessage.deviceId,
         sessionId: sessionId,
         payload: parsedMessage.payload,
-        type: parsedMessage.action // 'keyboard'
+        type: parsedMessage.action 
     };
     sendToCommLayer(sessionId, message);
 }
@@ -495,9 +502,83 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
   }
 }
 
+// Handle file-sharing request from Comm Layer
+function handleFileShareRequest(ws, message) {
+  const { sessionId, deviceId } = message;
+  if (!sessionId || !deviceId) {
+    console.error('File share request missing sessionId or deviceId');
+    return;
+  }
 
+  console.log(`Received file share request for session ${sessionId} from device ${deviceId}`);
 
+  // Broadcast the file share request to the frontend
+  broadcastToControlFrontend({
+    type: 'request_session_fileshare',
+    sessionId,
+    deviceId
+  });
+}
 
+// Handle file-sharing decision from Frontend
+function handleFileShareDecision(message) {
+  const { sessionId, deviceId, decision } = message;
+  if (!sessionId || !deviceId || typeof decision !== 'boolean') {
+    console.error('File share decision missing sessionId, deviceId, or decision');
+    return;
+  }
+
+  console.log(`Received file share decision for session ${sessionId}: ${decision ? 'Accepted' : 'Declined'}`);
+
+  // Forward the decision to the Comm Layer
+  sendToCommLayer(sessionId, {
+    type: 'decision_fileshare',
+    fromId: 'webadmin',
+    sessionId,
+    deviceId,
+    decision
+  });
+}
+
+// Handle browse request from Frontend
+function handleBrowseRequest(message) {
+  const { sessionId, deviceId, path } = message;
+  if (!sessionId || !deviceId || !path) {
+    console.error('Browse request missing sessionId, deviceId, or path');
+    return;
+  }
+
+  console.log(`Received browse request for session ${sessionId}, path: ${path}`);
+
+  // Forward the browse request to the Comm Layer
+  sendToCommLayer(sessionId, {
+    type: 'browse_request',
+    fromId: 'webadmin',
+    sessionId,
+    deviceId,
+    path
+  });
+}
+
+// Handle browse response from Comm Layer
+function handleBrowseResponse(message) {
+  const { sessionId, deviceId, path, entries } = message;
+  if (!sessionId || !deviceId || !path || !entries) {
+    console.error('Browse response missing sessionId, deviceId, path, or entries');
+    return;
+  }
+
+  console.log(`Received browse response for session ${sessionId}, path: ${path}`);
+
+  // Forward the browse response to the Frontend
+  broadcastToControlFrontend({
+    type: 'browse_response',
+    sessionId,
+    deviceId,
+    path,
+    entries
+  });
+}
 
 // ---------------------------------------------------------- rute
 

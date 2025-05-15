@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
 import { websocketService } from '../services/webSocketService';
 import { useNavigate } from 'react-router-dom';
 import {UserContext} from "../contexts/UserContext";
 import {User} from "../components/types/user";
+import FileShareModal from '../components/FileShareModal/FileShareModal';
 
 // Types
 export interface RemoteRequest {
@@ -221,7 +222,9 @@ interface RemoteControlContextType extends RemoteControlState {
     terminateSession: (sessionId: string) => void;
     clearNotification: () => void;
     resetNavigation: () => void;
-  }
+    terminateFileShareSession: (deviceId: string, sessionId: string) => void; // Add this to the context type
+    fileShareRequest: { deviceId: string; sessionId: string } | null;
+}
 
 const RemoteControlContext = createContext<RemoteControlContextType | undefined>(undefined);
 
@@ -344,6 +347,15 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
               connected: data.connected
             }
           });
+        } else if (data.type === 'request_session_fileshare') {
+          console.log('Handling request_session_fileshare message:', data);
+          setFileShareRequest({ deviceId: data.deviceId, sessionId: data.sessionId });
+        } else if (data.type === 'decision_fileshare') {
+          console.log('Handling decision_fileshare message:', data);
+        } else if (data.type === 'browse_request') {
+          console.log('Handling browse_request message:', data);
+        } else if (data.type === 'disconnect_fileshare_session') {
+          console.log('Handling disconnect_fileshare_session message:', data);
         } else {
             console.log('Received unhandled WebSocket message type:', data.type);
         }
@@ -352,6 +364,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       console.log('Connecting to control socket...');
       websocketService.connectControlSocket();
       websocketService.addControlMessageListener(handleWebSocketMessage);
+
 
       const connectionCheckInterval = setInterval(() => {
         const isConnected = websocketService.getControlConnectionStatus();
@@ -388,6 +401,41 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       }
     }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, navigate]);
 
+    const [fileShareRequest, setFileShareRequest] = useState<{ deviceId: string; sessionId: string } | null>(null);
+
+    const handleFileShareDecision = (decision: boolean) => {
+      if (!fileShareRequest) return;
+    
+      const { deviceId, sessionId } = fileShareRequest;
+    
+      // Send decision_fileshare first
+      sendWebSocketMessage('decision_fileshare', {
+        deviceId,
+        sessionId,
+        decision,
+      });
+    
+      // If decision is true, send browse_request immediately after
+      if (decision) {
+        sendWebSocketMessage('browse_request', {
+          deviceId,
+          sessionId,
+          path: '/',
+        });
+      }
+    
+      setFileShareRequest(null);
+    };
+
+    const terminateFileShareSession = (deviceId: string, sessionId: string) => {
+      sendWebSocketMessage('disconnect_fileshare_session', {
+        deviceId,
+        sessionId,
+        message: 'Session terminated by Web admin',
+      });
+    
+      setFileShareRequest(null);
+    };
 
     // Context Actions
     const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
@@ -505,12 +553,21 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       declineRequest,
       terminateSession,
       clearNotification,
-      resetNavigation
+      resetNavigation,
+      terminateFileShareSession,
+      fileShareRequest
     };
 
     return (
       <RemoteControlContext.Provider value={value}>
         {children}
+        {fileShareRequest && (
+          <FileShareModal
+            deviceId={fileShareRequest.deviceId}
+            sessionId={fileShareRequest.sessionId}
+            onDecision={handleFileShareDecision}
+          />
+        )}
       </RemoteControlContext.Provider>
     );
 }

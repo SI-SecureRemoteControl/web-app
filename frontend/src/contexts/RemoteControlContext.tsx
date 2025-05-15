@@ -222,8 +222,8 @@ interface RemoteControlContextType extends RemoteControlState {
     terminateSession: (sessionId: string) => void;
     clearNotification: () => void;
     resetNavigation: () => void;
-    terminateFileShareSession: (deviceId: string, sessionId: string) => void; // Add this to the context type
-    fileShareRequest: { deviceId: string; sessionId: string } | null;
+    //terminateFileShareSession: (deviceId: string, sessionId: string) => void; // Add this to the context type
+    //fileShareRequest: { deviceId: string; sessionId: string } | null;
 }
 
 const RemoteControlContext = createContext<RemoteControlContextType | undefined>(undefined);
@@ -399,11 +399,12 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
         dispatch({ type: 'RESET_NAVIGATION' });
       }
-      else if (!state.navigateToWebRTC && state.currentDeviceId && state.currentSessionId) {
+      //ne radi
+      /*else if (!state.navigateToWebRTC && state.currentDeviceId && state.currentSessionId) {
         console.log(`Navigating to /remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
         navigate(`/file-browser?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
         dispatch({ type: 'RESET_NAVIGATION' });
-      }
+      }*/
     }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, navigate]);
 
     const [fileShareRequest, setFileShareRequest] = useState<{ deviceId: string; sessionId: string } | null>(null);
@@ -432,7 +433,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       setFileShareRequest(null);
     };
 
-    const terminateFileShareSession = (deviceId: string, sessionId: string) => {
+    /*const terminateFileShareSession = (deviceId: string, sessionId: string) => {
       sendWebSocketMessage('disconnect_fileshare_session', {
         deviceId,
         sessionId,
@@ -440,7 +441,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       });
     
       setFileShareRequest(null);
-    };
+    };*/
 
     // Context Actions
     const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
@@ -559,8 +560,8 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       terminateSession,
       clearNotification,
       resetNavigation,
-      terminateFileShareSession,
-      fileShareRequest
+      //terminateFileShareSession,
+      //fileShareRequest
     };
 
     return (

@@ -551,14 +551,6 @@ function handleFileShareRequest(ws, message) {
       sessionId,
       deviceId,
     });
-
-    ws.send(
-      JSON.stringify({
-        type: 'request_received',
-        sessionId,
-        status: 'pending_admin_approval',
-      })
-    );
   } catch (error) {
     console.error(`Error handling file share request ${sessionId}:`, error);
     ws.send(

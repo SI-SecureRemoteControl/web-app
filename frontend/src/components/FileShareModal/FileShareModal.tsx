@@ -6,7 +6,7 @@ interface FileShareModalProps {
   onDecision: (decision: boolean) => void;
 }
 
-const FileShareModal: React.FC<FileShareModalProps> = ({ deviceId, sessionId, onDecision }) => {
+const FileShareModal: React.FC<FileShareModalProps> = ({ deviceId, onDecision }) => {
   const handleAccept = () => {
     onDecision(true);
   };
@@ -23,7 +23,7 @@ const FileShareModal: React.FC<FileShareModalProps> = ({ deviceId, sessionId, on
         </div>
         <div className="mb-4">
           <p className="text-sm"><strong>Device ID:</strong> {deviceId}</p>
-          <p className="text-sm"><strong>Session ID:</strong> {sessionId}</p>
+          <p className="text-sm"><strong>Requested:</strong> {new Date(Date.now()).toLocaleString()}</p>
         </div>
         <div className="flex justify-end space-x-2">
           <button 

@@ -195,6 +195,21 @@ wssComm.on('connection', (ws) => {
         handleFileShareRequest(ws, parsedMessage);
       } else if (parsedMessage.type === 'browse_response') {
         handleBrowseResponse(parsedMessage);
+      } else if (parsedMessage.type === 'download_response') {
+        const { deviceId, sessionId, downloadUrl } = parsedMessage;
+
+        if (!deviceId || !sessionId || !downloadUrl) {
+          console.error('Invalid download_response received:', parsedMessage);
+          return;
+        }
+
+        console.log(`Broadcasting download_response for session ${sessionId}`);
+        broadcastToControlFrontend({
+          type: 'download_response',
+          deviceId,
+          sessionId,
+          downloadUrl,
+        });
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -507,17 +522,57 @@ function handleFileShareRequest(ws, message) {
   const { sessionId, deviceId } = message;
   if (!sessionId || !deviceId) {
     console.error('File share request missing sessionId or deviceId');
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' }));
     return;
   }
 
-  console.log(`Received file share request for session ${sessionId} from device ${deviceId}`);
+  if (controlSessions.has(sessionId)) {
+    console.error(`Session ${sessionId} already exists in the map.`);
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' }));
+    return;
+  }
 
-  // Broadcast the file share request to the frontend
-  broadcastToControlFrontend({
-    type: 'request_session_fileshare',
-    sessionId,
-    deviceId
-  });
+  try {
+    const session = {
+      state: 'PENDING_ADMIN',
+      device: { deviceId },
+      commLayerWs: ws,
+      requestedTime: Date.now(),
+      timeoutId: setTimeout(() => {
+        handleAdminTimeout(sessionId);
+      }, CONTROL_REQUEST_TIMEOUT),
+    };
+
+    controlSessions.set(sessionId, session);
+    console.log(`File share session created: ${sessionId} for device ${deviceId}. State: PENDING_ADMIN`);
+
+    broadcastToControlFrontend({
+      type: 'request_session_fileshare',
+      sessionId,
+      deviceId,
+    });
+
+    ws.send(
+      JSON.stringify({
+        type: 'request_received',
+        sessionId,
+        status: 'pending_admin_approval',
+      })
+    );
+  } catch (error) {
+    console.error(`Error handling file share request ${sessionId}:`, error);
+    ws.send(
+      JSON.stringify({
+        type: 'error',
+        sessionId,
+        message: 'Internal server error handling request',
+      })
+    );
+    if (controlSessions.has(sessionId)) {
+      clearTimeout(controlSessions.get(sessionId).timeoutId);
+      controlSessions.delete(sessionId);
+    }
+  }
 }
 
 // Handle file-sharing decision from Frontend
@@ -530,14 +585,37 @@ function handleFileShareDecision(message) {
 
   console.log(`Received file share decision for session ${sessionId}: ${decision ? 'Accepted' : 'Declined'}`);
 
-  // Forward the decision to the Comm Layer
-  sendToCommLayer(sessionId, {
-    type: 'decision_fileshare',
-    fromId: 'webadmin',
-    sessionId,
-    deviceId,
-    decision
-  });
+  if (decision) {
+    // Immediately establish the session if accepted
+    const session = controlSessions.get(sessionId);
+    if (session) {
+      session.state = 'CONNECTED';
+      controlSessions.set(sessionId, session);
+
+      broadcastToControlFrontend({
+        type: 'control_status_update',
+        sessionId,
+        deviceId,
+        status: 'connected',
+        message: `File share session ${sessionId} established.`
+      });
+
+      console.log(`File share session ${sessionId} established for device ${deviceId}.`);
+    } else {
+      console.error(`Session ${sessionId} not found for establishing file share.`);
+    }
+  } else {
+    // Send decision_fileshare with false if rejected
+    sendToCommLayer(sessionId, {
+      type: 'decision_fileshare',
+      fromId: 'webadmin',
+      sessionId,
+      deviceId,
+      decision: false
+    });
+
+    console.log(`File share session ${sessionId} rejected for device ${deviceId}.`);
+  }
 }
 
 // Handle browse request from Frontend
@@ -840,4 +918,71 @@ connectDB()
     .catch((err) => {
       process.exit(1);
     });
+
+async function handleCommLayerFileShareRequest(ws, message) {
+  const { sessionId, deviceId: from } = message;
+  if (!sessionId || !from) {
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' }));
+    return;
+  }
+  if (controlSessions.has(sessionId)) {
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' }));
+    return;
+  }
+  if (!db) {
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' }));
+    return;
+  }
+
+  try {
+    const device = await db.collection('devices').findOne({ deviceId: from });
+    if (!device) {
+      ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' }));
+      return;
+    }
+
+    const session = {
+      state: 'PENDING_ADMIN',
+      device: {
+        _id: device._id,
+        deviceId: device.deviceId,
+        name: device.name,
+        model: device.model,
+        osVersion: device.osVersion
+      },
+      commLayerWs: ws,
+      requestedTime: Date.now(),
+      timeoutId: setTimeout(() => {
+        handleAdminTimeout(sessionId);
+      }, CONTROL_REQUEST_TIMEOUT)
+    };
+
+    controlSessions.set(sessionId, session);
+    console.log(`File share session created: ${sessionId} for device ${from}. State: PENDING_ADMIN`);
+
+    if (!ws.activeSessionIds) {
+      ws.activeSessionIds = new Set();
+    }
+    ws.activeSessionIds.add(sessionId);
+
+    const requestId = generateRequestId();
+    broadcastToControlFrontend({
+      requestId: requestId,
+      type: 'request_session_fileshare',
+      deviceId: from,
+      deviceName: session.device.name,
+      timestamp: Date.now(),
+      sessionId: sessionId
+    });
+
+    ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' }));
+  } catch (error) {
+    console.error(`Error handling file share request ${sessionId}:`, error);
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Internal server error handling request' }));
+    if (controlSessions.has(sessionId)) {
+      clearTimeout(controlSessions.get(sessionId).timeoutId);
+      controlSessions.delete(sessionId);
+    }
+  }
+}
 

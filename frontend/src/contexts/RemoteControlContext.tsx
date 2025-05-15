@@ -415,15 +415,15 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         decision,
       });
     
-      // If decision is true, send browse_request immediately after
       if (decision) {
-        sendWebSocketMessage('browse_request', {
-          deviceId,
-          sessionId,
-          path: '/',
-        });
+        setTimeout(() => {
+          sendWebSocketMessage('browse_request', {
+            deviceId,
+            sessionId,
+            path: '/',
+          });
+        }, 100); 
       }
-    
       setFileShareRequest(null);
     };
 

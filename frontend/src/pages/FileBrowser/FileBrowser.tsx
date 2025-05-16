@@ -5,6 +5,15 @@ import { websocketService } from '../../services/webSocketService';
 import { FolderOpen, FileText, ArrowLeft, Upload, Download } from 'lucide-react';
 import axios from 'axios';
 
+// Helper function to format file size
+function formatFileSize(bytes: number): string {
+  if (bytes === undefined) return ''; 
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}
+
 type FileEntry = {
   name: string;
   type: 'file' | 'folder';
@@ -83,17 +92,11 @@ const FileBrowser: React.FC = () => {
     const handleWebSocketMessage = (data: any) => {
       console.log('Received WebSocket message in FileBrowser:', data);
       
-      if (data.type === 'browse_response') {
-        console.log(`Comparing received response (deviceId: ${data.deviceId}, sessionId: ${data.sessionId}) with current (deviceId: ${deviceId}, sessionId: ${sessionId})`);
-        
-        if (data.deviceId === deviceId && data.sessionId === sessionId) {
-          console.log('Processing browse_response with entries:', data.entries);
-          setCurrentPath(data.path);
-          setEntries(Array.isArray(data.entries) ? data.entries : []);
-          setIsLoading(false);
-        } else {
-          console.warn('Ignoring browse_response due to deviceId/sessionId mismatch');
-        }
+      if (data.type === 'browse_response' && data.sessionId === sessionId && data.deviceId === deviceId) {
+        console.log('Handling browse_response:', data);
+        setCurrentPath(data.path);
+        setEntries(data.entries);
+        setIsLoading(false);
       }
       else if (data.type === 'download_response') {
         const { downloadUrl } = data;
@@ -257,6 +260,11 @@ const FileBrowser: React.FC = () => {
     }
   };
 
+  // Log changes to isLoading state
+  useEffect(() => {
+    console.log('isLoading state changed:', isLoading);
+  }, [isLoading]);
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
@@ -392,14 +400,5 @@ const FileBrowser: React.FC = () => {
     </div>
   );
 };
-
-// Helper function to format file size
-function formatFileSize(bytes: number): string {
-  if (bytes === undefined) return ''; 
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
-}
 
 export default FileBrowser;

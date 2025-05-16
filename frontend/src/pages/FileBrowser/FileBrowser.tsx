@@ -1,4 +1,3 @@
-// src/pages/FileBrowser.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { websocketService, registerFileBrowserListener } from '../../services/webSocketService';
@@ -36,12 +35,11 @@ type FileEntry = {
 const FileBrowser: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Parse deviceId and sessionId directly from URL only once
+
   const params = new URLSearchParams(location.search);
   const deviceId = params.get('deviceId') || '';
   const sessionId = params.get('sessionId') || '';
-  
+
   const [currentPath, setCurrentPath] = useState('/');
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
@@ -50,24 +48,23 @@ const FileBrowser: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'files' | 'folder'>('files');
 
-  // Function to send browse request
   const requestBrowse = useCallback((path: string) => {
     console.log(`Sending browse_request for path: ${path} (deviceId: ${deviceId}, sessionId: ${sessionId})`);
     setError(null);
-    
+
     if (!deviceId || !sessionId) {
       setError('Missing deviceId or sessionId, cannot browse');
       console.error('Missing deviceId or sessionId, cannot browse');
       return;
     }
-    
+
     const success = websocketService.sendControlMessage({
       type: 'browse_request',
       deviceId,
       sessionId,
       path,
     });
-    
+
     if (!success) {
       setError('Failed to send browse request. Check WebSocket connection.');
       setIsLoading(false);
@@ -75,34 +72,30 @@ const FileBrowser: React.FC = () => {
     }
   }, [deviceId, sessionId]);
 
-  // Initialize component
   useEffect(() => {
     console.log('FileBrowser mounted with deviceId:', deviceId, 'sessionId:', sessionId);
-    
+
     if (!deviceId || !sessionId) {
       console.error('Missing deviceId or sessionId, navigating to dashboard');
       navigate('/dashboard');
       return;
     }
-    
-    // Reset state when component mounts or URL params change
+
     setCurrentPath('/');
     setEntries([]);
     setSelectedPaths([]);
     setIsLoading(true);
     setError(null);
-    
-    // Send initial browse request with a slight delay to ensure WebSocket is ready
+
     const timer = setTimeout(() => {
       requestBrowse('/');
     }, 300);
-    
+
     return () => {
       clearTimeout(timer);
     };
   }, [deviceId, sessionId, navigate, requestBrowse]);
 
-  // Set up WebSocket message listener
   useEffect(() => {
     const handleWebSocketMessage = (data: any) => {
       console.log('Received WebSocket message in FileBrowser:', data);
@@ -134,13 +127,11 @@ const FileBrowser: React.FC = () => {
       }
     };
 
-    // Register the listener
     registerFileBrowserListener(handleWebSocketMessage);
     console.log('FileBrowser WebSocket listener registered.');
 
     return () => {
-      // Cleanup logic if needed
-      registerFileBrowserListener(() => {});
+      registerFileBrowserListener(() => { });
       console.log('FileBrowser WebSocket listener unregistered.');
     };
   }, [deviceId, sessionId]);
@@ -153,7 +144,7 @@ const FileBrowser: React.FC = () => {
 
   const handleGoBack = () => {
     if (currentPath === '/') return;
-    
+
     const newPath = currentPath.substring(0, currentPath.lastIndexOf('/')) || '/';
     setIsLoading(true);
     requestBrowse(newPath);
@@ -180,6 +171,12 @@ const FileBrowser: React.FC = () => {
     formData.append('deviceId', deviceId);
     formData.append('sessionId', sessionId);
     formData.append('path', currentPath);
+    formData.append('uploadType', uploadMode);
+
+    if (uploadMode === 'folder') {
+      const folderName = selectedFiles[0].webkitRelativePath.split('/')[0];
+      formData.append('folderName', folderName);
+    }
 
     Array.from(selectedFiles).forEach((file) => {
       formData.append('files[]', file);
@@ -202,7 +199,6 @@ const FileBrowser: React.FC = () => {
       alert('Failed to upload files or folders.');
       setIsLoading(false);
     } finally {
-      // Clear the file input box
       const inputElement = document.querySelector('input[type="file"]') as HTMLInputElement;
       if (inputElement) {
         inputElement.value = '';
@@ -214,7 +210,6 @@ const FileBrowser: React.FC = () => {
     setUploadMode((prevMode) => (prevMode === 'files' ? 'folder' : 'files'));
   };
 
-  // Update file input to allow selection of both files and folders
   useEffect(() => {
     const inputElement = document.querySelector('input[type="file"]');
     if (inputElement) {
@@ -263,17 +258,14 @@ const FileBrowser: React.FC = () => {
     websocketService.sendControlMessage(downloadRequest);
   };
 
-  // Manually retry loading if needed
   const handleRetry = () => {
     setIsLoading(true);
     setError(null);
-    
-    // Check WebSocket connection before retrying
+
     if (!websocketService.getControlConnectionStatus()) {
       console.log('WebSocket disconnected, reconnecting...');
       websocketService.connectControlSocket();
-      
-      // Give it a moment to connect before sending the request
+
       setTimeout(() => {
         requestBrowse(currentPath);
       }, 500);
@@ -282,12 +274,10 @@ const FileBrowser: React.FC = () => {
     }
   };
 
-  // Log changes to isLoading state
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);
   }, [isLoading]);
 
-  // Log component mount and unmount
   useEffect(() => {
     console.log('FileBrowser component mounted');
     return () => {
@@ -295,7 +285,6 @@ const FileBrowser: React.FC = () => {
     };
   }, []);
 
-  // Sort entries: folders first (A-Z), then files (A-Z)
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.type === b.type) {
       return a.name.localeCompare(b.name);
@@ -383,7 +372,7 @@ const FileBrowser: React.FC = () => {
           <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
             <p className="font-medium">Error:</p>
             <p>{error}</p>
-            <button 
+            <button
               onClick={handleRetry}
               className="mt-2 text-red-600 hover:text-red-800 underline"
             >
@@ -419,7 +408,7 @@ const FileBrowser: React.FC = () => {
                 ) : (
                   <FileText className="h-5 w-5 text-gray-500 mr-2" />
                 )}
-                <span 
+                <span
                   className={`flex-1 ${entry.type === 'folder' ? 'cursor-pointer hover:text-indigo-700 font-medium' : ''}`}
                   onClick={() => entry.type === 'folder' && handleFolderClick(entry.name)}
                 >

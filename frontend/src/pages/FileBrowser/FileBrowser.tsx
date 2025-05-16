@@ -6,13 +6,26 @@ import { FolderOpen, FileText, ArrowLeft, Upload, Download } from 'lucide-react'
 import axios from 'axios';
 
 // Helper function to format file size
-function formatFileSize(bytes: number): string {
+/*function formatFileSize(bytes: number): string {
   if (bytes === undefined) return ''; 
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}*/
+
+function formatFileSize(bytes: number, decimals = 2): string {
+  if (bytes === 0) return '0 B';
+  if (bytes === undefined || isNaN(bytes)) return '';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const size = bytes / Math.pow(k, i);
+
+  return `${size.toFixed(decimals)} ${sizes[i]}`;
 }
+
 
 type FileEntry = {
   name: string;
@@ -35,6 +48,7 @@ const FileBrowser: React.FC = () => {
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<'files' | 'folder'>('files');
 
   // Function to send browse request
   const requestBrowse = useCallback((path: string) => {
@@ -147,6 +161,7 @@ const FileBrowser: React.FC = () => {
 
   const handleBackToRemoteControl = () => {
     navigate(`/remote-control?deviceId=${deviceId}&sessionId=${sessionId}`);
+    window.location.reload();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,7 +172,7 @@ const FileBrowser: React.FC = () => {
 
   const handleUpload = async () => {
     if (!selectedFiles || selectedFiles.length === 0) {
-      alert('Please select files or folders to upload.');
+      alert('Please select files or a folder to upload.');
       return;
     }
 
@@ -186,18 +201,34 @@ const FileBrowser: React.FC = () => {
       console.error('Error uploading files or folders:', error);
       alert('Failed to upload files or folders.');
       setIsLoading(false);
-      console.log('setIsLoading(false) called.');
+    } finally {
+      // Clear the file input box
+      const inputElement = document.querySelector('input[type="file"]') as HTMLInputElement;
+      if (inputElement) {
+        inputElement.value = '';
+      }
     }
   };
 
-  // Enable directory selection for file input
+  const handleToggleUploadMode = () => {
+    setUploadMode((prevMode) => (prevMode === 'files' ? 'folder' : 'files'));
+  };
+
+  // Update file input to allow selection of both files and folders
   useEffect(() => {
     const inputElement = document.querySelector('input[type="file"]');
     if (inputElement) {
-      inputElement.setAttribute('webkitdirectory', 'true');
-      inputElement.setAttribute('directory', 'true');
+      if (uploadMode === 'folder') {
+        inputElement.setAttribute('webkitdirectory', 'true');
+        inputElement.setAttribute('directory', 'true');
+        inputElement.removeAttribute('multiple');
+      } else {
+        inputElement.removeAttribute('webkitdirectory');
+        inputElement.removeAttribute('directory');
+        inputElement.setAttribute('multiple', 'true');
+      }
     }
-  }, []);
+  }, [uploadMode]);
 
   const handleCheckboxChange = (path: string) => {
     setSelectedPaths((prev) =>
@@ -290,7 +321,7 @@ const FileBrowser: React.FC = () => {
           <p className="text-gray-700 mr-2">Current Path:</p>
           <p className="font-mono bg-gray-100 p-1 rounded">{currentPath}</p>
         </div>
-        
+
         <div className="mb-4 flex gap-2">
           {currentPath !== '/' && (
             <button
@@ -301,7 +332,6 @@ const FileBrowser: React.FC = () => {
               Parent Directory
             </button>
           )}
-          
           <button
             onClick={handleRetry}
             className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
@@ -310,12 +340,20 @@ const FileBrowser: React.FC = () => {
           </button>
         </div>
 
+        <div className="mb-4 flex items-center">
+          <button
+            onClick={handleToggleUploadMode}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Toggle Upload Mode: {uploadMode === 'files' ? 'Files' : 'Folder'}
+          </button>
+        </div>
+
         <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-          <h2 className="font-semibold mb-2">Upload Files</h2>
+          <h2 className="font-semibold mb-2">Upload {uploadMode === 'files' ? 'Files' : 'Folder'}</h2>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="file"
-              multiple
               onChange={handleFileChange}
               className="text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
             />

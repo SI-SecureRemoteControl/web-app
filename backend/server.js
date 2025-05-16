@@ -635,12 +635,20 @@ function handleBrowseRequest(message) {
 // Handle browse response from Comm Layer
 function handleBrowseResponse(message) {
   const { sessionId, deviceId, path, entries } = message;
-  if (!sessionId || !deviceId || !path || !entries) {
-    console.error('Browse response missing sessionId, deviceId, path, or entries');
+  
+  // Added more validation and logging
+  if (!sessionId || !deviceId || !path) {
+    console.error('Browse response missing required fields:', { sessionId, deviceId, path });
     return;
   }
+  
+  if (!entries || !Array.isArray(entries)) {
+    console.error('Browse response missing entries array or entries is not an array', { sessionId, deviceId, path });
+    // Create an empty array to avoid errors
+    message.entries = [];
+  }
 
-  console.log(`Received browse response for session ${sessionId}, path: ${path}`);
+  console.log(`Received browse response for session ${sessionId}, device ${deviceId}, path: ${path}, entries: ${entries ? entries.length : 0}`);
 
   // Forward the browse response to the Frontend
   broadcastToControlFrontend({
@@ -648,7 +656,7 @@ function handleBrowseResponse(message) {
     sessionId,
     deviceId,
     path,
-    entries
+    entries: entries || []
   });
 }
 

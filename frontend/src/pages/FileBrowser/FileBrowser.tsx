@@ -30,25 +30,38 @@ const FileBrowser: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
 
+  // Reset file list and path when deviceId or sessionId changes
   useEffect(() => {
+    setCurrentPath('/');
+    setEntries([]);
+    setSelectedPaths([]);
     if (deviceId && sessionId) {
       websocketService.sendControlMessage({
         type: 'browse_request',
         deviceId,
         sessionId,
-        path: '/'
+        path: '/',
       });
     } else {
       navigate('/dashboard');
     }
-    // eslint-disable-next-line
-  }, [location, navigate]);
+  }, [deviceId, sessionId, navigate]);
 
   useEffect(() => {
     const handleBrowseResponse = (data: BrowseResponse) => {
-      if (data.type === 'browse_response' && data.deviceId === deviceId && data.sessionId === sessionId) {
+      console.log('Received browse_response:', data);
+      console.log('Current deviceId:', deviceId, 'Current sessionId:', sessionId);
+      // Only update if the response matches the current device/session
+      if (
+        data.type === 'browse_response' &&
+        data.deviceId === deviceId &&
+        data.sessionId === sessionId
+      ) {
+        console.log('Updating file browser with entries:', data.entries);
         setCurrentPath(data.path);
         setEntries(data.entries);
+      } else {
+        console.log('browse_response ignored due to device/session mismatch');
       }
     };
 

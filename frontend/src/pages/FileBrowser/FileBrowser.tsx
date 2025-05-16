@@ -172,7 +172,7 @@ const FileBrowser: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const response = await axios.post('https://communicationlayer.railway.app/api/upload', formData, {
+      const response = await axios.post('https://remote-control-gateway-production.up.railway.app/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -263,6 +263,14 @@ const FileBrowser: React.FC = () => {
       console.log('FileBrowser component unmounted');
     };
   }, []);
+
+  // Sort entries: folders first (A-Z), then files (A-Z)
+  const sortedEntries = [...entries].sort((a, b) => {
+    if (a.type === b.type) {
+      return a.name.localeCompare(b.name);
+    }
+    return a.type === 'folder' ? -1 : 1;
+  });
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -357,7 +365,7 @@ const FileBrowser: React.FC = () => {
           </div>
         ) : (
           <ul className="border rounded-lg divide-y">
-            {entries.map((entry) => (
+            {sortedEntries.map((entry) => (
               <li
                 key={entry.name}
                 className="p-3 hover:bg-gray-50 flex items-center"

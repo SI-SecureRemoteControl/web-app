@@ -191,9 +191,9 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
-      } else if (parsedMessage.type === 'request_session_fileshare') {
+      } /*else if (parsedMessage.type === 'request_session_fileshare') {
         handleFileShareRequest(ws, parsedMessage);
-      } else if (parsedMessage.type === 'browse_response') {
+      }*/ else if (parsedMessage.type === 'browse_response') {
         handleBrowseResponse(parsedMessage);
       } else if (parsedMessage.type === 'download_response') {
         const { deviceId, sessionId, downloadUrl } = parsedMessage;
@@ -517,8 +517,8 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
   }
 }
 
-// Handle file-sharing request from Comm Layer
-function handleFileShareRequest(ws, message) {
+// ne treba vise jer smo promijenili logiku, sve ide preko jednog request
+/* function handleFileShareRequest(ws, message) {
   const { sessionId, deviceId } = message;
   if (!sessionId || !deviceId) {
     console.error('File share request missing sessionId or deviceId');
@@ -566,9 +566,10 @@ function handleFileShareRequest(ws, message) {
     }
   }
 }
+*/
 
-// Handle file-sharing decision from Frontend
-function handleFileShareDecision(message) {
+// također ne treba, isti razlog
+/* function handleFileShareDecision(message) {
   const { sessionId, deviceId, decision } = message;
   if (!sessionId || !deviceId || typeof decision !== 'boolean') {
     console.error('File share decision missing sessionId, deviceId, or decision');
@@ -609,6 +610,7 @@ function handleFileShareDecision(message) {
     console.log(`File share session ${sessionId} rejected for device ${deviceId}.`);
   }
 }
+*/
 
 // Handle browse request from Frontend
 function handleBrowseRequest(message) {
@@ -911,7 +913,7 @@ connectDB()
       process.exit(1);
     });
 
-async function handleCommLayerFileShareRequest(ws, message) {
+  /* async function handleCommLayerFileShareRequest(ws, message) {
   const { sessionId, deviceId: from } = message;
   if (!sessionId || !from) {
     ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' }));
@@ -977,4 +979,4 @@ async function handleCommLayerFileShareRequest(ws, message) {
     }
   }
 }
-
+*/

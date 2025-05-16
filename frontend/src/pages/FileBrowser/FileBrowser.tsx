@@ -21,31 +21,27 @@ type BrowseResponse = {
 const FileBrowser: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  // Parse deviceId and sessionId directly from URL only once
+  const params = new URLSearchParams(location.search);
+  const deviceId = params.get('deviceId') || '';
+  const sessionId = params.get('sessionId') || '';
   const [currentPath, setCurrentPath] = useState('/');
   const [entries, setEntries] = useState<FileEntry[]>([]);
-  const [deviceId, setDeviceId] = useState('');
-  const [sessionId, setSessionId] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const deviceIdParam = params.get('deviceId');
-    const sessionIdParam = params.get('sessionId');
-
-    if (deviceIdParam && sessionIdParam) {
-      setDeviceId(deviceIdParam);
-      setSessionId(sessionIdParam);
-
+    if (deviceId && sessionId) {
       websocketService.sendControlMessage({
         type: 'browse_request',
-        deviceId: deviceIdParam,
-        sessionId: sessionIdParam,
+        deviceId,
+        sessionId,
         path: '/'
       });
     } else {
       navigate('/dashboard');
     }
+    // eslint-disable-next-line
   }, [location, navigate]);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useRef, useState } from 'react';
-import { websocketService } from '../services/webSocketService';
+import { websocketService, invokeFileBrowserListener } from '../services/webSocketService';
 import { useNavigate } from 'react-router-dom';
 import { UserContext } from "../contexts/UserContext";
 import { User } from "../components/types/user";
@@ -357,10 +357,9 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
       } else if (data.type === 'disconnect_fileshare_session') {
         console.log('Handling disconnect_fileshare_session message:', data);
       }else if (data.type === 'browse_response') {
-        console.log('Received browse_response:', data);
-        // No need to specifically handle it in the context, 
-        // we'll just forward it to all components including FileBrowser
-        // The FileBrowser component will filter by deviceId and sessionId
+        console.log('Forwarding browse_response to FileBrowser:', data);
+        // Forward browse_response to FileBrowser
+        invokeFileBrowserListener(data);
       } else {
         console.log('Received unhandled WebSocket message type:', data.type);
       }

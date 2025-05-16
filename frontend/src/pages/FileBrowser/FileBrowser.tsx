@@ -1,7 +1,7 @@
 // src/pages/FileBrowser.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { websocketService } from '../../services/webSocketService';
+import { websocketService, registerFileBrowserListener } from '../../services/webSocketService';
 import { FolderOpen, FileText, ArrowLeft, Upload, Download } from 'lucide-react';
 import axios from 'axios';
 
@@ -92,7 +92,7 @@ const FileBrowser: React.FC = () => {
   useEffect(() => {
     const handleWebSocketMessage = (data: any) => {
       console.log('Received WebSocket message in FileBrowser:', data);
-      
+
       if (data.type === 'browse_response') {
         console.log('browse_response received:', data);
         if (data.sessionId === sessionId && data.deviceId === deviceId) {
@@ -108,51 +108,28 @@ const FileBrowser: React.FC = () => {
             receivedDeviceId: data.deviceId
           });
         }
-      }
-      else if (data.type === 'download_response') {
+      } else if (data.type === 'download_response') {
         const { downloadUrl } = data;
         if (downloadUrl) {
           window.open(downloadUrl, '_blank');
         }
-      }
-      else if (data.type === 'error' && data.sessionId === sessionId) {
+      } else if (data.type === 'error' && data.sessionId === sessionId) {
         console.error('Received error from server:', data.message);
         setError(data.message || 'An error occurred');
         setIsLoading(false);
-        console.log('setIsLoading(false) called.');
       }
     };
 
-    console.log('Adding WebSocket listener for FileBrowser');
-    websocketService.addControlMessageListener(handleWebSocketMessage);
-
-    // Check WebSocket connection status
-    const connectionStatus = websocketService.getControlConnectionStatus();
-    console.log('WebSocket connection status:', connectionStatus);
-    
-    if (!connectionStatus) {
-      console.log('WebSocket not connected, attempting to connect...');
-      websocketService.connectControlSocket();
-      
-      // After connection attempt, retry the browse request
-      setTimeout(() => {
-        if (websocketService.getControlConnectionStatus()) {
-          console.log('WebSocket now connected, retrying browse request');
-          requestBrowse('/');
-        } else {
-          console.error('Failed to connect WebSocket');
-          setError('Failed to establish WebSocket connection');
-          setIsLoading(false);
-          console.log('setIsLoading(false) called.');
-        }
-      }, 1000);
-    }
+    // Register the listener
+    registerFileBrowserListener(handleWebSocketMessage);
+    console.log('FileBrowser WebSocket listener registered.');
 
     return () => {
-      console.log('Removing WebSocket listener for FileBrowser');
-      websocketService.removeControlMessageListener(handleWebSocketMessage);
+      // Cleanup logic if needed
+      registerFileBrowserListener(() => {});
+      console.log('FileBrowser WebSocket listener unregistered.');
     };
-  }, [deviceId, sessionId, requestBrowse]);
+  }, [deviceId, sessionId]);
 
   const handleFolderClick = (folderName: string) => {
     const newPath = `${currentPath}/${folderName}`.replace('//', '/');
@@ -402,6 +379,11 @@ const FileBrowser: React.FC = () => {
                 >
                   {entry.name}
                 </span>
+                {entry.type === 'file' && entry.size !== undefined && (
+                  <span className="text-sm text-gray-400 ml-4 w-24 text-center">
+                    {formatFileSize(entry.size)}
+                  </span>
+                )}
                 <button
                   onClick={() => handleDownloadSingle(entry.name)}
                   className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 flex items-center"
@@ -409,11 +391,6 @@ const FileBrowser: React.FC = () => {
                   <Download className="mr-1" size={16} />
                   Download
                 </button>
-                {entry.type === 'file' && entry.size !== undefined && (
-                  <span className="text-sm text-gray-400 ml-2 w-24 text-right">
-                    {formatFileSize(entry.size)}
-                  </span>
-                )}
               </li>
             ))}
           </ul>

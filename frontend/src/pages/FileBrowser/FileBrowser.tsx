@@ -57,6 +57,7 @@ const FileBrowser: React.FC = () => {
     if (!success) {
       setError('Failed to send browse request. Check WebSocket connection.');
       setIsLoading(false);
+      console.log('setIsLoading(false) called.');
     }
   }, [deviceId, sessionId]);
 
@@ -92,11 +93,21 @@ const FileBrowser: React.FC = () => {
     const handleWebSocketMessage = (data: any) => {
       console.log('Received WebSocket message in FileBrowser:', data);
       
-      if (data.type === 'browse_response' && data.sessionId === sessionId && data.deviceId === deviceId) {
-        console.log('Handling browse_response:', data);
-        setCurrentPath(data.path);
-        setEntries(data.entries);
-        setIsLoading(false);
+      if (data.type === 'browse_response') {
+        console.log('browse_response received:', data);
+        if (data.sessionId === sessionId && data.deviceId === deviceId) {
+          console.log('browse_response matches sessionId and deviceId. Updating state.');
+          setCurrentPath(data.path);
+          setEntries(data.entries);
+          setIsLoading(false);
+        } else {
+          console.warn('browse_response does not match sessionId or deviceId:', {
+            expectedSessionId: sessionId,
+            expectedDeviceId: deviceId,
+            receivedSessionId: data.sessionId,
+            receivedDeviceId: data.deviceId
+          });
+        }
       }
       else if (data.type === 'download_response') {
         const { downloadUrl } = data;
@@ -108,6 +119,7 @@ const FileBrowser: React.FC = () => {
         console.error('Received error from server:', data.message);
         setError(data.message || 'An error occurred');
         setIsLoading(false);
+        console.log('setIsLoading(false) called.');
       }
     };
 
@@ -131,6 +143,7 @@ const FileBrowser: React.FC = () => {
           console.error('Failed to connect WebSocket');
           setError('Failed to establish WebSocket connection');
           setIsLoading(false);
+          console.log('setIsLoading(false) called.');
         }
       }, 1000);
     }
@@ -196,6 +209,7 @@ const FileBrowser: React.FC = () => {
       console.error('Error uploading files or folders:', error);
       alert('Failed to upload files or folders.');
       setIsLoading(false);
+      console.log('setIsLoading(false) called.');
     }
   };
 
@@ -264,6 +278,14 @@ const FileBrowser: React.FC = () => {
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);
   }, [isLoading]);
+
+  // Log component mount and unmount
+  useEffect(() => {
+    console.log('FileBrowser component mounted');
+    return () => {
+      console.log('FileBrowser component unmounted');
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">

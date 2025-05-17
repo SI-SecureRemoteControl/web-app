@@ -509,7 +509,6 @@ function cleanupSessionsForSocket(ws) {
   }
 }
 
-// Handle browse request from Frontend
 function handleBrowseRequest(message) {
   const { sessionId, deviceId, path } = message;
   if (!sessionId || !deviceId || !path) {
@@ -519,7 +518,6 @@ function handleBrowseRequest(message) {
 
   console.log(`Received browse request for session ${sessionId}, path: ${path}`);
 
-  // Forward the browse request to the Comm Layer
   sendToCommLayer(sessionId, {
     type: 'browse_request',
     fromId: 'webadmin',
@@ -538,7 +536,6 @@ function handleDownloadRequest(message) {
 
   console.log(`Received download request for session ${sessionId}, paths: ${paths}`);
 
-  // Forward the browse request to the Comm Layer
   sendToCommLayer(sessionId, {
     type: 'download_request',
     sessionId,
@@ -548,20 +545,21 @@ function handleDownloadRequest(message) {
 }
 
 function handleUploadStatus(message) {
-  const { sessionId, deviceId, status, message: poruka } = message;
+  const { sessionId, deviceId, status, message: poruka, path } = message;
   if (!sessionId || !deviceId || !status, !poruka) {
     console.error('Browse request missing sessionId, deviceId, status or message');
     return;
   }
 
-  console.log(`Received upload status for session ${sessionId}, status: ${status} with message: ${poruka}`);
+  console.log(`Received upload status for session ${sessionId}, status: ${status} with message: ${poruka}. Path: ${path}`);
 
   broadcastToControlFrontend({
     type: 'upload_status',
     sessionId,
     deviceId,
     status,
-    message: poruka
+    message: poruka,
+    path
   });
 }
 

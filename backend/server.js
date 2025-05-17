@@ -152,7 +152,9 @@ wssControl.on('connection', (ws) => {
         handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
       } else if (parsedMessage.type === 'decision_fileshare') {
         handleFileShareDecision(parsedMessage);
-      } else if (parsedMessage.type === 'browse_request') {
+      } else if (parsedMessage.type === 'download_request') {
+        handleDownloadRequest(parsedMessage);
+      }else if (parsedMessage.type === 'browse_request') {
         handleBrowseRequest(parsedMessage);
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
@@ -524,6 +526,24 @@ function handleBrowseRequest(message) {
     sessionId,
     deviceId,
     path
+  });
+}
+
+function handleDownloadRequest(message) {
+  const { sessionId, deviceId, paths } = message;
+  if (!sessionId || !deviceId || !paths) {
+    console.error('Browse request missing sessionId, deviceId, or paths');
+    return;
+  }
+
+  console.log(`Received download request for session ${sessionId}, paths: ${paths}`);
+
+  // Forward the browse request to the Comm Layer
+  sendToCommLayer(sessionId, {
+    type: 'download_request',
+    sessionId,
+    deviceId,
+    paths
   });
 }
 

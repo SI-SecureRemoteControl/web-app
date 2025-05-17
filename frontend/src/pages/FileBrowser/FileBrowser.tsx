@@ -290,9 +290,9 @@ const FileBrowser: React.FC = () => {
     }
   };
 
-   useEffect(() => {
+   /*useEffect(() => {
      handleRetry();
-   }, [currentPath, entries]);
+   }, [currentPath, entries]);*/
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);

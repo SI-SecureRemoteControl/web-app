@@ -240,17 +240,17 @@ function handleDownloadRequest(message) {
   log(`Download request received for paths:`, paths);
   
   // Generate a mock download URL
-  const downloadUrl = `https://mockdownload.example.com/${config.deviceId}/${paths.join(',')}?token=${Date.now()}`;
+  //const downloadUrl = `https://mockdownload.example.com/${config.deviceId}/${paths.join(',')}?token=${Date.now()}`;
   
   // Send download response
   sendMessage({
     type: 'download_response',
     sessionId: message.sessionId,
     deviceId: message.deviceId,
-    downloadUrl: downloadUrl
+    //downloadUrl: downloadUrl
   });
   
-  log(`Sent download response with URL: ${downloadUrl}`);
+  //log(`Sent download response with URL: ${downloadUrl}`);
 }
 
 // Send a message to the server

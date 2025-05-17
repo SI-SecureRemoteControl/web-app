@@ -263,18 +263,31 @@ const FileBrowser: React.FC = () => {
       type: 'download_request',
       deviceId,
       sessionId,
-      paths: selectedPaths,
+      paths: selectedPaths.map((path) => {
+        const entry = entries.find((entry) => entry.name === path);
+        return {
+          name: path,
+          type: entry?.type || 'file',
+        };
+      }),
     };
 
     websocketService.sendControlMessage(downloadRequest);
   };
 
   const handleDownloadSingle = (path: string) => {
+    const entry = entries.find((entry) => entry.name === path);
+
     const downloadRequest = {
       type: 'download_request',
       deviceId,
       sessionId,
-      paths: [path],
+      paths: [
+        {
+          name: path,
+          type: entry?.type || 'file',
+        },
+      ],
     };
 
     websocketService.sendControlMessage(downloadRequest);

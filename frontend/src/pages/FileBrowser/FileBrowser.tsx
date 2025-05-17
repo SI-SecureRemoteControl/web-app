@@ -267,7 +267,7 @@ const FileBrowser: React.FC = () => {
         const entry = entries.find((entry) => entry.name === path);
         return {
           name: path,
-          tip: entry?.type || 'file',
+          type: entry?.type || 'file',
         };
       }),
     };
@@ -285,7 +285,7 @@ const FileBrowser: React.FC = () => {
       paths: [
         {
           name: path,
-          tip: entry?.type || 'file',
+          type: entry?.type || 'file',
         },
       ],
     };

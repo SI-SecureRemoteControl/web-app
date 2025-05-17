@@ -19,7 +19,8 @@ function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 B';
   if (bytes === undefined || isNaN(bytes)) return '';
 
-  const k = 1024;
+  const k = 1000;
+  //bilo k=1024
   //da bude exact like android treba k=1000 ??
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));

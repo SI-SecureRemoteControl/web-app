@@ -121,7 +121,7 @@ const FileBrowser: React.FC = () => {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
           alert(notificationMessage);
           if (data.status === 'success') {
-            requestBrowse(currentPath);
+            handleRetry();
           }
         }
       } else if (data.type === 'error' && data.sessionId === sessionId) {

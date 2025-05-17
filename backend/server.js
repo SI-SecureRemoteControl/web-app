@@ -541,7 +541,7 @@ function handleUploadStatus(message) {
     sessionId,
     deviceId,
     status,
-    messsage: poruka
+    message: poruka
   });
 }
 

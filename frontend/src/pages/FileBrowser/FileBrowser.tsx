@@ -5,15 +5,7 @@ import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw } from 'lu
 import axios from 'axios';
 import JSZip from "jszip";
 
-
-// Helper function to format file size
-/*function formatFileSize(bytes: number): string {
-  if (bytes === undefined) return ''; 
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
-}*/
+const uploadUrl = import.meta.env.VITE_API_UPLOAD_URL;
 
 function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === 0) return '0 B';
@@ -208,7 +200,7 @@ const FileBrowser: React.FC = () => {
     }
     try {
       setIsLoading(true);
-      const response = await axios.post('https://remote-control-gateway-production.up.railway.app/api/upload', formData, {
+      const response = await axios.post(uploadUrl, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

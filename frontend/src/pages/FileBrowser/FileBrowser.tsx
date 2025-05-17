@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { websocketService, registerFileBrowserListener } from '../../services/webSocketService';
 import { FolderOpen, FileText, ArrowLeft, Upload, Download } from 'lucide-react';
 import axios from 'axios';
+import JSZip from "jszip";
+
 
 // Helper function to format file size
 /*function formatFileSize(bytes: number): string {
@@ -18,6 +20,7 @@ function formatFileSize(bytes: number, decimals = 2): string {
   if (bytes === undefined || isNaN(bytes)) return '';
 
   const k = 1024;
+  //da bude exact like android treba k=1000 ??
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   const size = bytes / Math.pow(k, i);
@@ -120,6 +123,11 @@ const FileBrowser: React.FC = () => {
         if (downloadUrl) {
           window.open(downloadUrl, '_blank');
         }
+      } else if (data.type === 'upload_status') {
+        if (data.deviceId === deviceId && data.sessionId === sessionId) {
+          const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
+          alert(notificationMessage);
+        }
       } else if (data.type === 'error' && data.sessionId === sessionId) {
         console.error('Received error from server:', data.message);
         setError(data.message || 'An error occurred');
@@ -173,15 +181,34 @@ const FileBrowser: React.FC = () => {
     formData.append('path', currentPath);
     formData.append('uploadType', uploadMode);
 
-    if (uploadMode === 'folder') {
+    /*if (uploadMode === 'folder') {
       const folderName = selectedFiles[0].webkitRelativePath.split('/')[0];
       formData.append('folderName', folderName);
     }
 
     Array.from(selectedFiles).forEach((file) => {
       formData.append('files[]', file);
-    });
+      formData.append('relativePaths[]', file.webkitRelativePath);
+    });*/
+    if (uploadMode === "folder") {
+      const folderName = selectedFiles[0].webkitRelativePath.split("/")[0];
+      formData.append("folderName", folderName);
 
+      const zip = new JSZip();
+      const folder = zip.folder(folderName);
+
+      Array.from(selectedFiles).forEach((file) => {
+        const relativePath = file.webkitRelativePath.split("/").slice(1).join("/");
+        folder?.file(relativePath, file);
+      });
+      
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      formData.append("files[]", zipBlob, `${folderName}.zip`);
+    } else {
+      Array.from(selectedFiles).forEach((file) => {
+        formData.append("files[]", file);
+      });
+    }
     try {
       setIsLoading(true);
       const response = await axios.post('https://remote-control-gateway-production.up.railway.app/api/upload', formData, {
@@ -273,6 +300,10 @@ const FileBrowser: React.FC = () => {
       requestBrowse(currentPath);
     }
   };
+
+ /* useEffect(() => {
+    handleRetry();
+  }, [currentPath, entries]);*/
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);

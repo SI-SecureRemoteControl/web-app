@@ -358,9 +358,12 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         console.log('Handling disconnect_fileshare_session message:', data);
       }else if (data.type === 'browse_response') {
         console.log('Forwarding browse_response to FileBrowser:', data);
-        // Forward browse_response to FileBrowser
         invokeFileBrowserListener(data);
-      } else {
+      } else if(data.type === 'download_response'){
+        invokeFileBrowserListener(data);
+      }else if(data.type==='upload_status'){
+        invokeFileBrowserListener(data);
+      }else {
         console.log('Received unhandled WebSocket message type:', data.type);
       }
     };

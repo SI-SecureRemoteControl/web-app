@@ -113,6 +113,7 @@ const FileBrowser: React.FC = () => {
         }
       } else if (data.type === 'download_response') {
         const { downloadUrl } = data;
+        console.log('download_response received:', data);
         if (downloadUrl) {
           const link = document.createElement('a');
           link.href = downloadUrl;

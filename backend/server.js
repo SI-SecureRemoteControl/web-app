@@ -200,6 +200,7 @@ wssComm.on('connection', (ws) => {
       } else if (parsedMessage.type === 'upload_status') {
         handleUploadStatus(parsedMessage);
       } else if (parsedMessage.type === 'download_response') {
+        console.log('Download response:', parsedMessage);
         handleDownloadResponse(parsedMessage);
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);

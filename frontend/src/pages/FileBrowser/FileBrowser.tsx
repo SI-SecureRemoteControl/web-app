@@ -116,7 +116,7 @@ const FileBrowser: React.FC = () => {
         if (downloadUrl) {
           const link = document.createElement('a');
           link.href = downloadUrl;
-          link.target = '_self'; // Ensures it doesn't open in a new tab
+          link.target = '_self'; 
           link.download = downloadUrl.split('/').pop(); 
           document.body.appendChild(link);
           link.click();

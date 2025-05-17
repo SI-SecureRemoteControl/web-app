@@ -114,7 +114,12 @@ const FileBrowser: React.FC = () => {
       } else if (data.type === 'download_response') {
         const { downloadUrl } = data;
         if (downloadUrl) {
-          window.open(downloadUrl, '_blank');
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = downloadUrl.split('/').pop(); 
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         }
       } else if (data.type === 'upload_status') {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {

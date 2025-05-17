@@ -193,10 +193,12 @@ const FileBrowser: React.FC = () => {
     });*/
     if (uploadMode === "folder") {
       const folderName = selectedFiles[0].webkitRelativePath.split("/")[0];
-      formData.append("folderName", folderName);
-
       const zip = new JSZip();
-      const folder = zip.folder(folderName);
+
+      const name = generateRandomFolderName();
+      const parentFolder = zip.folder(name);
+
+      const folder = parentFolder?.folder(folderName);
 
       Array.from(selectedFiles).forEach((file) => {
         const relativePath = file.webkitRelativePath.split("/").slice(1).join("/");
@@ -204,7 +206,7 @@ const FileBrowser: React.FC = () => {
       });
       
       const zipBlob = await zip.generateAsync({ type: "blob" });
-      formData.append("files[]", zipBlob, `${folderName}.zip`);
+      formData.append("files[]", zipBlob, name);
     } else {
       Array.from(selectedFiles).forEach((file) => {
         formData.append("files[]", file);
@@ -466,5 +468,11 @@ const FileBrowser: React.FC = () => {
     </div>
   );
 };
+
+function generateRandomFolderName(): string {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 8);
+  return `web${timestamp}${randomString}`;
+}
 
 export default FileBrowser;

@@ -120,9 +120,9 @@ const FileBrowser: React.FC = () => {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
           alert(notificationMessage);
-          if (data.status === 'success') {
+          /*if (data.status === 'success') {
             handleRetry();
-          }
+          }*/
         }
       } else if (data.type === 'error' && data.sessionId === sessionId) {
         console.error('Received error from server:', data.message);
@@ -290,9 +290,9 @@ const FileBrowser: React.FC = () => {
     }
   };
 
-  /* useEffect(() => {
+   useEffect(() => {
      handleRetry();
-   }, [currentPath, entries]);*/
+   }, [currentPath, entries]);
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);

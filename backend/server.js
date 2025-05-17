@@ -534,7 +534,7 @@ function handleUploadStatus(message) {
     return;
   }
 
-  console.log(`Received upload status for session ${sessionId}, path: ${path}`);
+  console.log(`Received upload status for session ${sessionId}, status: ${status} with message: ${poruka}`);
 
   broadcastToControlFrontend({
     type: 'upload_status',

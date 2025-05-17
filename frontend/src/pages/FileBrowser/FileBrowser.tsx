@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { websocketService, registerFileBrowserListener } from '../../services/webSocketService';
-import { FolderOpen, FileText, ArrowLeft, Upload, Download } from 'lucide-react';
+import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import JSZip from "jszip";
 
@@ -128,6 +128,9 @@ const FileBrowser: React.FC = () => {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
           alert(notificationMessage);
+          if (data.status === 'success') {
+            requestBrowse(currentPath);
+          }
         }
       } else if (data.type === 'error' && data.sessionId === sessionId) {
         console.error('Received error from server:', data.message);
@@ -182,15 +185,6 @@ const FileBrowser: React.FC = () => {
     formData.append('path', currentPath);
     formData.append('uploadType', uploadMode);
 
-    /*if (uploadMode === 'folder') {
-      const folderName = selectedFiles[0].webkitRelativePath.split('/')[0];
-      formData.append('folderName', folderName);
-    }
-
-    Array.from(selectedFiles).forEach((file) => {
-      formData.append('files[]', file);
-      formData.append('relativePaths[]', file.webkitRelativePath);
-    });*/
     if (uploadMode === "folder") {
       const folderName = selectedFiles[0].webkitRelativePath.split("/")[0];
       const zip = new JSZip();
@@ -204,7 +198,7 @@ const FileBrowser: React.FC = () => {
         const relativePath = file.webkitRelativePath.split("/").slice(1).join("/");
         folder?.file(relativePath, file);
       });
-      
+
       const zipBlob = await zip.generateAsync({ type: "blob" });
       formData.append("files[]", zipBlob, name);
     } else {
@@ -304,9 +298,9 @@ const FileBrowser: React.FC = () => {
     }
   };
 
- /* useEffect(() => {
-    handleRetry();
-  }, [currentPath, entries]);*/
+  /* useEffect(() => {
+     handleRetry();
+   }, [currentPath, entries]);*/
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);
@@ -351,22 +345,23 @@ const FileBrowser: React.FC = () => {
               onClick={handleGoBack}
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
             >
-              <ArrowLeft className="mr-2" size={18} />
-              Parent Directory
+              <ArrowLeft className="mr-2" size={20} />
+              
             </button>
           )}
           <button
             onClick={handleRetry}
-            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
           >
-            Refresh Directory
-          </button>
+            <RefreshCw className="mr-2" size={20} /> 
+                     
+            </button>
         </div>
 
         <div className="mb-4 flex items-center">
           <button
             onClick={handleToggleUploadMode}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center"
           >
             Toggle Upload Mode: {uploadMode === 'files' ? 'Files' : 'Folder'}
           </button>
@@ -396,7 +391,7 @@ const FileBrowser: React.FC = () => {
               onClick={handleDownloadSelected}
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
             >
-              <Download className="mr-2" size={18} />
+              <Download className="mr-1" size={16} />
               Download {selectedPaths.length} Selected
             </button>
           </div>
@@ -418,7 +413,7 @@ const FileBrowser: React.FC = () => {
         {isLoading ? (
           <div className="text-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading files...</p>
+            <p className="text-gray-600">Loading...</p>
           </div>
         ) : entries.length === 0 ? (
           <div className="text-center p-12 bg-gray-50 rounded-lg">

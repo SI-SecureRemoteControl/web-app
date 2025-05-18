@@ -115,36 +115,37 @@ const FileBrowser: React.FC = () => {
         const { downloadUrl } = data;
         console.log('download_response received:', data);
         const fileName = downloadUrl.split('/').pop();
-        let downloadStatus;
         if (downloadUrl) {
-          const link = document.createElement('a');
-          link.href = downloadUrl;
-          link.target = '_self';
-          link.download = downloadUrl.split('/').pop();
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.target = '_self';
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-          downloadStatus = {
-            type: 'download_status',
-            deviceId,
-            sessionId,
-            status: 'success',
-            message: `Download started successfully for file: ${fileName}`,
-            fileName
-          };
+            setTimeout(() => {
+                const downloadStatus = {
+                    type: 'download_status',
+                    deviceId,
+                    sessionId,
+                    status: 'success',
+                    message: `Download started successfully for file: ${fileName}`,
+                    fileName
+                };
+                websocketService.sendControlMessage(downloadStatus);
+            }, 2000); 
         } else {
-          downloadStatus = {
-            type: 'download_status',
-            deviceId,
-            sessionId,
-            status: 'failed',
-            message: `Download failed for file: ${fileName}`,
-            fileName
-          };
+            const downloadStatus = {
+                type: 'download_status',
+                deviceId,
+                sessionId,
+                status: 'failed',
+                message: `Download failed for file: ${fileName}`,
+                fileName
+            };
+            websocketService.sendControlMessage(downloadStatus);
         }
-        websocketService.sendControlMessage(downloadStatus);
-
       } else if (data.type === 'upload_status') {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';

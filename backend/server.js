@@ -156,7 +156,9 @@ wssControl.on('connection', (ws) => {
         handleDownloadRequest(parsedMessage);
       }else if (parsedMessage.type === 'browse_request') {
         handleBrowseRequest(parsedMessage);
-      } else {
+      } else if (parsedMessage.type === 'download_status') {
+        handleDownloadStatus(parsedMessage);
+      }else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {
@@ -525,6 +527,26 @@ function handleBrowseRequest(message) {
     sessionId,
     deviceId,
     path
+  });
+}
+
+function handleDownloadStatus(message) {
+  const { sessionId, deviceId, status, message: poruka, fileName } = message;
+  if (!sessionId || !deviceId || !status || !fileName) {
+    console.error('Download status missing sessionId, deviceId, status or fileName');
+    return;
+  }
+
+  console.log(`Received download status for session ${sessionId}, device ${deviceId}, status: ${status}, fileName: ${fileName}`);
+
+  sendToCommLayer(sessionId, {
+    type: 'download_status',
+    fromId: 'webadmin',
+    sessionId,
+    deviceId,
+    status,
+    message: poruka,
+    fileName
   });
 }
 

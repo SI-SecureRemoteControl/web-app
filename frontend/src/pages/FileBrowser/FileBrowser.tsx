@@ -146,6 +146,8 @@ const FileBrowser: React.FC = () => {
             };
             websocketService.sendControlMessage(downloadStatus);
         }
+
+        setIsLoading(false);
       } else if (data.type === 'upload_status') {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
@@ -290,32 +292,36 @@ const FileBrowser: React.FC = () => {
 
   const handleDownloadSelected = () => {
     if (selectedPaths.length === 0) {
-      alert('Please select files or folders to download.');
-      return;
+        alert('Please select files or folders to download.');
+        return;
     }
 
+    setIsLoading(true);
+
     const downloadRequest = {
-      type: 'download_request',
-      deviceId,
-      sessionId,
-      paths: selectedPaths.map((fullPath) => {
-        const name = fullPath.split('/').pop();
-        const entry = entries.find((entry) => entry.name === name);
-        return {
-          name,
-          type: entry?.type || 'file',
-        };
-      }),
+        type: 'download_request',
+        deviceId,
+        sessionId,
+        paths: selectedPaths.map((fullPath) => {
+            const name = fullPath.split('/').pop();
+            const entry = entries.find((entry) => entry.name === name);
+            return {
+                name,
+                type: entry?.type || 'file',
+            };
+        }),
     };
 
     websocketService.sendControlMessage(downloadRequest);
-  };
+};
 
   /*const handleUnselect = (path: string) => {
     setSelectedPaths((prev) => prev.filter((p) => p !== path));
   };*/
   const handleDownloadSingle = (path: string) => {
     const entry = entries.find((entry) => entry.name === path);
+
+    setIsLoading(true); 
 
     const downloadRequest = {
       type: 'download_request',

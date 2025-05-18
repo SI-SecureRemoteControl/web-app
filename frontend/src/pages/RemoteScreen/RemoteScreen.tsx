@@ -2,15 +2,16 @@
 import React, { useEffect, useRef, useState, useCallback} from 'react';
 import WebRTCService from '../../services/webRTCService';
 import { websocketService } from '../../services/webSocketService';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
-import { Wifi } from 'lucide-react'; // Import WiFi icon
+import { Wifi, FolderKanban } from 'lucide-react'; 
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   const queryParams = new URLSearchParams(location.search);
   const deviceIdFromUrl = queryParams.get('deviceId');
@@ -19,6 +20,7 @@ const RemoteControlPage: React.FC = () => {
 
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
+
    const cleanupLocalWebRTCResources = useCallback((reason: string) => {
     console.log(`%c[${pageSessionId}] cleanupLocalWebRTCResources called. Reason: ${reason}`, "color: orange; font-weight: bold;");
     if (webRTCServiceRef.current) {
@@ -90,7 +92,9 @@ const fetchLatency = async () => {
         if (webRTCServiceRef.current) {
             const latency = await webRTCServiceRef.current.getLatency();
             setLatency(latency);
-        }
+        } else {
+            setLatency(null);
+}
     };
     const latencyInterval = setInterval(fetchLatency, 5000); 
 
@@ -525,6 +529,15 @@ const fetchLatency = async () => {
     return { color: 'red', label: 'Ultra Bad' };
   };
 
+    const handleGoToFileBrowser = () => {
+    if (pageSessionId && deviceIdFromUrl) {
+      console.log(`Navigating to File Browser for session: ${pageSessionId}, device: ${deviceIdFromUrl}`);
+      navigate(`/file-browser?deviceId=${deviceIdFromUrl}&sessionId=${pageSessionId}`);
+    } else {
+      console.error("Cannot navigate to file browser: missing deviceId or sessionId");
+    }
+  };
+
   const latencyStatus = getLatencyStatus();
   
   return (
@@ -539,6 +552,19 @@ const fetchLatency = async () => {
             <span className="font-medium">Latency:</span> {latency !== null ? `${latency.toFixed(2)} ms` : 'N/A'} ({latencyStatus.label})
           </p>
         </div>
+
+        {(activeSession && activeSession.sessionId === pageSessionId && activeSession.status === 'connected') || remoteStream ? (
+          <div className="text-center my-4">
+            <button
+              onClick={handleGoToFileBrowser}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center mx-auto"
+            >
+              <FolderKanban size={20} className="mr-2" />
+              Otvori File Browser
+            </button>
+          </div>
+        ) : null}
+
         <div className="flex justify-center">
           {/* Always render the video element, but hide it if no stream */}
           <video
@@ -552,7 +578,7 @@ const fetchLatency = async () => {
             className="rounded-xl shadow-lg border border-gray-300 cursor-pointer bg-black"
             autoPlay
             playsInline
-            muted // <-- Add this to allow autoplay on all browsers
+            muted 
             style={{
               display: 'block',
               maxWidth: '100%',

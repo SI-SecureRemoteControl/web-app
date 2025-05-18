@@ -14,6 +14,7 @@ import SessionViewer from "./pages/Sessions/SessionViewer.tsx";
 import { useParams } from 'react-router-dom';
 import DeviceList from "./pages/Devices/DeviceList.tsx";
 import RegisterUser from "./pages/Registration/RegisterUser.tsx";
+import FileBrowser from './pages/FileBrowser/FileBrowser';
 
 
 function App() {
@@ -48,6 +49,7 @@ function App() {
                             <Route path="/sessionview" element={<DeviceList />} />
                             <Route path="/remote-control" element={<RemoteControlPage />} />
                             <Route path="/register-user" element={<RegisterUser />} />
+                            <Route path="/file-browser" element={<FileBrowser />} />
                         </Route>
                     </Route>
                 </Routes>

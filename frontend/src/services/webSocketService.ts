@@ -6,6 +6,9 @@ let controlSocket: WebSocket | null = null;
 let dbMessageListeners: ((data: any) => void)[] = [];
 let controlMessageListeners: ((data: any) => void)[] = [];
 
+// Add a listener specifically for FileBrowser
+let fileBrowserListener: ((data: any) => void) | null = null;
+
 let dbReconnectAttempt = 0;
 let controlReconnectAttempt = 0;
 const maxReconnectAttempts = 5;
@@ -203,6 +206,19 @@ const getDbConnectionStatus = () => {
 
 const getControlConnectionStatus = () => {
   return controlSocket && controlSocket.readyState === WebSocket.OPEN;
+};
+
+export const registerFileBrowserListener = (listener: (data: any) => void) => {
+  fileBrowserListener = listener;
+  console.log('FileBrowser listener registered.');
+};
+
+export const invokeFileBrowserListener = (data: any) => {
+  if (fileBrowserListener) {
+    fileBrowserListener(data);
+  } else {
+    console.warn('No FileBrowser listener registered to handle data:', data);
+  }
 };
 
 export const websocketService = {

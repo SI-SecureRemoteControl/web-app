@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { websocketService, registerFileBrowserListener } from '../../services/webSocketService';
-import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw } from 'lucide-react';
+import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw/*, Trash2 */ } from 'lucide-react';
 import axios from 'axios';
 import JSZip from "jszip";
 
@@ -114,15 +114,37 @@ const FileBrowser: React.FC = () => {
       } else if (data.type === 'download_response') {
         const { downloadUrl } = data;
         console.log('download_response received:', data);
+        const fileName = downloadUrl.split('/').pop();
+        let downloadStatus;
         if (downloadUrl) {
           const link = document.createElement('a');
           link.href = downloadUrl;
-          link.target = '_self'; 
-          link.download = downloadUrl.split('/').pop(); 
+          link.target = '_self';
+          link.download = downloadUrl.split('/').pop();
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
+
+          downloadStatus = {
+            type: 'download_status',
+            deviceId,
+            sessionId,
+            status: 'success',
+            message: `Download started successfully for file: ${fileName}`,
+            fileName
+          };
+        } else {
+          downloadStatus = {
+            type: 'download_status',
+            deviceId,
+            sessionId,
+            status: 'failed',
+            message: `Download failed for file: ${fileName}`,
+            fileName
+          };
         }
+        websocketService.sendControlMessage(downloadStatus);
+
       } else if (data.type === 'upload_status') {
         if (data.deviceId === deviceId && data.sessionId === sessionId) {
           const notificationMessage = data.status === 'success' ? data.message || 'Upload successful!' : data.message || 'Upload failed.';
@@ -248,11 +270,22 @@ const FileBrowser: React.FC = () => {
     }
   }, [uploadMode]);
 
+  /*const handleCheckboxChange = (name: string) => {
+    const fullPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`; // Handle root path correctly
+    setSelectedPaths((prev) => {
+        if (prev.includes(fullPath)) {
+            return prev.filter((p) => p !== fullPath);
+        } else {
+            return [...prev, fullPath];
+        }
+    });*/
+
   const handleCheckboxChange = (path: string) => {
     setSelectedPaths((prev) =>
       prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
     );
   };
+
 
   const handleDownloadSelected = () => {
     if (selectedPaths.length === 0) {
@@ -264,10 +297,11 @@ const FileBrowser: React.FC = () => {
       type: 'download_request',
       deviceId,
       sessionId,
-      paths: selectedPaths.map((path) => {
-        const entry = entries.find((entry) => entry.name === path);
+      paths: selectedPaths.map((fullPath) => {
+        const name = fullPath.split('/').pop();
+        const entry = entries.find((entry) => entry.name === name);
         return {
-          name: path,
+          name,
           type: entry?.type || 'file',
         };
       }),
@@ -276,6 +310,9 @@ const FileBrowser: React.FC = () => {
     websocketService.sendControlMessage(downloadRequest);
   };
 
+  /*const handleUnselect = (path: string) => {
+    setSelectedPaths((prev) => prev.filter((p) => p !== path));
+  };*/
   const handleDownloadSingle = (path: string) => {
     const entry = entries.find((entry) => entry.name === path);
 
@@ -310,9 +347,9 @@ const FileBrowser: React.FC = () => {
     }
   };
 
-   /*useEffect(() => {
-     handleRetry();
-   }, [currentPath, entries]);*/
+  /*useEffect(() => {
+    handleRetry();
+  }, [currentPath, entries]);*/
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);
@@ -324,6 +361,10 @@ const FileBrowser: React.FC = () => {
       console.log('FileBrowser component unmounted');
     };
   }, []);
+
+  useEffect(() => {
+    setSelectedPaths([]);
+  }, [currentPath]);
 
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.type === b.type) {
@@ -358,16 +399,16 @@ const FileBrowser: React.FC = () => {
               className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
             >
               <ArrowLeft className="mr-2" size={20} />
-              
+
             </button>
           )}
           <button
             onClick={handleRetry}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center"
           >
-            <RefreshCw className="mr-2" size={20} /> 
-                     
-            </button>
+            <RefreshCw className="mr-2" size={20} />
+
+          </button>
         </div>
 
         <div className="mb-4 flex items-center">
@@ -396,6 +437,28 @@ const FileBrowser: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/*
+         {selectedPaths.length > 0 && (
+          <div className="mb-6 p-4 border border-gray-200 rounded-lg">
+            <h2 className="font-semibold mb-2">Selected Files/Folders</h2>
+            <ul className="list-disc pl-5">
+              {selectedPaths.map((path) => (
+                <li key={path} className="flex items-center justify-between">
+                  <span className="truncate" title={path}>{path}</span>
+                  <button
+                    onClick={() => handleUnselect(path)}
+                    className="text-red-500 hover:text-red-700 text-sm flex items-center"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Unselect
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      */}
 
         {selectedPaths.length > 0 && (
           <div className="mb-4">
@@ -442,6 +505,7 @@ const FileBrowser: React.FC = () => {
                   type="checkbox"
                   onChange={() => handleCheckboxChange(entry.name)}
                   checked={selectedPaths.includes(entry.name)}
+                  //checked={selectedPaths.includes(`${currentPath}/${entry.name}`)} // Ensure full path is checked
                   className="mr-3 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 {entry.type === 'folder' ? (

@@ -44,33 +44,33 @@ const controlFrontendClients = new Map();
 const controlSessions = new Map();
 const commLayerClients = new Set();
 
- const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
+const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
 
- server.on('upgrade', (request, socket, head) => {
+server.on('upgrade', (request, socket, head) => {
 
   const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
   console.log(`WebSocket upgrade request received for path: ${pathname}`);
 
-  if(pathname === '/ws/db_updates') {
+  if (pathname === '/ws/db_updates') {
 
     wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
       wssDbUpdates.emit('connection', ws, request);
     });
   }
-  else if(pathname === '/ws/control/frontend') {
+  else if (pathname === '/ws/control/frontend') {
 
     wssControl.handleUpgrade(request, socket, head, (ws) => {
       wssControl.emit('connection', ws, request, 'frontend');
     });
   }
-  else if(pathname === '/ws/control/comm') {
+  else if (pathname === '/ws/control/comm') {
     // TODO: Add Comm Layer specific authentication/validation if needed here
     wssComm.handleUpgrade(request, socket, head, (ws) => {
       wssComm.emit('connection', ws, request, 'comm');
     });
   }
   else {
-    
+
     console.log(`WebSocket connection rejected for unknown path: ${pathname}`);
     socket.destroy();
   }
@@ -83,18 +83,18 @@ wssDbUpdates.on('connection', (ws, req) => {
   dbUpdateClients.add(ws);
 
   ws.on('message', (message) => {
-      console.log('Received message on DB Update socket (unexpected):', message);
+    console.log('Received message on DB Update socket (unexpected):', message);
   });
 
   ws.on('close', () => {
     console.log("close req");
-      dbUpdateClients.delete(ws);
-      console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
+    dbUpdateClients.delete(ws);
+    console.log(`Client disconnected from DB Updates. Total clients: ${dbUpdateClients.size}`);
   });
 
   ws.on('error', (error) => {
-      console.error('DB Update WebSocket error:', error);
-      dbUpdateClients.delete(ws); 
+    console.error('DB Update WebSocket error:', error);
+    dbUpdateClients.delete(ws);
   });
 });
 
@@ -128,36 +128,43 @@ wssControl.on('connection', (ws) => {
   console.log(`Control Frontend client added. Total control frontend clients: ${controlFrontendClients.size}`);
 
   controlSessions.forEach((session, sessionId) => {
-    if(session.state === 'PENDING_ADMIN') {
+    if (session.state === 'PENDING_ADMIN') {
       ws.send(JSON.stringify({ type: 'request_control', sessionId, device: session.device }));
-    } else if(session.state === 'CONNECTED') {
+    } else if (session.state === 'CONNECTED') {
       ws.send(JSON.stringify({ type: 'control_status_update', sessionId, deviceId: session.device?.deviceId, status: 'connected' }));
     }
   });
 
-    ws.on('message', (message) => {
-        try {
-            const parsedMessage = JSON.parse(message);
-            console.log('Received message from Control Frontend:', parsedMessage);
+  ws.on('message', (message) => {
+    try {
+      const parsedMessage = JSON.parse(message);
+      console.log('Received message from Control Frontend:', parsedMessage);
 
-            if (parsedMessage.type === 'control_response') {
-                handleFrontendControlResponse(parsedMessage);
-            } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
-                handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
-            } else if (parsedMessage.type === 'terminate_session') {
-                handleTerminateSessionRequest(parsedMessage);
-            } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action == 'swipe') {
-                handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
-            } else if (parsedMessage.action === 'keyboard') {
-                handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
-            }
-            else {
-                console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
-            }
-        } catch (error) {
-            console.error('Failed to parse message from Control Frontend:', error);
-        }
-    });
+      if (parsedMessage.type === 'control_response') {
+        handleFrontendControlResponse(parsedMessage);
+      } else if (parsedMessage.type === 'offer' || parsedMessage.type === 'ice-candidate') {
+        handleWebRTCSignaling(parsedMessage.sessionId, parsedMessage);
+      } else if (parsedMessage.type === 'terminate_session') {
+        handleTerminateSessionRequest(parsedMessage);
+      } else if (parsedMessage.action === 'mouse_click' || parsedMessage.action == 'swipe') {
+        handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
+      } else if (parsedMessage.action === 'keyboard') {
+        handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
+      } else if (parsedMessage.type === 'decision_fileshare') {
+        handleFileShareDecision(parsedMessage);
+      } else if (parsedMessage.type === 'download_request') {
+        handleDownloadRequest(parsedMessage);
+      }else if (parsedMessage.type === 'browse_request') {
+        handleBrowseRequest(parsedMessage);
+      } else if (parsedMessage.type === 'download_status') {
+        handleDownloadStatus(parsedMessage);
+      }else {
+        console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
+      }
+    } catch (error) {
+      console.error('Failed to parse message from Control Frontend:', error);
+    }
+  });
 
   ws.on('close', () => {
     controlFrontendClients.delete(ws.protocol);
@@ -188,6 +195,15 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
+      } /*else if (parsedMessage.type === 'request_session_fileshare') {
+        handleFileShareRequest(ws, parsedMessage);
+      }*/ else if (parsedMessage.type === 'browse_response') {
+        handleBrowseResponse(parsedMessage);
+      } else if (parsedMessage.type === 'upload_status') {
+        handleUploadStatus(parsedMessage);
+      } else if (parsedMessage.type === 'download_response') {
+        console.log('Download response:', parsedMessage);
+        handleDownloadResponse(parsedMessage);
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -218,9 +234,9 @@ function broadcastToControlFrontend(data) {
   const message = JSON.stringify(data);
   console.log(`Broadcasting to ${controlFrontendClients.size} Control Frontend clients:`, message);
   controlFrontendClients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-          client.send(message);
-      }
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
   });
 }
 
@@ -243,45 +259,46 @@ function sendToCommLayer(sessionId, data) {
 // logika za remote control sesije
 async function handleCommLayerControlRequest(ws, message) {
 
-  const { sessionId, deviceId:from } = message;
+  const { sessionId, deviceId: from } = message;
   if (!sessionId || !from) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Missing sessionId or deviceId' })); return; }
   if (controlSessions.has(sessionId)) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Session ID already active' })); return; }
   if (!db) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Database not available' })); return; }
 
   try {
-      const device = await db.collection('devices').findOne({ deviceId: from
-       });
-      if (!device) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' })); return; }
+    const device = await db.collection('devices').findOne({
+      deviceId: from
+    });
+    if (!device) { ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Device not found' })); return; }
 
-      const session = {
-          state: 'PENDING_ADMIN',
-          device: { _id: device._id, deviceId: device.deviceId, name: device.name, model: device.model, osVersion: device.osVersion },
-          commLayerWs: ws, 
-          requestedTime: Date.now(),
-          timeoutId: setTimeout(() => { handleAdminTimeout(sessionId); }, CONTROL_REQUEST_TIMEOUT)
-      };
+    const session = {
+      state: 'PENDING_ADMIN',
+      device: { _id: device._id, deviceId: device.deviceId, name: device.name, model: device.model, osVersion: device.osVersion },
+      commLayerWs: ws,
+      requestedTime: Date.now(),
+      timeoutId: setTimeout(() => { handleAdminTimeout(sessionId); }, CONTROL_REQUEST_TIMEOUT)
+    };
 
-      controlSessions.set(sessionId, session);
-      console.log(`Control session created: ${sessionId} for device ${from}. State: PENDING_ADMIN`);
+    controlSessions.set(sessionId, session);
+    console.log(`Control session created: ${sessionId} for device ${from}. State: PENDING_ADMIN`);
 
-      if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
-      ws.activeSessionIds.add(sessionId);
-      requestId = generateRequestId();
-      broadcastToControlFrontend({
-          requestId: requestId,
-          type: 'request_control',
-          deviceId: from,
-          deviceName: session.device.name,
-          timestamp: Date.now(),
-          sessionId: sessionId
-      });
+    if (!ws.activeSessionIds) { ws.activeSessionIds = new Set(); }
+    ws.activeSessionIds.add(sessionId);
+    requestId = generateRequestId();
+    broadcastToControlFrontend({
+      requestId: requestId,
+      type: 'request_control',
+      deviceId: from,
+      deviceName: session.device.name,
+      timestamp: Date.now(),
+      sessionId: sessionId
+    });
 
-       ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' })); // za debug
+    ws.send(JSON.stringify({ type: 'request_received', sessionId: sessionId, status: 'pending_admin_approval' }));
 
   } catch (error) {
-      console.error(`Error handling control request ${sessionId}:`, error);
-      ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Internal server error handling request' }));
-      if (controlSessions.has(sessionId)) { clearTimeout(controlSessions.get(sessionId).timeoutId); controlSessions.delete(sessionId); } 
+    console.error(`Error handling control request ${sessionId}:`, error);
+    ws.send(JSON.stringify({ type: 'error', sessionId, message: 'Internal server error handling request' }));
+    if (controlSessions.has(sessionId)) { clearTimeout(controlSessions.get(sessionId).timeoutId); controlSessions.delete(sessionId); }
   }
 }
 
@@ -290,45 +307,45 @@ function handleTerminateSessionRequest(message) {
   const { sessionId } = message;
 
   if (!sessionId) {
-      console.error('[Terminate Session] Request missing sessionId');
-      return;
+    console.error('[Terminate Session] Request missing sessionId');
+    return;
   }
 
   const session = controlSessions.get(sessionId);
 
   if (!session) {
-      console.warn(`[Terminate Session] Session ${sessionId} not found or already terminated.`);
-      broadcastToControlFrontend({
-          type: 'control_status_update',
-          sessionId: sessionId,
-          deviceId: message.deviceId,
-          status: 'terminated_not_found',
-          message: `Control session ${sessionId} was not found or already inactive.`
-      });
-      return;
+    console.warn(`[Terminate Session] Session ${sessionId} not found or already terminated.`);
+    broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: message.deviceId,
+      status: 'terminated_not_found',
+      message: `Control session ${sessionId} was not found or already inactive.`
+    });
+    return;
   }
 
   console.log(`Administrator requested termination of control session: ${sessionId}`);
 
   sendToCommLayer(sessionId, {
-      type: 'session_terminated',
-      sessionId: sessionId,
-      reason: 'terminated_by_admin'
+    type: 'session_terminated',
+    sessionId: sessionId,
+    reason: 'terminated_by_admin'
   });
 
   broadcastToControlFrontend({
-      type: 'control_status_update',
-      sessionId: sessionId,
-      deviceId: session.device?.deviceId,
-      status: 'terminated_by_admin',
-      message: `Session ${sessionId} for device ${session.device?.deviceId || 'N/A'} terminated by administrator.`
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session.device?.deviceId,
+    status: 'terminated_by_admin',
+    message: `Session ${sessionId} for device ${session.device?.deviceId || 'N/A'} terminated by administrator.`
   });
 
   cleanupSession(sessionId, 'TERMINATED_BY_ADMIN');
 }
 
 // za handleanje odgovora admina sa fronta
- function handleFrontendControlResponse(message) {
+function handleFrontendControlResponse(message) {
   const { sessionId, action } = message;
   if (!sessionId || !action) { console.error('Control Frontend response missing sessionId or action'); return; }
   const session = controlSessions.get(sessionId);
@@ -338,73 +355,73 @@ function handleTerminateSessionRequest(message) {
   session.timeoutId = null;
 
   if (action === 'accept') {
-      console.log(`Admin accepted control session: ${sessionId}`);
-      session.state = 'ADMIN_ACCEPTED';
-      controlSessions.set(sessionId, session); 
+    console.log(`Admin accepted control session: ${sessionId}`);
+    session.state = 'ADMIN_ACCEPTED';
+    controlSessions.set(sessionId, session);
 
-      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'accepted' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation', decision: 'accepted' });
+    sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'accepted' });
+    broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'pending_device_confirmation', decision: 'accepted' });
 
 
   } else if (action === 'reject') {
-      console.log(`Admin rejected control session: ${sessionId}`);
-      session.state = 'ADMIN_REJECTED'; 
+    console.log(`Admin rejected control session: ${sessionId}`);
+    session.state = 'ADMIN_REJECTED';
 
-      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'rejected_by_admin' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected', decision: 'rejected', reason: 'rejected_by_admin' });
-      cleanupSession(sessionId, 'ADMIN_REJECTED');
+    sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'rejected_by_admin' });
+    broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'rejected', decision: 'rejected', reason: 'rejected_by_admin' });
+    cleanupSession(sessionId, 'ADMIN_REJECTED');
 
   } else {
-      console.warn(`Unknown action '${action}' from Control Frontend for session ${sessionId}`);
+    console.warn(`Unknown action '${action}' from Control Frontend for session ${sessionId}`);
   }
 }
 
 function handleWebRTCSignaling(sessionId, parsedMessage) {
 
-  var message = {fromId:"webadmin", toId:parsedMessage.deviceId, payload: {parsedMessage}, type: parsedMessage.type};
+  var message = { fromId: "webadmin", toId: parsedMessage.deviceId, payload: { parsedMessage }, type: parsedMessage.type };
   sendToCommLayer(sessionId, message);
 }
 
 function handleRemoteClicks(sessionId, parsedMessage) {
   var message = {
-      fromId:"webadmin",
-      toId:parsedMessage.deviceId,
-      sessionId: sessionId,
-      payload: parsedMessage.payload,
-      type: parsedMessage.action
+    fromId: "webadmin",
+    toId: parsedMessage.deviceId,
+    sessionId: sessionId,
+    payload: parsedMessage.payload,
+    type: parsedMessage.action
   };
   sendToCommLayer(sessionId, message);
 }
 
 function handleRemoteKeyboard(sessionId, parsedMessage) {
-    const message = {
-        fromId: "webadmin",
-        toId: parsedMessage.deviceId,
-        sessionId: sessionId,
-        payload: parsedMessage.payload,
-        type: parsedMessage.action // 'keyboard'
-    };
-    sendToCommLayer(sessionId, message);
+  const message = {
+    fromId: "webadmin",
+    toId: parsedMessage.deviceId,
+    sessionId: sessionId,
+    payload: parsedMessage.payload,
+    type: parsedMessage.action
+  };
+  sendToCommLayer(sessionId, message);
 }
 
 
 
 
 // za handleanje timeout ako admin ne prihvati za 30 sekundi
- function handleAdminTimeout(sessionId) {
+function handleAdminTimeout(sessionId) {
   const session = controlSessions.get(sessionId);
   if (session && session.state === 'PENDING_ADMIN') {
-      console.log(`Admin response timed out for session: ${sessionId}`);
-      session.state = 'TIMED_OUT'; 
+    console.log(`Admin response timed out for session: ${sessionId}`);
+    session.state = 'TIMED_OUT';
 
-      sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'timed_out' });
-      broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out' ,decision: 'rejected', reason: 'timed_out'});
-      cleanupSession(sessionId, 'TIMED_OUT');
+    sendToCommLayer(sessionId, { type: 'control_decision', sessionId: sessionId, decision: 'rejected', reason: 'timed_out' });
+    broadcastToControlFrontend({ type: 'control_status_update', sessionId: sessionId, deviceId: session.device?.deviceId, status: 'timed_out', decision: 'rejected', reason: 'timed_out' });
+    cleanupSession(sessionId, 'TIMED_OUT');
   }
 }
 
 // za odgovor sa strane androida
- function handleCommLayerStatusUpdate(message) {
+function handleCommLayerStatusUpdate(message) {
   const { sessionId, status, details, deviceId } = message;
   if (!sessionId || !status) { console.error('Comm Layer status update missing sessionId or status'); return; }
   const session = controlSessions.get(sessionId);
@@ -415,37 +432,37 @@ function handleRemoteKeyboard(sessionId, parsedMessage) {
   let cleanupReason = null;
 
   switch (status) {
-      case 'connected':
-          session.state = 'CONNECTED';
-          frontendStatus = 'connected';
-          break;
-      case 'failed':
-          session.state = 'FAILED';
-          frontendStatus = 'failed';
-          cleanupReason = 'FAILED';
-          break;
-      case 'disconnected':
-          session.state = 'DISCONNECTED';
-          frontendStatus = 'disconnected';
-          cleanupReason = 'DISCONNECTED';
-          break;
-      default:
-          console.warn(`Unknown status '${status}' from Comm Layer for session ${sessionId}`);
-          return;
+    case 'connected':
+      session.state = 'CONNECTED';
+      frontendStatus = 'connected';
+      break;
+    case 'failed':
+      session.state = 'FAILED';
+      frontendStatus = 'failed';
+      cleanupReason = 'FAILED';
+      break;
+    case 'disconnected':
+      session.state = 'DISCONNECTED';
+      frontendStatus = 'disconnected';
+      cleanupReason = 'DISCONNECTED';
+      break;
+    default:
+      console.warn(`Unknown status '${status}' from Comm Layer for session ${sessionId}`);
+      return;
   }
   controlSessions.set(sessionId, session); // update mapa
 
   broadcastToControlFrontend({
-      type: 'control_status_update',
-      sessionId: sessionId,
-      deviceId: deviceId,
-      status: frontendStatus,
-      message: details || `Session ${sessionId} status: ${frontendStatus}.`,
-      details: details
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: deviceId,
+    status: frontendStatus,
+    message: details || `Session ${sessionId} status: ${frontendStatus}.`,
+    details: details
   });
 
   if (cleanupReason) {
-      cleanupSession(sessionId, cleanupReason);
+    cleanupSession(sessionId, cleanupReason);
   }
 }
 
@@ -454,50 +471,165 @@ function handleWebRTCSignalingFromAndroid(parsedMessage) {
 }
 
 
- function cleanupSession(sessionId, reason) {
+function cleanupSession(sessionId, reason) {
   const session = controlSessions.get(sessionId);
   if (session) {
-      console.log(`Cleaning up control session ${sessionId} (Reason: ${reason})`);
-      clearTimeout(session.timeoutId);
-      if (session.commLayerWs && session.commLayerWs.activeSessionIds) {
-          session.commLayerWs.activeSessionIds.delete(sessionId);
-      }
-      controlSessions.delete(sessionId);
+    console.log(`Cleaning up control session ${sessionId} (Reason: ${reason})`);
+    clearTimeout(session.timeoutId);
+    if (session.commLayerWs && session.commLayerWs.activeSessionIds) {
+      session.commLayerWs.activeSessionIds.delete(sessionId);
+    }
+    controlSessions.delete(sessionId);
   }
 }
 
- function cleanupSessionsForSocket(ws) {
+function cleanupSessionsForSocket(ws) {
   console.log('Cleaning up control sessions for disconnected Comm Layer socket.');
   if (ws.activeSessionIds && ws.activeSessionIds.size > 0) {
-      ws.activeSessionIds.forEach(sessionId => {
-          const session = controlSessions.get(sessionId);
-          if (session) {
-              console.log(`Handling session ${sessionId} for disconnected socket (State: ${session.state}).`);
-              let cleanupReason = 'COMM_DISCONNECTED';
-              let frontendStatus = 'comm_disconnected';
-               if(session.state === 'CONNECTED') {
-                  frontendStatus = 'disconnected';
-                  cleanupReason = 'COMM_DISCONNECTED_WHILE_CONNECTED';
-               } else if (session.state !== 'PENDING_ADMIN' && session.state !== 'ADMIN_ACCEPTED') {
-                   cleanupSession(sessionId, 'CLEANUP_ON_COMM_CLOSE_TERMINAL');
-                  return;
-               }
-              broadcastToControlFrontend({
-                  type: 'control_status_update',
-                  sessionId: sessionId,
-                  deviceId: session.device?.deviceId,
-                  status: frontendStatus,
-                  message: `Communication channel lost for session ${sessionId}.`
-              });
-              cleanupSession(sessionId, cleanupReason);
-          }
-      });
+    ws.activeSessionIds.forEach(sessionId => {
+      const session = controlSessions.get(sessionId);
+      if (session) {
+        console.log(`Handling session ${sessionId} for disconnected socket (State: ${session.state}).`);
+        let cleanupReason = 'COMM_DISCONNECTED';
+        let frontendStatus = 'comm_disconnected';
+        if (session.state === 'CONNECTED') {
+          frontendStatus = 'disconnected';
+          cleanupReason = 'COMM_DISCONNECTED_WHILE_CONNECTED';
+        } else if (session.state !== 'PENDING_ADMIN' && session.state !== 'ADMIN_ACCEPTED') {
+          cleanupSession(sessionId, 'CLEANUP_ON_COMM_CLOSE_TERMINAL');
+          return;
+        }
+        broadcastToControlFrontend({
+          type: 'control_status_update',
+          sessionId: sessionId,
+          deviceId: session.device?.deviceId,
+          status: frontendStatus,
+          message: `Communication channel lost for session ${sessionId}.`
+        });
+        cleanupSession(sessionId, cleanupReason);
+      }
+    });
   }
 }
 
+function handleBrowseRequest(message) {
+  const { sessionId, deviceId, path } = message;
+  if (!sessionId || !deviceId || !path) {
+    console.error('Browse request missing sessionId, deviceId, or path');
+    return;
+  }
 
+  console.log(`Received browse request for session ${sessionId}, path: ${path}`);
 
+  sendToCommLayer(sessionId, {
+    type: 'browse_request',
+    fromId: 'webadmin',
+    sessionId,
+    deviceId,
+    path
+  });
+}
 
+function handleDownloadStatus(message) {
+  const { sessionId, deviceId, status, message: poruka, fileName } = message;
+  if (!sessionId || !deviceId || !status || !fileName) {
+    console.error('Download status missing sessionId, deviceId, status or fileName');
+    return;
+  }
+
+  console.log(`Received download status for session ${sessionId}, device ${deviceId}, status: ${status}, fileName: ${fileName}`);
+
+  sendToCommLayer(sessionId, {
+    type: 'download_status',
+    fromId: 'webadmin',
+    sessionId,
+    deviceId,
+    status,
+    message: poruka,
+    fileName
+  });
+}
+
+function handleDownloadRequest(message) {
+  const { sessionId, deviceId, paths } = message;
+  if (!sessionId || !deviceId || !paths) {
+    console.error('Browse request missing sessionId, deviceId, or paths');
+    return;
+  }
+
+  console.log(`Received download request for session ${sessionId}, paths: ${paths}`);
+
+  sendToCommLayer(sessionId, {
+    type: 'download_request',
+    sessionId,
+    deviceId,
+    paths
+  });
+}
+
+function handleUploadStatus(message) {
+  const { sessionId, deviceId, status, message: poruka, path } = message;
+  if (!sessionId || !deviceId || !status, !poruka) {
+    console.error('Browse request missing sessionId, deviceId, status or message');
+    return;
+  }
+
+  console.log(`Received upload status for session ${sessionId}, status: ${status} with message: ${poruka}. Path: ${path}`);
+
+  broadcastToControlFrontend({
+    type: 'upload_status',
+    sessionId,
+    deviceId,
+    status,
+    message: poruka,
+    path
+  });
+}
+
+function handleDownloadResponse(message) {
+  const { deviceId, sessionId, downloadUrl } = message;
+
+  if (!deviceId || !sessionId || !downloadUrl) {
+    console.error('Invalid download_response received (deviceid, sessionid or downloadurl missing):', message);
+    return;
+  }
+
+  console.log(`Broadcasting download_response for session ${sessionId}`);
+  broadcastToControlFrontend({
+    type: 'download_response',
+    deviceId,
+    sessionId,
+    downloadUrl,
+  });
+}
+
+// Handle browse response from Comm Layer
+function handleBrowseResponse(message) {
+  const { sessionId, deviceId, path, entries } = message;
+
+  // Added more validation and logging
+  if (!sessionId || !deviceId || !path) {
+    console.error('Browse response missing required fields:', { sessionId, deviceId, path });
+    return;
+  }
+
+  if (!entries || !Array.isArray(entries)) {
+    console.error('Browse response missing entries array or entries is not an array', { sessionId, deviceId, path });
+    // Create an empty array to avoid errors
+    message.entries = [];
+  }
+
+  console.log(`Received browse response for session ${sessionId}, device ${deviceId}, path: ${path}, entries: ${entries ? entries.length : 0}`);
+
+  // Forward the browse response to the Frontend
+  broadcastToControlFrontend({
+    type: 'browse_response',
+    sessionId,
+    deviceId,
+    path,
+    entries: entries || []
+  });
+}
 
 // ---------------------------------------------------------- rute
 
@@ -524,7 +656,7 @@ app.post('/devices/registration', async (req, res) => {
 
 
 app.post('/devices/deregistration/:id', async (req, res) => {
-  const { id } = req.params; 
+  const { id } = req.params;
   const deregistrationKey = generateKey('deregistration');
   try {
     const device = await db.collection('devices').findOne({ deviceId: id });
@@ -588,10 +720,10 @@ app.get('/api/devices', async (req, res) => {
     const devicesCollection = db.collection('devices');
 
     const devices = await devicesCollection.find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit))
-        .toArray();
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .toArray();
 
     const total = await devicesCollection.countDocuments(query);
 
@@ -618,145 +750,144 @@ app.post('/api/auth/register', authenticateToken, requireAdmin, async (req, res)
   console.log(`Admin registration endpoint accessed by: ${req.user.username}`);
 
   try {
-      const { username: newUsername, password: newPassword } = req.body; 
+    const { username: newUsername, password: newPassword } = req.body;
 
-      if (!newUsername || !newPassword) {
-          return res.status(400).json({ error: 'Username and password are required for the new user' });
-      }
+    if (!newUsername || !newPassword) {
+      return res.status(400).json({ error: 'Username and password are required for the new user' });
+    }
 
-      const existingUser = await db.collection('web_admin_user').findOne({ username: newUsername });
-      if (existingUser) {
-          console.log(`Attempt to register existing username: ${newUsername}`);
-          return res.status(404).json({ error: 'Username already exists' });
-       }
+    const existingUser = await db.collection('web_admin_user').findOne({ username: newUsername });
+    if (existingUser) {
+      console.log(`Attempt to register existing username: ${newUsername}`);
+      return res.status(404).json({ error: 'Username already exists' });
+    }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      const newUser = {
-          userId: Math.random().toString(36).substring(2, 10),
-          username: newUsername,
-          password: hashedPassword
-      };
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const newUser = {
+      userId: Math.random().toString(36).substring(2, 10),
+      username: newUsername,
+      password: hashedPassword
+    };
 
-      await db.collection('web_admin_user').insertOne(newUser);
-      console.log(`Successfully registered new user: ${newUsername} by admin: ${req.user.username}`);
+    await db.collection('web_admin_user').insertOne(newUser);
+    console.log(`Successfully registered new user: ${newUsername} by admin: ${req.user.username}`);
 
-      res.status(201).json({ message: `User '${newUsername}' registered successfully.` });
+    res.status(201).json({ message: `User '${newUsername}' registered successfully.` });
   } catch (error) {
-      console.error("Admin Registration Error:", error);
-      res.status(500).json({ error: 'Registration failed' });
+    console.error("Admin Registration Error:", error);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
 
 app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const user = await db.collection('web_admin_user').findOne({ username });
-        if (!user) {
-          console.log("User not found:", username);
-            return res.status(401).json({ error: 'Authentication failed' });
-        }
-        const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) {
-            console.log("Password not match:", password);
-            return res.status(401).json({ error: 'Authentication failed' });
-        }
-        const token = jwt.sign({ userId: user._id, username: user.username }, process.env.SECRET_KEY, {
-            expiresIn: '1h',
-        });
-        delete user.password;
-        res.status(200).json({ token, user });
-    } catch (error) {
-        res.status(500).json({ error: 'Login failed' });
+  try {
+    const { username, password } = req.body;
+    const user = await db.collection('web_admin_user').findOne({ username });
+    if (!user) {
+      console.log("User not found:", username);
+      return res.status(401).json({ error: 'Authentication failed' });
     }
+    const passwordMatch = await bcrypt.compare(password, user.password);
+    if (!passwordMatch) {
+      console.log("Password not match:", password);
+      return res.status(401).json({ error: 'Authentication failed' });
+    }
+    const token = jwt.sign({ userId: user._id, username: user.username }, process.env.SECRET_KEY, {
+      expiresIn: '1h',
+    });
+    delete user.password;
+    res.status(200).json({ token, user });
+  } catch (error) {
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
 app.get('/sessionview/:deviceId', async (req, res) => {
-    const { deviceId } = req.params;
-    console.log("Prije .. id je :", deviceId);
+  const { deviceId } = req.params;
+  console.log("Prije .. id je :", deviceId);
 
-    const {
-        startDate,
-        endDate,
-        page = 1,
-        limit = 10,
-        sortBy = 'timestamp',
-        sortOrder = 'desc'
-    } = req.query;
+  const {
+    startDate,
+    endDate,
+    page = 1,
+    limit = 10,
+    sortBy = 'timestamp',
+    sortOrder = 'desc'
+  } = req.query;
 
-    try {
-      const query = { deviceId: deviceId, status: { $ne: 'pending' } }; // Exclude devices with status 'pending'
+  try {
+    const query = { deviceId: deviceId, status: { $ne: 'pending' } }; // Exclude devices with status 'pending'
 
-        if (startDate) {
-            query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };
-        }
-        if (endDate) {
-            query.timestamp = { ...query.timestamp, $lte: new Date(endDate) };
-        }
-
-        const sort = {};
-        sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-        const skip = (parseInt(page) - 1) * parseInt(limit);
-        const sessionsCollection = db.collection('sessionLogs');
-        const devicesCollection = db.collection('devices');
-
-        console.log("kolekcija:", sessionsCollection);
-
-        // Fetch session logs
-        const sessionLogs = await sessionsCollection.find(query)
-            .sort(sort)
-            .skip(skip)
-            .limit(parseInt(limit))
-            .toArray();
-
-        const total = await sessionsCollection.countDocuments(query);
-
-        console.log("query:", query);
-
-        // Fetch device info
-        const device = await devicesCollection.findOne({ deviceId: deviceId });
-
-        if (!device) {
-            return res.status(404).json({ message: 'Device not found.' });
-        }
-
-        if (sessionLogs.length === 0) {
-
-            return res.status(200).json({
-                sessionLogs: [],
-                deviceName: device.name || device.deviceName || 'Unknown',
-                page: parseInt(page),
-                limit: parseInt(limit),
-                total: 0,
-                totalPages: 1
-            });
-        }
-
-        // Return device name along with session logs
-        res.json({
-            deviceName: device.name || device.deviceName || 'Unknown',
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total,
-            totalPages: Math.ceil(total / limit),
-            sessionLogs
-        });
-    } catch (err) {
-        console.error('Error fetching session logs:', err);
-        res.status(500).json({ error: 'Internal server error', details: err.message });
+    if (startDate) {
+      query.timestamp = { ...query.timestamp, $gte: new Date(startDate) };
     }
+    if (endDate) {
+      query.timestamp = { ...query.timestamp, $lte: new Date(endDate) };
+    }
+
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sessionsCollection = db.collection('sessionLogs');
+    const devicesCollection = db.collection('devices');
+
+    console.log("kolekcija:", sessionsCollection);
+
+    // Fetch session logs
+    const sessionLogs = await sessionsCollection.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .toArray();
+
+    const total = await sessionsCollection.countDocuments(query);
+
+    console.log("query:", query);
+
+    // Fetch device info
+    const device = await devicesCollection.findOne({ deviceId: deviceId });
+
+    if (!device) {
+      return res.status(404).json({ message: 'Device not found.' });
+    }
+
+    if (sessionLogs.length === 0) {
+
+      return res.status(200).json({
+        sessionLogs: [],
+        deviceName: device.name || device.deviceName || 'Unknown',
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: 0,
+        totalPages: 1
+      });
+    }
+
+    // Return device name along with session logs
+    res.json({
+      deviceName: device.name || device.deviceName || 'Unknown',
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total,
+      totalPages: Math.ceil(total / limit),
+      sessionLogs
+    });
+  } catch (err) {
+    console.error('Error fetching session logs:', err);
+    res.status(500).json({ error: 'Internal server error', details: err.message });
+  }
 });
 connectDB()
-    .then((database) => {
-      db = database;
+  .then((database) => {
+    db = database;
 
-      if (process.env.USE_LOCAL_DB !== "true") {
-        setupChangeStream();
-        console.log("setup");
-      }
-    })
-    .catch((err) => {
-      process.exit(1);
-    });
-
+    if (process.env.USE_LOCAL_DB !== "true") {
+      setupChangeStream();
+      console.log("setup");
+    }
+  })
+  .catch((err) => {
+    process.exit(1);
+  });

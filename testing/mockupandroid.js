@@ -70,7 +70,7 @@ const generateDirectoryContent = (path) => {
   if (mockFileSystem[path]) {
     return mockFileSystem[path];
   }
-  
+
   // Generate mock content for any path not explicitly defined
   return [
     { name: 'File1.txt', type: 'file', size: Math.floor(Math.random() * 10000) },
@@ -88,13 +88,13 @@ let sessionActive = false;
 // Connect to server
 function connectToServer() {
   log('Connecting to server: ' + config.serverUrl);
-  
+
   ws = new WebSocket(config.serverUrl);
-  
+
   ws.on('open', () => {
     connectionActive = true;
     log('Connected to server successfully');
-    
+
     // Wait a moment and then initiate control request
     setTimeout(() => {
       if (!sessionActive) {
@@ -102,7 +102,7 @@ function connectToServer() {
       }
     }, 1000);
   });
-  
+  //
   ws.on('message', (data) => {
     try {
       const message = JSON.parse(data);
@@ -112,12 +112,12 @@ function connectToServer() {
       logError('Error parsing message:', error);
     }
   });
-  
+
   ws.on('close', () => {
     connectionActive = false;
     sessionActive = false;
     log('Connection closed');
-    
+
     // Try to reconnect after delay
     setTimeout(() => {
       if (!connectionActive) {
@@ -125,7 +125,7 @@ function connectToServer() {
       }
     }, 5000);
   });
-  
+
   ws.on('error', (error) => {
     logError('WebSocket error:', error);
   });
@@ -137,28 +137,28 @@ function handleServerMessage(message) {
     case 'request_received':
       log('Control request received by server, status:', message.status);
       break;
-      
+
     case 'control_decision':
       handleControlDecision(message);
       break;
-      
+
     case 'browse_request':
       handleBrowseRequest(message);
       break;
-      
+
     case 'download_request':
       handleDownloadRequest(message);
       break;
-      
+
     case 'session_terminated':
       log('Session terminated by server. Reason:', message.reason);
       sessionActive = false;
       break;
-      
+
     case 'error':
       logError('Received error from server:', message.message);
       break;
-      
+
     default:
       log('Unhandled message type:', message.type);
       break;
@@ -171,7 +171,7 @@ function requestControlSession() {
     logError('Cannot request session: not connected');
     return;
   }
-  
+
   const request = {
     type: 'request_control',
     sessionId: config.sessionId,
@@ -179,7 +179,7 @@ function requestControlSession() {
     deviceName: config.deviceName,
     timestamp: Date.now()
   };
-  
+
   sendMessage(request);
   log('Sent control request');
 }
@@ -189,7 +189,7 @@ function handleControlDecision(message) {
   if (message.decision === 'accepted') {
     log('Control request accepted by admin');
     sessionActive = true;
-    
+
     // Send status update to indicate we're connected
     sendMessage({
       type: 'control_status',
@@ -210,13 +210,13 @@ function handleBrowseRequest(message) {
     logError('Cannot browse: Session not active');
     return;
   }
-  
+
   const { path } = message;
   log(`Browse request received for path: ${path}`);
-  
+
   // Get directory contents from our mock file system
   const entries = mockFileSystem[path] || generateDirectoryContent(path);
-  
+
   // Send browse response
   sendMessage({
     type: 'browse_response',
@@ -225,7 +225,7 @@ function handleBrowseRequest(message) {
     path: path,
     entries: entries
   });
-  
+
   log(`Sent browse response for path: ${path} with ${entries.length} entries`);
 }
 
@@ -235,13 +235,13 @@ function handleDownloadRequest(message) {
     logError('Cannot download: Session not active');
     return;
   }
-  
+
   const { paths } = message;
   log(`Download request received for paths:`, paths);
-  
+
   // Generate a mock download URL
   //const downloadUrl = `https://mockdownload.example.com/${config.deviceId}/${paths.join(',')}?token=${Date.now()}`;
-  
+
   // Send download response
   sendMessage({
     type: 'download_response',
@@ -249,8 +249,62 @@ function handleDownloadRequest(message) {
     deviceId: message.deviceId,
     //downloadUrl: downloadUrl
   });
-  
+
   //log(`Sent download response with URL: ${downloadUrl}`);
+}
+
+// Function to send inactive_disconnect message
+function sendInactiveDisconnect() {
+  if (!connectionActive || !ws) {
+    logError('Cannot send inactive_disconnect: not connected');
+    return false;
+  }
+
+  const message = {
+    type: 'inactive_disconnect',
+    deviceId: config.deviceId,
+    sessionId: config.sessionId,
+    status: 'The session has been terminated due to inactivity.'
+  };
+
+  sendMessage(message);
+  log('Sent inactive_disconnect message');
+}
+
+function sendStartRecord() {
+  if (!connectionActive || !ws) {
+    logError('Cannot send record_stream: not connected');
+    return false;
+  }
+
+  const message = {
+    type: 'record_stream',
+    deviceId: config.deviceId,
+    sessionId: config.sessionId,
+    recordStarted: Date.now(),
+    message: "Web admin started stream recording."
+  };
+
+  sendMessage(message);
+  log('Sent record_stream message');
+}
+
+function sendStopRecord() {
+  if (!connectionActive || !ws) {
+    logError('Cannot send record_stream_ended: not connected');
+    return false;
+  }
+
+  const message = {
+    type: 'record_stream_ended',
+    deviceId: config.deviceId,
+    sessionId: config.sessionId,
+    recordStarted: Date.now(),
+    message: "Web admin stopped the recording."
+  };
+
+  sendMessage(message);
+  log('Sent record_stream_ended message');
 }
 
 // Send a message to the server
@@ -259,7 +313,7 @@ function sendMessage(message) {
     logError('Cannot send message: not connected');
     return false;
   }
-  
+
   try {
     ws.send(JSON.stringify(message));
     return true;
@@ -288,15 +342,19 @@ function setupCLI() {
     input: process.stdin,
     output: process.stdout
   });
-  
+
   rl.on('line', (input) => {
     const command = input.trim().toLowerCase();
-    
+        let recordStarted = false;
+
     switch (command) {
       case 'help':
         console.log('\nAvailable commands:');
         console.log('  connect             - Connect to the server');
         console.log('  request             - Send a control request');
+        console.log('  inactive             - Send an inactive session disconnect');
+        console.log('  record             - Send a request to start screen recording');
+        console.log('  recordStop             -Send a request to stop screen recording');
         console.log('  status              - Show current connection status');
         console.log('  disconnect          - Disconnect from the server');
         console.log('  config              - Show current configuration');
@@ -305,7 +363,7 @@ function setupCLI() {
         console.log('  exit                - Exit the application');
         console.log('  help                - Show this help message\n');
         break;
-        
+
       case 'connect':
         if (!connectionActive) {
           connectToServer();
@@ -313,7 +371,7 @@ function setupCLI() {
           log('Already connected');
         }
         break;
-        
+
       case 'request':
         if (connectionActive && !sessionActive) {
           requestControlSession();
@@ -323,7 +381,7 @@ function setupCLI() {
           log('Session already active');
         }
         break;
-        
+
       case 'status':
         console.log(`\nStatus:`);
         console.log(`  Connection: ${connectionActive ? 'Active' : 'Disconnected'}`);
@@ -331,7 +389,7 @@ function setupCLI() {
         console.log(`  Device ID: ${config.deviceId}`);
         console.log(`  Session ID: ${config.sessionId}\n`);
         break;
-        
+
       case 'disconnect':
         if (connectionActive) {
           ws.close();
@@ -342,23 +400,23 @@ function setupCLI() {
           log('Not connected');
         }
         break;
-        
+
       case 'config':
         console.log('\nCurrent configuration:');
         console.log(JSON.stringify(config, null, 2));
         console.log();
         break;
-        
+
       case 'debug on':
         config.debugMode = true;
         console.log('Debug mode enabled');
         break;
-        
+
       case 'debug off':
         config.debugMode = false;
         console.log('Debug mode disabled');
         break;
-        
+
       case 'exit':
         if (connectionActive) {
           ws.close();
@@ -366,17 +424,49 @@ function setupCLI() {
         console.log('Exiting...');
         process.exit(0);
         break;
-        
-      default:
+
+      case 'inactive':
+        if (connectionActive) {
+          sendInactiveDisconnect();
+          ws.close();
+          connectionActive = false;
+          sessionActive = false;
+          log('Disconnected from server');
+        } else {
+          log('Not connected');
+        }
+        break;
+
+        case 'record':
+        if (connectionActive) {
+          sendStartRecord();
+          recordStarted = true;
+          log('Started screen recording');
+        } else {
+          log('Screen recording did not start - Not connected');
+        }
+        break;
+
+        case 'recordStop':
+        if (connectionActive && recordStarted) {
+          sendStopRecord();
+          recordStarted = false;
+          log('Screen recording stopped');
+        } else {
+          log('Screen recording can t end.');
+        }
+        break;
+
+         default:
         if (command.startsWith('ls')) {
           const parts = command.split(' ');
           const path = parts.length > 1 ? parts[1] : '/';
-          
+
           console.log(`\nContents of ${path}:`);
           const entries = mockFileSystem[path] || generateDirectoryContent(path);
-          
+
           entries.forEach(entry => {
-            const size = entry.type === 'file' && entry.size ? 
+            const size = entry.type === 'file' && entry.size ?
               `(${formatFileSize(entry.size)})` : '';
             console.log(`  ${entry.type === 'folder' ? '📁' : '📄'} ${entry.name} ${size}`);
           });
@@ -387,7 +477,7 @@ function setupCLI() {
         break;
     }
   });
-  
+
   console.log('\n=== Mock Android Device ===');
   console.log('Type "help" for available commands\n');
 }

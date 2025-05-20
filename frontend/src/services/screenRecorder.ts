@@ -56,8 +56,7 @@ class ScreenRecorder {
         console.log('Pokušavam započeti snimanje...');
 
         try {
-            const options = { mimeType: 'video/webm; codecs=vp8,opus' };
-            this.mediaRecorder = new MediaRecorder(streamToRecord, options);
+            this.mediaRecorder = new MediaRecorder(streamToRecord);
 
             this.mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {

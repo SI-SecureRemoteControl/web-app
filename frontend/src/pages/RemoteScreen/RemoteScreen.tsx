@@ -5,6 +5,7 @@ import { websocketService } from '../../services/webSocketService';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useRemoteControl } from '../../contexts/RemoteControlContext';
 import { Wifi, FolderKanban } from 'lucide-react'; 
+import { screenRecorder } from '../../services/screenRecorder';
 
 const RemoteControlPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -17,6 +18,9 @@ const RemoteControlPage: React.FC = () => {
   const deviceIdFromUrl = queryParams.get('deviceId');
   const pageSessionId = queryParams.get('sessionId'); // The session ID this page is specifically viewing
   const { activeSession} = useRemoteControl();
+  const [recordingStatus, setRecordingStatus] = useState<string>('Nema aktivnog snimanja.');
+  const [isRecording, setIsRecording] = useState<boolean>(false); 
+
 
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [latency, setLatency] = useState<number | null>(null);
@@ -40,6 +44,11 @@ const RemoteControlPage: React.FC = () => {
 
   useEffect(() => {
 
+    screenRecorder.setOnRecordingStatusChange((status) => {
+      setRecordingStatus(status);
+      setIsRecording(screenRecorder.isRecording()); 
+    });
+
     if(!pageSessionId || !deviceIdFromUrl) {return;}
     console.log(`%c[${pageSessionId}] MainEffect: START/RE-START. Setting up.`, "color: blue;");
     // No need to set remoteStreamState for video display
@@ -47,10 +56,13 @@ const RemoteControlPage: React.FC = () => {
     webRTCServiceRef.current = service;
     let isEffectMounted = true;
 
+
+
     service.setOnRemoteStream((stream) => {
       if (isEffectMounted) {
         console.log(`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`, "color: red;");
         setRemoteStream(stream);
+        screenRecorder.setStream(stream);
       }
     });
 
@@ -114,6 +126,10 @@ const fetchLatency = async () => {
       websocketService.removeControlMessageListener(handleWebSocketMessagesForThisSession);
       clearInterval(latencyInterval); 
       //setIsLoading(false); // Stop loading on cleanup
+      screenRecorder.setStream(null);
+      if (screenRecorder.isRecording()) {
+        screenRecorder.stopRecording();
+      }
     };
   }, [location.search, cleanupLocalWebRTCResources]);
   
@@ -538,6 +554,14 @@ const fetchLatency = async () => {
     }
   };
 
+  const handleStartRecordingClick = () => {
+    screenRecorder.startRecording();
+  };
+
+  const handleStopRecordingClick = () => {
+    screenRecorder.stopRecording(); 
+  };
+
   const latencyStatus = getLatencyStatus();
   
   return (
@@ -564,6 +588,28 @@ const fetchLatency = async () => {
             </button>
           </div>
         ) : null}
+
+<div className="flex justify-center mt-4 space-x-4">
+      <button
+        id="startRecordingBtn"
+        onClick={handleStartRecordingClick}
+        disabled={isRecording || !screenRecorder.isStreamAvailable()} 
+        className={`px-4 py-2 rounded-lg font-medium text-white ${isRecording ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
+      >
+        {isRecording ? 'Snimanje u toku...' : 'Start Recording'}
+      </button>
+      <button
+        id="stopRecordingBtn"
+        onClick={handleStopRecordingClick}
+        disabled={!isRecording} 
+        className={`px-4 py-2 rounded-lg font-medium text-white ${!isRecording ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+      >
+        Stop Recording
+      </button>
+    </div>
+    <p id="recordingStatus" className="text-sm text-gray-600 text-center mt-2">
+        {isRecording && '🔴 SNIMANJE'} {recordingStatus}
+    </p>
 
         <div className="flex justify-center">
           {/* Always render the video element, but hide it if no stream */}

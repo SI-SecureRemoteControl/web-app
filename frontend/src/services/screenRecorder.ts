@@ -1,5 +1,3 @@
-import { data } from "react-router-dom";
-
 class ScreenRecorder {
     private mediaRecorder: MediaRecorder | null = null;
     private recordedChunks: Blob[] = [];

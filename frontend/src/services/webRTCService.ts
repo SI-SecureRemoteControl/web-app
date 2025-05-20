@@ -196,7 +196,6 @@ class WebRTCService {
 
     try {
         const stats = await this.peerConnection.getStats();
-        console.log('RTCStatsReport:', stats);
 
         let minRtt: number | null = null;
 

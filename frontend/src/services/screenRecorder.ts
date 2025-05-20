@@ -39,6 +39,12 @@ class ScreenRecorder {
             return false;
         }
 
+        console.log(`Stream za snimanje aktivan: ${streamToRecord.active}`);
+        streamToRecord.getTracks().forEach(track => {
+            console.log(`Track: Kind=<span class="math-inline">\{track\.kind\}, ID\=</span>{track.id}, Enabled=<span class="math-inline">\{track\.enabled\}, ReadyState\=</span>{track.readyState}`);
+   
+         });
+
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             console.warn('Snimanje je već u toku.');
             this.onRecordingStatusChange?.('Snimanje je već u toku.');

@@ -41,6 +41,7 @@ class ScreenRecorder {
 
             this.mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
+                    console.log(event.data);
                     this.recordedChunks.push(event.data);
                 }
             };

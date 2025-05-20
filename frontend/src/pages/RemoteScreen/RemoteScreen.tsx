@@ -556,10 +556,12 @@ const fetchLatency = async () => {
 
   const handleStartRecordingClick = () => {
     screenRecorder.startRecording();
+    setIsRecording(true);
   };
 
   const handleStopRecordingClick = () => {
     screenRecorder.stopRecording(); 
+    setIsRecording(false);
   };
 
   const latencyStatus = getLatencyStatus();

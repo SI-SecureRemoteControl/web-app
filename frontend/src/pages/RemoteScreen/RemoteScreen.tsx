@@ -25,6 +25,8 @@ const RemoteControlPage: React.FC = () => {
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 	const [latency, setLatency] = useState<number | null>(null);
+  const [isVideoReady, setIsVideoReady] = useState<boolean>(false); 
+
 
 	const cleanupLocalWebRTCResources = useCallback(
 		(reason: string) => {
@@ -73,6 +75,7 @@ const RemoteControlPage: React.FC = () => {
 					`%c[${pageSessionId}] MainEffect: <<< onRemoteStream CALLBACK FIRED >>>.`,
 					"color: red;"
 				);
+        videoRef.current?.addEventListener('loadeddata', handleFirstFrameLoaded);
 				setRemoteStream(stream);
 				screenRecorder.setStream(stream);
 			}
@@ -299,6 +302,11 @@ const RemoteControlPage: React.FC = () => {
 
 		return { relativeX, relativeY };
 	};
+
+  const handleFirstFrameLoaded = () => {
+    console.log("Prvi frejm videa je učitan.");
+    setIsVideoReady(true);
+  };
 
 	// Handle wheel events (MacBook trackpad gestures)
 	const handleWheelEvent = (event: WheelEvent) => {
@@ -705,7 +713,7 @@ const RemoteControlPage: React.FC = () => {
 
 				{/* Kontejner za video ili loading ekran */}
 				<div className="flex justify-center">
-					{remoteStream ? (
+					{isVideoReady ? (
 						// Prikaz videa kada je stream aktivan
 						<video
 							ref={videoRef}

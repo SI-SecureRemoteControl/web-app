@@ -201,15 +201,12 @@ class WebRTCService {
         let minRtt: number | null = null;
 
         stats.forEach((stat) => {
-            console.log('WebRTC stat entry:', stat);
-
             if (stat.type === 'candidate-pair' && stat.currentRoundTripTime !== undefined) {
                 const rttMs = stat.currentRoundTripTime * 1000;
                 if (minRtt === null || rttMs < minRtt) minRtt = rttMs;
             }
         });
 
-        // Fallback to other stats if candidate-pair is not available
         if (minRtt === null) {
             stats.forEach((stat) => {
                 if (stat.type === 'remote-inbound-rtp' && stat.roundTripTime !== undefined) {

@@ -9,6 +9,7 @@ import { screenRecorder } from "../../services/screenRecorder";
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 	const webRTCServiceRef = useRef<WebRTCService | null>(null);
 
 	const location = useLocation();
@@ -26,6 +27,39 @@ const RemoteControlPage: React.FC = () => {
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 	const [latency, setLatency] = useState<number | null>(null);
   const [isVideoReady, setIsVideoReady] = useState<boolean>(false); 
+
+  const checkBlackFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (!video || !canvas || video.videoWidth === 0 || video.videoHeight === 0) {
+      return true; // Ako nema videa ili dimenzija, smatraj crnim
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const samplePoints = [
+      { x: canvas.width / 2, y: canvas.height / 2 }, 
+      { x: canvas.width / 4, y: canvas.height / 4 },
+      { x: canvas.width * 3 / 4, y: canvas.height * 3 / 4 },
+    ];
+
+    let blackPixelCount = 0;
+    const threshold = 30;
+
+    for (const point of samplePoints) {
+      const pixelData = ctx?.getImageData(point.x, point.y, 1, 1).data;
+      if (pixelData && pixelData[0] < threshold && pixelData[1] < threshold && pixelData[2] < threshold) {
+        blackPixelCount++;
+      }
+    }
+
+    return blackPixelCount === samplePoints.length;
+  }, []);
+
 
 
 	const cleanupLocalWebRTCResources = useCallback(
@@ -69,6 +103,25 @@ const RemoteControlPage: React.FC = () => {
 		webRTCServiceRef.current = service;
 
     const videoElement = videoRef.current;
+    let checkInterval: NodeJS.Timeout | null = null;
+
+    const startChecking = () => {
+      checkInterval = setInterval(() => {
+        if (remoteStream && videoElement && videoElement.readyState >= 2) {
+          const isCurrentlyBlack = checkBlackFrame();
+          setIsVideoReady(!isCurrentlyBlack);
+        } else if (!remoteStream) {
+          setIsVideoReady(false); 
+        }
+      }, 200);
+    };
+
+    const stopChecking = () => {
+      if (checkInterval) {
+        clearInterval(checkInterval);
+        checkInterval = null;
+      }
+    };
     const handleReadyStateChange = () => {
       if (videoElement && videoElement.readyState >= 2) { 
         console.log("Video ready state changed:", videoElement.readyState);
@@ -90,6 +143,12 @@ const RemoteControlPage: React.FC = () => {
 				);
         videoRef.current?.addEventListener('loadeddata', handleFirstFrameLoaded);
 				setRemoteStream(stream);
+        if (stream) {
+          startChecking();
+        } else {
+          stopChecking();
+          setIsVideoReady(false);
+        }
 				screenRecorder.setStream(stream);
 			}
 		});
@@ -100,8 +159,7 @@ const RemoteControlPage: React.FC = () => {
 					`%c[${pageSessionId}] MainEffect: <<< onIceDisconnected CALLBACK FIRED >>>.`,
 					"color: red;"
 				);
-				cleanupLocalWebRTCResources("ICE disconnected"); // Clean up local resources
-				//  setIsLoading(false); // Stop loading on disconnect
+				cleanupLocalWebRTCResources("ICE disconnected");
 			}
 		});
 
@@ -767,6 +825,7 @@ const RemoteControlPage: React.FC = () => {
 					)}
 				</div>
 			</div>
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 		</div>
 	);
 };

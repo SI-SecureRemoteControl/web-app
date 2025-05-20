@@ -41,7 +41,7 @@ class ScreenRecorder {
 
         console.log(`Stream za snimanje aktivan: ${streamToRecord.active}`);
         streamToRecord.getTracks().forEach(track => {
-            console.log(`Track: Kind=<span class="math-inline">\{track\.kind\}, ID\=</span>{track.id}, Enabled=<span class="math-inline">\{track\.enabled\}, ReadyState\=</span>{track.readyState}`);
+                console.log(`Track: Kind=<span class="math-inline">${track.kind}, ID\=</span>${track.id}, Enabled=<span class="math-inline">${track.enabled}, ReadyState=</span>${track.readyState}`);
    
          });
 

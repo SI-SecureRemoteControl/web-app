@@ -628,7 +628,7 @@ const fetchLatency = async () => {
             playsInline
             muted 
             style={{
-              display: 'block',
+              display: remoteStream ? 'block' : 'none',
               maxWidth: '100%',
               height: 'auto',
               touchAction: 'manipulation',

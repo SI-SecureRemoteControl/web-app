@@ -10,6 +10,7 @@ class ScreenRecorder {
     }
 
     public setStream(stream: MediaStream | null) {
+
         this.currentStream = stream;
         if (this.onRecordingStatusChange && stream) {
             this.onRecordingStatusChange('Stream spreman za snimanje.');
@@ -19,7 +20,20 @@ class ScreenRecorder {
     }
 
     public startRecording(): boolean {
-        if (!this.currentStream) {
+        const videoTrack = this.currentStream?.getVideoTracks()[0];
+        if (!videoTrack) {
+            console.error('Nema video tracka u MediaStream-u za snimanje.');
+            this.onRecordingStatusChange?.('Greška: Nema video tracka za snimanje.');
+            return false;
+        }
+
+        const streamToRecord = new MediaStream([videoTrack]);
+        const audioTrack = this.currentStream?.getAudioTracks()[0];
+        if (audioTrack) {
+            streamToRecord.addTrack(audioTrack);
+        }
+
+        if (!streamToRecord) {
             console.error('Nije moguće započeti snimanje: MediaStream nije dostupan.');
             this.onRecordingStatusChange?.('Greška: Stream nije dostupan.');
             return false;
@@ -37,7 +51,7 @@ class ScreenRecorder {
 
         try {
             const options = { mimeType: 'video/webm; codecs=vp8,opus' };
-            this.mediaRecorder = new MediaRecorder(this.currentStream, options);
+            this.mediaRecorder = new MediaRecorder(streamToRecord, options);
 
             this.mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {

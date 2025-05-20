@@ -595,7 +595,7 @@ const fetchLatency = async () => {
           <button
             id="startRecordingBtn"
             onClick={handleStartRecordingClick}
-            disabled={isRecording || !remoteStream} 
+            disabled={isRecording || !remoteStream}
             className={`px-4 py-2 rounded-lg font-medium text-white ${isRecording ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'}`}
           >
             {isRecording ? 'Snimanje u toku...' : 'Start Recording'}
@@ -613,41 +613,40 @@ const fetchLatency = async () => {
             {isRecording && '🔴 SNIMANJE'} {recordingStatus}
         </p>
 
-        <div className="flex justify-center w-full min-h-[480px]"> {/* Dodajte min-h da bi loading ekran imao visinu */}
-          {remoteStream ? (
-            <video
-              ref={videoRef}
-              onClick={handleVideoClick}
-              onMouseDown={handleMouseDown}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              tabIndex={0}
-              className="rounded-xl shadow-lg border border-gray-300 cursor-pointer bg-black w-full"
-              autoPlay
-              playsInline
-              muted
-              style={{
-                maxWidth: '100%',
-                height: 'auto',
-                touchAction: 'manipulation',
-                pointerEvents: 'auto',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                WebkitTapHighlightColor: 'rgba(0,0,0,0)',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center bg-gray-800 text-white rounded-xl shadow-lg w-full"
-                 style={{ width: '640px', height: '480px' }}> {/* Prilagodite dimenzije */}
-              <Loader2 className="animate-spin text-blue-400 mb-4" size={48} /> {/* Animacija spinera */}
-              <p className="text-lg">Čekam udaljeni stream...</p>
-              <p className="text-sm text-gray-400 mt-2">Povezivanje sa uređajem...</p>
-            </div>
-          )}
-          {/* Skriveni canvas za snimanje - ostaje uvek sakriven */}
+        {/* GLAVNA PROMENA: Kontejner za video/loading ekran */}
+        <div className="flex justify-center">
+          <div className="relative w-full max-w-4xl aspect-video bg-black flex items-center justify-center rounded-xl shadow-lg border border-gray-300 overflow-hidden">
+            {remoteStream ? (
+              <video
+                ref={videoRef}
+                onClick={handleVideoClick}
+                onMouseDown={handleMouseDown}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                tabIndex={0}
+                className="w-full h-full object-contain cursor-pointer" 
+                autoPlay
+                playsInline
+                muted
+                style={{
+                  touchAction: 'manipulation',
+                  pointerEvents: 'auto',
+                  userSelect: 'none',
+                  WebkitUserSelect: 'none',
+                  WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center w-full h-full text-white"> {/* w-full h-full da zauzme ceo kontejner */}
+                <Loader2 className="animate-spin text-blue-400 mb-4" size={48} />
+                <p className="text-lg">Čekam udaljeni stream...</p>
+                <p className="text-sm text-gray-400 mt-2">Povezivanje sa uređajem...</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

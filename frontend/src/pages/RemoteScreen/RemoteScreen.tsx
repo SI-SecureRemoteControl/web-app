@@ -613,40 +613,48 @@ const fetchLatency = async () => {
             {isRecording && '🔴 SNIMANJE'} {recordingStatus}
         </p>
 
-        {/* GLAVNA PROMENA: Kontejner za video/loading ekran */}
+        {/* Kontejner za video ili loading ekran */}
         <div className="flex justify-center">
-          <div className="relative w-full max-w-4xl aspect-video bg-black flex items-center justify-center rounded-xl shadow-lg border border-gray-300 overflow-hidden">
-            {remoteStream ? (
-              <video
-                ref={videoRef}
-                onClick={handleVideoClick}
-                onMouseDown={handleMouseDown}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                tabIndex={0}
-                className="w-full h-full object-contain cursor-pointer" 
-                autoPlay
-                playsInline
-                muted
-                style={{
-                  touchAction: 'manipulation',
-                  pointerEvents: 'auto',
-                  userSelect: 'none',
-                  WebkitUserSelect: 'none',
-                  WebkitTapHighlightColor: 'rgba(0,0,0,0)',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full text-white"> {/* w-full h-full da zauzme ceo kontejner */}
-                <Loader2 className="animate-spin text-blue-400 mb-4" size={48} />
-                <p className="text-lg">Čekam udaljeni stream...</p>
-                <p className="text-sm text-gray-400 mt-2">Povezivanje sa uređajem...</p>
-              </div>
-            )}
-          </div>
+          {remoteStream ? (
+            // Prikaz videa kada je stream aktivan
+            <video
+              ref={videoRef}
+              onClick={handleVideoClick}
+              onMouseDown={handleMouseDown}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              tabIndex={0}
+              // Vraćamo vaše originalne klase za osnovnu veličinu
+              // I dodajemo object-cover da popuni prostor
+              className="w-full max-w-4xl border border-gray-300 cursor-pointer bg-black rounded-xl shadow-lg object-cover"
+              autoPlay
+              playsInline
+              muted
+              style={{
+                // Sada video može da koristi automatsku visinu
+                height: 'auto',
+                touchAction: 'manipulation',
+                pointerEvents: 'auto',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                WebkitTapHighlightColor: 'rgba(0,0,0,0)',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          ) : (
+            // Prikaz loading animacije kada stream nije aktivan
+            <div
+              className="flex flex-col items-center justify-center bg-white text-gray-800 rounded-xl shadow-lg border border-gray-300"
+              // Vraćamo dimenzije koje ste imali za video inicijalno
+              style={{ width: '100%', maxWidth: '896px', aspectRatio: '16/9' }} // Prilagodite maxWidth i aspectRatio ako treba
+            >
+              <Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
+              <p className="text-lg font-medium">Čekam udaljeni stream...</p>
+              <p className="text-sm text-gray-600 mt-2">Povezivanje sa uređajem...</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

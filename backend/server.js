@@ -150,8 +150,6 @@ wssControl.on('connection', (ws) => {
         handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
       } else if (parsedMessage.action === 'keyboard') {
         handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
-      } else if (parsedMessage.type === 'decision_fileshare') {
-        handleFileShareDecision(parsedMessage);
       } else if (parsedMessage.type === 'download_request') {
         handleDownloadRequest(parsedMessage);
       }else if (parsedMessage.type === 'browse_request') {
@@ -183,7 +181,6 @@ wssComm.on('connection', (ws) => {
 
   commLayerClients.add(ws);
   controlFrontendClients.set('commLayer', ws);
-  //controlFrontendClients.add(ws);
 
   ws.on('message', (message) => {
     try {
@@ -195,9 +192,7 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
-      } /*else if (parsedMessage.type === 'request_session_fileshare') {
-        handleFileShareRequest(ws, parsedMessage);
-      }*/ else if (parsedMessage.type === 'browse_response') {
+      }  else if (parsedMessage.type === 'browse_response') {
         handleBrowseResponse(parsedMessage);
       } else if (parsedMessage.type === 'upload_status') {
         handleUploadStatus(parsedMessage);

@@ -1,3 +1,5 @@
+import { data } from "react-router-dom";
+
 class ScreenRecorder {
     private mediaRecorder: MediaRecorder | null = null;
     private recordedChunks: Blob[] = [];
@@ -74,6 +76,7 @@ class ScreenRecorder {
     public stopRecording(): void {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             console.log('Zaustavljam snimanje...');
+            console.log(this.recordedChunks);
             this.onRecordingStatusChange?.('Zaustavljam snimanje...');
             this.mediaRecorder.stop();
         } else {

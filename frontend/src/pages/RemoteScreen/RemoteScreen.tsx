@@ -742,7 +742,7 @@ const RemoteControlPage: React.FC = () => {
 						/>
 					) : (
 						<div
-							className="flex flex-col items-center justify-center bg-white text-gray-800 rounded-xl shadow-lg border border-gray-300"
+							className="flex flex-col items-center justify-center bg-white text-gray-800 rounded-xl"
 							style={{ width: "100%", maxWidth: "896px", aspectRatio: "16/9" }}
 						>
 							<Loader2 className="animate-spin text-blue-500 mb-4" size={48} />

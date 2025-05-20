@@ -67,6 +67,19 @@ const RemoteControlPage: React.FC = () => {
 		// No need to set remoteStreamState for video display
 		const service = new WebRTCService(deviceIdFromUrl, pageSessionId);
 		webRTCServiceRef.current = service;
+
+    const videoElement = videoRef.current;
+    const handleReadyStateChange = () => {
+      if (videoElement && videoElement.readyState >= 2) { 
+        console.log("Video ready state changed:", videoElement.readyState);
+        setIsVideoReady(true);
+      }
+    };
+
+    if (videoElement) {
+      videoElement.addEventListener('readystatechange', handleReadyStateChange);
+    }
+
 		let isEffectMounted = true;
 
 		service.setOnRemoteStream((stream) => {

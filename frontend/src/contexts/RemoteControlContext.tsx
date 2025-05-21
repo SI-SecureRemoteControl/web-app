@@ -135,7 +135,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
     case 'SESSION_STATUS_UPDATE': {
       const { sessionId: payloadSessionId, status: backendStatus, message: payloadMessage, deviceId: payloadDeviceId } = action.payload;
       console.log(`Context Reducer: SESSION_STATUS_UPDATE for ${payloadSessionId}, new backend status: ${backendStatus}`);
-      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found'].includes(backendStatus);
+      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect'].includes(backendStatus);
       if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
         // Clear persisted session on terminal

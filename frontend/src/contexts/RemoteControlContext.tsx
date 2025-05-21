@@ -34,6 +34,7 @@ interface RemoteControlState {
   navigateToWebRTC: boolean;
   currentSessionId?: string;
   currentDeviceId?: string;
+  triggerAutomaticTermination: string | null;
 }
 
 // --- CORRECTION 1: Action Type Payload ---
@@ -45,7 +46,8 @@ type RemoteControlAction =
   | { type: 'REQUEST_TIMEOUT'; payload: { requestId: string; deviceName: string } }
   | { type: 'SESSION_STATUS_UPDATE'; payload: { sessionId: string; status: string; message: string; deviceId?: string; decision?: 'accepted' } }
   | { type: 'CLEAR_NOTIFICATION' }
-  | { type: 'RESET_NAVIGATION' };
+  | { type: 'RESET_NAVIGATION' }
+  | { type: 'CLEAR_AUTOMATIC_TERMINATION_TRIGGER' };
 
 // Initial state
 const getInitialState = (): RemoteControlState => {
@@ -59,7 +61,8 @@ const getInitialState = (): RemoteControlState => {
     isConnected: false,
     navigateToWebRTC: false,
     currentSessionId: savedSessionId || undefined,
-    currentDeviceId: savedDeviceId || undefined
+    currentDeviceId: savedDeviceId || undefined,
+    triggerAutomaticTermination: null
   };
 };
 
@@ -77,7 +80,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         notification: !action.payload.connected ? {
           type: 'error',
           message: 'WebSocket connection lost. Attempting to reconnect...'
-        } : state.notification // Keep existing notification if connection comes back
+        } : state.notification,
+        triggerAutomaticTermination: state.triggerAutomaticTermination // Keep existing notification if connection comes back
       };
     case 'NEW_REQUEST':
       // Avoid duplicates
@@ -90,7 +94,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         notification: {
           type: 'info',
           message: `New remote control request from ${action.payload.deviceName}`
-        }
+        },
+        triggerAutomaticTermination: state.triggerAutomaticTermination
       };
     case 'ACCEPT_REQUEST': {
       const newSession: ActiveSession = {
@@ -110,7 +115,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         currentSessionId: action.payload.sessionId,
         currentDeviceId: action.payload.deviceId,
         notification: { type: 'info', message: `Connecting to ${action.payload.deviceName}...` },
-        navigateToWebRTC: false // Don't navigate immediately
+        navigateToWebRTC: false,
+        triggerAutomaticTermination: state.triggerAutomaticTermination  // Don't navigate immediately
       };
     }
     case 'DECLINE_REQUEST':
@@ -120,7 +126,8 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         notification: {
           type: 'info',
           message: 'Request declined'
-        }
+        },
+        triggerAutomaticTermination: state.triggerAutomaticTermination
       };
     case 'REQUEST_TIMEOUT':
       return {
@@ -129,12 +136,24 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         notification: {
           type: 'info',
           message: `Remote control request from ${action.payload.deviceName} timed out`
-        }
+        },
+        triggerAutomaticTermination: state.triggerAutomaticTermination
       };
 
     case 'SESSION_STATUS_UPDATE': {
       const { sessionId: payloadSessionId, status: backendStatus, message: payloadMessage, deviceId: payloadDeviceId } = action.payload;
       console.log(`Context Reducer: SESSION_STATUS_UPDATE for ${payloadSessionId}, new backend status: ${backendStatus}`);
+
+      if (backendStatus === 'inactive_disconnect' && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+        console.log(`Context Reducer: Received 'inactive_disconnect' for active session ${payloadSessionId}. Setting trigger.`);
+        return {
+          ...state,
+          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` },
+          triggerAutomaticTermination: payloadSessionId, 
+          navigateToWebRTC: false, 
+        };
+      }
+
       const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect'].includes(backendStatus);
       if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
@@ -149,12 +168,14 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           navigateToWebRTC: false,
           currentSessionId: undefined,
           currentDeviceId: undefined,
+          triggerAutomaticTermination: null
         };
       }
 
       if (isTerminal && (!state.activeSession || state.activeSession.sessionId !== payloadSessionId)) {
         console.log(`Context Reducer: Received terminal status ${backendStatus} for non-active/mismatched session ${payloadSessionId}. Updating notification only.`);
-        return { ...state, notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` } };
+        return { ...state, notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` },
+      triggerAutomaticTermination: state.triggerAutomaticTermination };
       }
 
       if (state.activeSession && state.activeSession.sessionId === payloadSessionId) {
@@ -193,6 +214,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           navigateToWebRTC: shouldNavigate,
           currentSessionId: payloadSessionId,
           currentDeviceId: payloadDeviceId || state.activeSession.deviceId,
+          triggerAutomaticTermination: null
         };
       }
       console.warn(`Context Reducer: Ignoring non-terminal status update for ${payloadSessionId} (status: ${backendStatus}) as it does not match current active session ${state.activeSession?.sessionId}.`);
@@ -201,12 +223,19 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
     case 'CLEAR_NOTIFICATION':
       return {
         ...state,
-        notification: null
+        notification: null,
+        triggerAutomaticTermination: state.triggerAutomaticTermination
       };
     case 'RESET_NAVIGATION':
       return {
         ...state,
         navigateToWebRTC: false,
+        triggerAutomaticTermination: state.triggerAutomaticTermination
+      };
+    case 'CLEAR_AUTOMATIC_TERMINATION_TRIGGER': 
+      return {
+        ...state,
+        triggerAutomaticTermination: null,
       };
     default:
       return state;
@@ -218,7 +247,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
 interface RemoteControlContextType extends RemoteControlState {
   acceptRequest: (requestId: string, deviceId: string, deviceName: string, sessionId: string) => void;
   declineRequest: (requestId: string, deviceId: string, sessionId: string) => void;
-  terminateSession: (sessionId: string) => void;
+  terminateSession: (sessionId: string, reason?: string) => void;
   clearNotification: () => void;
   resetNavigation: () => void;
 }
@@ -282,7 +311,6 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
 
     // Set up WebSocket listener for remote control requests
     const handleWebSocketMessage = (data: any) => {
-      console.log('WebSocket message received:', data);
 
       if (data.type === 'request_control') {
         const request: RemoteRequest = {
@@ -507,6 +535,21 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     navigate('/dashboard');
     window.location.reload(); // Programmatically refresh the page to ensure a clean state
   };
+
+  useEffect(() => {
+    if (state.triggerAutomaticTermination && state.activeSession) {
+      if (state.triggerAutomaticTermination === state.activeSession.sessionId) {
+        console.log(`[EFFECT] Auto-terminating session ${state.triggerAutomaticTermination} due to trigger (e.g., inactive_disconnect).`);
+        // Get the notification message that was set when 'inactive_disconnect' was processed
+        terminateSession(state.triggerAutomaticTermination);
+        dispatch({ type: 'CLEAR_AUTOMATIC_TERMINATION_TRIGGER' }); // Clear the trigger
+      } else {
+        // Mismatch, clear the trigger as it's for a different/old session
+        console.warn(`[EFFECT] Auto-termination trigger for ${state.triggerAutomaticTermination} does not match active session ${state.activeSession.sessionId}. Clearing trigger.`);
+        dispatch({ type: 'CLEAR_AUTOMATIC_TERMINATION_TRIGGER' });
+      }
+    }
+  }, [state.triggerAutomaticTermination, state.activeSession, terminateSession]); 
 
   const clearNotification = () => {
     dispatch({ type: 'CLEAR_NOTIFICATION' });

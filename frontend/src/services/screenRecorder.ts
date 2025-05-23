@@ -68,7 +68,6 @@ class ScreenRecorder {
             this.mediaRecorder.onstop = () => {
                 console.log('Snimanje zaustavljeno. Spremno za preuzimanje.');
                 this.onRecordingStatusChange?.('Snimanje zaustavljeno. Spremno za preuzimanje.');
-                this.downloadRecording();
             };
 
             this.mediaRecorder.onerror = (event: Event) => { 
@@ -102,7 +101,7 @@ class ScreenRecorder {
         }
     }
 
-    private downloadRecording(): void {
+    public downloadRecording(): void {
         if (this.recordedChunks.length === 0) {
             console.warn('Nema podataka za snimanje.');
             this.onRecordingStatusChange?.('Nema podataka za preuzimanje.');

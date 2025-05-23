@@ -199,7 +199,10 @@ wssComm.on('connection', (ws) => {
       } else if (parsedMessage.type === 'download_response') {
         console.log('Download response:', parsedMessage);
         handleDownloadResponse(parsedMessage);
-      } else {
+      } else if (parsedMessage.type === 'inactive_disconnect') { 
+        handleCommLayerInactiveDisconnect(parsedMessage);
+      }
+      else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
     } catch (error) {
@@ -624,6 +627,39 @@ function handleBrowseResponse(message) {
     path,
     entries: entries || []
   });
+}
+
+function handleCommLayerInactiveDisconnect(message) {
+  const { sessionId, deviceId, status } = message; 
+
+  if (!sessionId) {
+    console.error('[Inactive Disconnect] Message missing sessionId:', message);
+    return;
+  }
+
+  const session = controlSessions.get(sessionId);
+  if (!session) {
+    console.warn(`[Inactive Disconnect] Session ${sessionId} not found or already terminated.`);
+    broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: deviceId, 
+      status: 'terminated_not_found', 
+      message: `Attempted to terminate session ${sessionId} due to inactivity, but it was not found.`
+    });
+    return;
+  }
+
+  console.log(`Comm Layer reported inactivity for session ${sessionId}. Terminating.`);
+
+  broadcastToControlFrontend({
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session.device?.deviceId || deviceId, 
+    status: 'inactive_disconnect', 
+    message: status || 'The session has been terminated due to inactivity.' 
+  });
+  cleanupSession(sessionId, 'INACTIVITY_REPORTED_BY_COMM');
 }
 
 // ---------------------------------------------------------- rute

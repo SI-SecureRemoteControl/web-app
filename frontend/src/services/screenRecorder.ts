@@ -102,6 +102,7 @@ class ScreenRecorder {
     }
 
     public downloadRecording(): void {
+        console.log("evo ih"+ this.recordedChunks); 
         const superBuffer = new Blob(this.recordedChunks, { type: 'video/webm' });
 
         const url = URL.createObjectURL(superBuffer);

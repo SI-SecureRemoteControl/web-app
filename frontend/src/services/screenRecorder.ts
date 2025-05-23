@@ -102,12 +102,6 @@ class ScreenRecorder {
     }
 
     public downloadRecording(): void {
-        if (this.recordedChunks.length === 0) {
-            console.warn('Nema podataka za snimanje.');
-            this.onRecordingStatusChange?.('Nema podataka za preuzimanje.');
-            return;
-        }
-
         const superBuffer = new Blob(this.recordedChunks, { type: 'video/webm' });
 
         const url = URL.createObjectURL(superBuffer);

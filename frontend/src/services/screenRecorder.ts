@@ -51,7 +51,7 @@ class ScreenRecorder {
             return true;
         }
 
-        this.recordedChunks = []; 
+        //this.recordedChunks = []; 
         this.onRecordingStatusChange?.('Snimanje u toku...');
         console.log('Pokušavam započeti snimanje...');
 
@@ -120,7 +120,7 @@ class ScreenRecorder {
 
         URL.revokeObjectURL(url);
         console.log('Snimak preuzet i Blob URL opozvan.');
-        this.recordedChunks = []; 
+        //this.recordedChunks = []; 
         this.onRecordingStatusChange?.('Snimak uspešno preuzet.');
     }
 

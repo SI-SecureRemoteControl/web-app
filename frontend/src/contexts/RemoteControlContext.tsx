@@ -148,7 +148,7 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
         console.log(`Context Reducer: Received 'inactive_disconnect' for active session ${payloadSessionId}. Setting trigger.`);
         return {
           ...state,
-          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena: ${backendStatus}` },
+          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena zbog neaktivnosti.` },
           triggerAutomaticTermination: payloadSessionId, 
           navigateToWebRTC: false, 
         };

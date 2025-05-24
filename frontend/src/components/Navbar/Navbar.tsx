@@ -6,27 +6,13 @@ export interface navbarProps {
     handleLogout: () => void;
 }
 
-// Deklarišemo šta očekujemo u tokenu
-interface MyJwtPayload {
-    username?: string;
-}
-
 const Navbar = ({ handleLogout }: navbarProps) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token'); 
     let username = '';
-
-    // Sigurno dekodiranje JWT tokena
-    if (token && token.split('.').length === 3) {
-        try {
-            const decoded = jwtDecode<MyJwtPayload>(token);
-            username = decoded.username || '';
-        } catch (err) {
-            console.error("JWT decoding failed:", err);
-        }
-    } else {
-        console.warn("Neispravan JWT token:", token);
+    if (token) {
+        const decoded: any = jwtDecode(token); 
+        username = decoded?.username; 
     }
-
     return (
         <nav className="bg-gray-800 text-white px-6 py-4 shadow-md">
             <div className="flex justify-between items-center max-w-7xl mx-auto">
@@ -37,7 +23,7 @@ const Navbar = ({ handleLogout }: navbarProps) => {
                     <Link to="/register-user" className="hover:text-gray-300 transition">Register Admin</Link>
                 </div>
 
-                <div className="ml-auto flex items-center space-x-2">
+                <div className="ml-auto flex items-center space-x-2"> 
                     {username && (
                         <div className="text-sm text-gray-300">
                             Logged in as {username}
@@ -47,7 +33,7 @@ const Navbar = ({ handleLogout }: navbarProps) => {
                         onClick={handleLogout}
                         className="bg-red-600 hover:bg-red-700 transition px-4 py-2 rounded text-sm flex items-center"
                     >
-                        <LogOut className="mr-2 h-5 w-5" />
+                        <LogOut className="mr-2 h-5 w-5" /> 
                     </button>
                 </div>
             </div>

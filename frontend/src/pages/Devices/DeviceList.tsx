@@ -92,11 +92,11 @@ const DeviceList: React.FC = () => {
 
             {/* Pagination */}
             {devices.length > 0 && (
-                <div className="mt-4 flex justify-between">
+                <div className="flex justify-center items-center gap-4 mt-4">
                     <button
                         onClick={() => handlePageChange(page - 1)}
                         disabled={page <= 1}
-                        className="bg-gray-300 p-2 rounded"
+                        className="px-3 py-1 border border-blue-200 rounded disabled:opacity-50 hover:bg-blue-100"
                     >
                         Previous
                     </button>
@@ -104,7 +104,7 @@ const DeviceList: React.FC = () => {
                     <button
                         onClick={() => handlePageChange(page + 1)}
                         disabled={page >= totalPages}
-                        className="bg-gray-300 p-2 rounded"
+                        className="px-3 py-1 border border-blue-200 rounded disabled:opacity-50 hover:bg-blue-100"
                     >
                         Next
                     </button>

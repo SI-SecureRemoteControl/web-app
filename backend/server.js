@@ -152,7 +152,7 @@ wssControl.on('connection', (ws) => {
         handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
       } else if (parsedMessage.type === 'download_request') {
         handleDownloadRequest(parsedMessage);
-      }else if (parsedMessage.type === 'browse_request') {
+      } else if (parsedMessage.type === 'browse_request') {
         handleBrowseRequest(parsedMessage);
       } else if (parsedMessage.type === 'download_status') {
         handleDownloadStatus(parsedMessage);
@@ -196,7 +196,7 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
-      }  else if (parsedMessage.type === 'browse_response') {
+      } else if (parsedMessage.type === 'browse_response') {
         handleBrowseResponse(parsedMessage);
       } else if (parsedMessage.type === 'upload_status') {
         handleUploadStatus(parsedMessage);
@@ -779,8 +779,10 @@ app.get('/api/devices', async (req, res) => {
       if (lastActivityAfter) query.lastActiveTime.$gte = new Date(lastActivityAfter);
     }
 
-    const sort = {};
-    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    const sort = {
+      status: 1,
+      [sortBy]: sortOrder === 'asc' ? 1 : -1 
+    };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const devicesCollection = db.collection('devices');

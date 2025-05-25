@@ -878,7 +878,6 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/sessionview/:deviceId', async (req, res) => {
   const { deviceId } = req.params;
-  console.log("Prije .. id je :", deviceId);
 
   const {
     startDate,
@@ -905,8 +904,6 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sessionsCollection = db.collection('sessionLogs');
     const devicesCollection = db.collection('devices');
-
-    console.log("kolekcija:", sessionsCollection);
 
     // Fetch session logs
     const sessionLogs = await sessionsCollection.find(query)

@@ -907,7 +907,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
 
     // Fetch session logs
     const sessionLogs = await sessionsCollection.find(query)
-      .sort(sort)
+      //.sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
       .toArray();
@@ -915,6 +915,8 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     const total = await sessionsCollection.countDocuments(query);
 
     console.log("query:", query);
+    console.log("page: ", page);
+    console.log("Logovi za ovaj page:", sessionLogs);
 
     // Fetch device info
     const device = await devicesCollection.findOne({ deviceId: deviceId });

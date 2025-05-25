@@ -13,7 +13,6 @@ interface SessionLog {
     deviceId: string;
     status: string;
     events: Event[];
-    recorded?: boolean;
 }
 
 interface ApiResponse {
@@ -71,7 +70,6 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
                 return {
                     SessionID: session.sessionId,
                     Device: deviceName,
-                    Recorded: session.recorded ? 'Yes' : 'No',
                     EventTime: new Date(event.timestamp).toLocaleString(),
                     EventType: event.type,
                     EventDescription: event.description,
@@ -103,7 +101,6 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
         content += `Session ${index + 1}\n`;
         content += `Device: ${deviceName}\n`;
         content += `Session ID: ${session.sessionId}\n`;
-        content += `Recorded: ${session.recorded ? 'Yes' : 'No'}\n`;
         content += `Events:\n`;
         session.events.forEach(event => {
             content += ` - ${new Date(event.timestamp).toLocaleString()} | ${event.type} | ${event.description}\n`;
@@ -142,7 +139,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
 
             {sessionLogs.map((session, i) => {
                 const firstEvent = session.events[0];
-                const lastEvent = session.events[session.events.length - 1];
+                const lastEvent = session.events[session.events.length -1];
                 const start = firstEvent ? new Date(firstEvent.timestamp) : null;
                 const end = lastEvent ? new Date(lastEvent.timestamp) : null;
                 const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;

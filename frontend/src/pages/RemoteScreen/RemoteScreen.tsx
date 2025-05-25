@@ -626,8 +626,8 @@ const RemoteControlPage: React.FC = () => {
 		setIsRecording(true);
 		const recordingStart = {
 			type: "recording_start",
-			deviceIdFromUrl,
-			pageSessionId
+			deviceId: deviceIdFromUrl,
+			sessionId: pageSessionId
 		}
 		websocketService.sendControlMessage(recordingStart);
 	};
@@ -637,8 +637,8 @@ const RemoteControlPage: React.FC = () => {
 		setIsRecording(false);
 		const recordingStop = {
 			type: "recording_stop",
-			deviceIdFromUrl,
-			pageSessionId
+			deviceId: deviceIdFromUrl,
+			sessionId: pageSessionId
 		}
 		websocketService.sendControlMessage(recordingStop);
 	};

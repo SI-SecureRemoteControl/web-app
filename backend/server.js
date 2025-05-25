@@ -515,36 +515,34 @@ function cleanupSessionsForSocket(ws) {
 }
 
 function handleRecordingStart(message) {
-  const { deviceId: deviceIdFromUrl, sessionId:pageSessionId } = message;
-  if(!deviceIdFromUrl || !pageSessionId) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
     console.error('Missing device id from URL or page session id');
     return;
   }
 
-  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
-  sendToCommLayer(pageSessionId, {
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
     type: 'record_stream',
-    fromId: 'webadmin',
-    deviceId: deviceIdFromUrl,
-    sessionId: pageSessionId,
+    deviceId,
+    sessionId,
     recordStarted: Date.now(),
     message: "Web admin started stream recording."
   })
 }
 
 function handleRecordingStop(message) {
-  const { deviceId: deviceIdFromUrl, sessionId: pageSessionId } = message;
-  if (!deviceIdFromUrl || !pageSessionId) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
     console.error('Missing device id from URL or page session id');
     return;
   }
 
-  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
-  sendToCommLayer(pageSessionId, {
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
     type: 'record_stream_ended',
-    fromId: 'webadmin',
-    deviceId: deviceIdFromUrl,
-    sessionId: pageSessionId,
+    deviceId,
+    sessionId,
     recordEnded: Date.now(),
     message: "Web admin stopped the recording."
   })

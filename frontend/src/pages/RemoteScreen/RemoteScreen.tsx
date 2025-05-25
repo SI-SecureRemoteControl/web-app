@@ -592,9 +592,14 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	// Assign remoteStream to video element when it changes
+	// ne znam neki fazon begi da ne bude crn ekran
 	useEffect(() => {
 		if (videoRef.current && remoteStream) {
 			videoRef.current.srcObject = remoteStream;
+			videoRef.current.play().catch((error) => {
+      			console.error("Error playing video stream:", error);
+				alert("error playing video stream: " + error.message);
+    		});
 		}
 	}, [remoteStream]);
 
@@ -714,7 +719,9 @@ const RemoteControlPage: React.FC = () => {
 					id="recordingStatus"
 					className="text-sm text-gray-600 text-center mt-2"
 				>
-					{isRecording && "🔴 RECORDING"} {recordingStatus}
+					{isRecording && "🔴 RECORDING"} 
+					<br />
+					{recordingStatus}
 				</p>
 
 				{/* Kontejner za video ili loading ekran */}

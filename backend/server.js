@@ -156,7 +156,11 @@ wssControl.on('connection', (ws) => {
         handleBrowseRequest(parsedMessage);
       } else if (parsedMessage.type === 'download_status') {
         handleDownloadStatus(parsedMessage);
-      }else {
+      } else if(parsedMessage.type === 'recording_start') {
+        handleRecordingStart(parsedMessage);
+      } else if (parsedMessage.type === 'recording_stop') {
+        handleRecordingStop(parsedMessage);
+      } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {
@@ -201,12 +205,7 @@ wssComm.on('connection', (ws) => {
         handleDownloadResponse(parsedMessage);
       } else if (parsedMessage.type === 'inactive_disconnect') { 
         handleCommLayerInactiveDisconnect(parsedMessage);
-      } else if(parsedMessage.type === 'recording_start') {
-        handleRecordingStart(parsedMessage);
-      } else if (parsedMessage.type === 'recording_stop') {
-        handleRecordingStop(parsedMessage);
-      }
-      else {
+      } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
     } catch (error) {

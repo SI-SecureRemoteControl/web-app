@@ -744,7 +744,7 @@ const RemoteControlPage: React.FC = () => {
 								pointerEvents: "auto",
 								userSelect: "none",
 								WebkitUserSelect: "none",
-								//WebkitTapHighlightColor: "rgba(0,0,0,0)",
+								WebkitTapHighlightColor: "rgba(0,0,0,0)",
 								outline: "none",
 								cursor: "pointer",
 							}}

@@ -13,6 +13,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
+const { type } = require('os');
 
 
 
@@ -514,7 +515,7 @@ function cleanupSessionsForSocket(ws) {
 }
 
 function handleRecordingStart(message) {
-  const { deviceIdFromUrl, pageSessionId } = message;
+  const { deviceId: deviceIdFromUrl, sessionId:pageSessionId } = message;
   if(!deviceIdFromUrl || !pageSessionId) {
     console.error('Missing device id from URL or page session id');
     return;
@@ -522,15 +523,17 @@ function handleRecordingStart(message) {
 
   console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
   sendToCommLayer(pageSessionId, {
-    deviceIdFromUrl,
-    pageSessionId,
+    type: 'record_stream',
+    fromId: 'webadmin',
+    deviceId: deviceIdFromUrl,
+    sessionId: pageSessionId,
     recordStarted: Date.now(),
     message: "Web admin started stream recording."
   })
 }
 
 function handleRecordingStop(message) {
-  const { deviceIdFromUrl, pageSessionId } = message;
+  const { deviceId: deviceIdFromUrl, sessionId: pageSessionId } = message;
   if (!deviceIdFromUrl || !pageSessionId) {
     console.error('Missing device id from URL or page session id');
     return;
@@ -538,8 +541,10 @@ function handleRecordingStop(message) {
 
   console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
   sendToCommLayer(pageSessionId, {
-    deviceIdFromUrl,
-    pageSessionId,
+    type: 'record_stream_ended',
+    fromId: 'webadmin',
+    deviceId: deviceIdFromUrl,
+    sessionId: pageSessionId,
     recordEnded: Date.now(),
     message: "Web admin stopped the recording."
   })

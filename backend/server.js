@@ -201,6 +201,10 @@ wssComm.on('connection', (ws) => {
         handleDownloadResponse(parsedMessage);
       } else if (parsedMessage.type === 'inactive_disconnect') { 
         handleCommLayerInactiveDisconnect(parsedMessage);
+      } else if(parsedMessage.type === 'recording_start') {
+        handleRecordingStart(parsedMessage);
+      } else if (parsedMessage.type === 'recording_stop') {
+        handleRecordingStop(parsedMessage);
       }
       else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
@@ -508,6 +512,38 @@ function cleanupSessionsForSocket(ws) {
       }
     });
   }
+}
+
+function handleRecordingStart(message) {
+  const { deviceIdFromUrl, pageSessionId } = message;
+  if(!deviceIdFromUrl || !pageSessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
+  sendToCommLayer(pageSessionId, {
+    deviceIdFromUrl,
+    pageSessionId,
+    recordStarted: Date.now(),
+    message: "Web admin started stream recording."
+  })
+}
+
+function handleRecordingStop(message) {
+  const { deviceIdFromUrl, pageSessionId } = message;
+  if (!deviceIdFromUrl || !pageSessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
+  sendToCommLayer(pageSessionId, {
+    deviceIdFromUrl,
+    pageSessionId,
+    recordEnded: Date.now(),
+    message: "Web admin stopped the recording."
+  })
 }
 
 function handleBrowseRequest(message) {

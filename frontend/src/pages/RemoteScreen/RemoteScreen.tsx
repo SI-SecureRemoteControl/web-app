@@ -624,11 +624,23 @@ const RemoteControlPage: React.FC = () => {
 	const handleStartRecordingClick = () => {
 		screenRecorder.startRecording();
 		setIsRecording(true);
+		const recordingStart = {
+			type: "recording_start",
+			deviceIdFromUrl,
+			pageSessionId
+		}
+		websocketService.sendControlMessage(recordingStart);
 	};
 
 	const handleStopRecordingClick = () => {
 		screenRecorder.stopRecording();
 		setIsRecording(false);
+		const recordingStop = {
+			type: "recording_stop",
+			deviceIdFromUrl,
+			pageSessionId
+		}
+		websocketService.sendControlMessage(recordingStop);
 	};
 
 	const latencyStatus = getLatencyStatus();

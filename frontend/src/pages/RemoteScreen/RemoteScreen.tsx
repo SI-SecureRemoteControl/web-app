@@ -274,6 +274,20 @@ const RemoteControlPage: React.FC = () => {
 		};
 	}, [isGestureActive, pageSessionId, deviceIdFromUrl]);
 
+	// Assign remoteStream to video element when it changes
+	useEffect(() => {
+		if (videoRef.current && remoteStream) {
+			videoRef.current.srcObject = remoteStream;
+		}
+	}, [remoteStream]);
+
+	// Download video after recording
+	useEffect(() => {
+		if(isDownloadReady) {
+			screenRecorder.downloadRecording();
+		}
+	}, [isDownloadReady])
+
 	// Convert client coordinates to relative coordinates
 	const getRelativeCoordinates = (clientX: number, clientY: number) => {
 		if (!videoRef.current) return { relativeX: 0, relativeY: 0 };
@@ -592,13 +606,6 @@ const RemoteControlPage: React.FC = () => {
 		handleGestureEnd(touch.clientX, touch.clientY);
 	};
 
-	// Assign remoteStream to video element when it changes
-	useEffect(() => {
-		if (videoRef.current && remoteStream) {
-			videoRef.current.srcObject = remoteStream;
-		}
-	}, [remoteStream]);
-
 	const getLatencyStatus = () => {
 		if (latency === null) return { color: "gray", label: "N/A" };
 		if (latency < 100) return { color: "green", label: "Good" };
@@ -699,16 +706,7 @@ const RemoteControlPage: React.FC = () => {
 						Stop Recording
 					</button>
 				</div>
-        {isDownloadReady && ( 
-  <div className="flex justify-center mt-4">
-    <button
-      onClick={screenRecorder.downloadRecording}
-      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium"
-    >
-      Preuzmi Snimak
-    </button>
-  </div>
-)}
+
 				<p
 					id="recordingStatus"
 					className="text-sm text-gray-600 text-center mt-2"

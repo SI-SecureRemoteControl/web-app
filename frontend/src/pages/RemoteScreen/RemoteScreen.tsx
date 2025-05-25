@@ -596,10 +596,6 @@ const RemoteControlPage: React.FC = () => {
 	useEffect(() => {
 		if (videoRef.current && remoteStream) {
 			videoRef.current.srcObject = remoteStream;
-			videoRef.current.play().catch((error) => {
-      			console.error("Error playing video stream:", error);
-				alert("error playing video stream: " + error.message);
-    		});
 		}
 	}, [remoteStream]);
 

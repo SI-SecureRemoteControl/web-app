@@ -14,6 +14,8 @@ const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
 const { type } = require('os');
+const { format } = require('date-fns');
+
 
 
 
@@ -526,7 +528,7 @@ function handleRecordingStart(message) {
     type: 'record_stream',
     deviceId,
     sessionId,
-    recordStarted: Date.now(),
+    recordStarted: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
     message: "Web admin started stream recording."
   })
 }
@@ -543,7 +545,7 @@ function handleRecordingStop(message) {
     type: 'record_stream_ended',
     deviceId,
     sessionId,
-    recordEnded: Date.now(),
+    recordEnded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
     message: "Web admin stopped the recording."
   })
 }

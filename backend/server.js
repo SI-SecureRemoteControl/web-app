@@ -883,7 +883,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     page = 1,
     limit = 10,
     sortBy = 'timestamp',
-    sortOrder = 'desc'
+    sortOrder = 'asc'
   } = req.query;
 
   try {
@@ -905,9 +905,9 @@ app.get('/sessionview/:deviceId', async (req, res) => {
 
     // Fetch session logs
     const sessionLogs = await sessionsCollection.find(query)
-      //.sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
+      .sort({ timestamp: -1, _id: -1 })
       .toArray();
 
     const total = await sessionsCollection.countDocuments(query);

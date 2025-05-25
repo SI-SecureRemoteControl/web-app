@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+
 import axios from 'axios';
 
 interface Event {
@@ -59,84 +61,95 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
         return hrs > 0 ? `${hrs}h ${mins}m ${secs}s` : `${mins}m ${secs}s`;
     };
 
-    
-    const exportLogs = (type: 'txt' | 'csv' | 'xlsx') => {
-    const safeDeviceName = deviceName.replace(/\s+/g, '').replace(/[^\w-]/g, '');
-    const filename = `session${page}_${safeDeviceName}.${type}`;
 
-    if (type === 'xlsx') {
-        const worksheetData = sessionLogs.flatMap(session => {
-            return session.events.map(event => {
+    const exportLogs = async (type: 'txt' | 'csv' | 'xlsx') => {
+        const safeDeviceName = deviceName.replace(/\s+/g, '').replace(/[^\w-]/g, '');
+        const filename = `session${page}_${safeDeviceName}.${type}`;
+
+        if (type === 'xlsx') {
+            const workbook = new ExcelJS.Workbook();
+            const sheet = workbook.addWorksheet('Session Events');
+
+            sheet.columns = [
+                { header: 'Session ID', key: 'sessionId' },
+                { header: 'Device', key: 'device' },
+                { header: 'Date of Session', key: 'dateOfSession' },
+                { header: 'Start Time', key: 'startTime' },
+                { header: 'End Time', key: 'endTime' },
+                { header: 'Duration', key: 'duration' },
+                { header: 'Event Time', key: 'eventTime' },
+                { header: 'Event Type', key: 'eventType' },
+                { header: 'Event Description', key: 'eventDescription' },
+            ];
+
+            sessionLogs.forEach(session => {
                 const firstEvent = session.events[0];
                 const lastEvent = session.events[session.events.length - 1];
                 const start = firstEvent ? new Date(firstEvent.timestamp) : null;
                 const end = lastEvent ? new Date(lastEvent.timestamp) : null;
                 const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
 
-                return {
-                    SessionID: session.sessionId,
-                    Device: deviceName,
-                    DateOfSession: start?.toLocaleDateString() || 'N/A',
-                    StartTime: start?.toLocaleTimeString() || 'N/A',
-                    EndTime: end?.toLocaleTimeString() || 'N/A',
-                    Duration: duration !== null ? formatDuration(duration) : 'N/A',
-                    EventTime: new Date(event.timestamp).toLocaleString(),
-                    EventType: event.type,
-                    EventDescription: event.description,
-                };
+                session.events.forEach(event => {
+                    sheet.addRow({
+                        sessionId: session.sessionId,
+                        device: deviceName,
+                        dateOfSession: start?.toLocaleDateString() || 'N/A',
+                        startTime: start?.toLocaleTimeString() || 'N/A',
+                        endTime: end?.toLocaleTimeString() || 'N/A',
+                        duration: duration !== null ? formatDuration(duration) : 'N/A',
+                        eventTime: new Date(event.timestamp).toLocaleString(),
+                        eventType: event.type,
+                        eventDescription: event.description,
+                    });
+                });
             });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            return;
+        }
+
+        // TXT or CSV
+        let content = '';
+        sessionLogs.forEach((session, index) => {
+            const firstEvent = session.events[0];
+            const lastEvent = session.events[session.events.length - 1];
+            const start = firstEvent ? new Date(firstEvent.timestamp) : null;
+            const end = lastEvent ? new Date(lastEvent.timestamp) : null;
+            const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
+
+            content += `Session ${index + 1}\n`;
+            content += `Device: ${deviceName}\n`;
+            content += `Session ID: ${session.sessionId}\n`;
+            content += `Date of Session: ${start?.toLocaleDateString() || 'N/A'}\n`;
+            content += `Start Time: ${start?.toLocaleTimeString() || 'N/A'}\n`;
+            content += `End Time: ${end?.toLocaleTimeString() || 'N/A'}\n`;
+            content += `Duration: ${duration !== null ? formatDuration(duration) : 'N/A'}\n`;
+            content += `Events:\n`;
+            session.events.forEach(event => {
+                content += ` - ${new Date(event.timestamp).toLocaleString()} | ${event.type} | ${event.description}\n`;
+            });
+            content += '\n---\n\n';
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'SessionEvents');
-
-        const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], {
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        });
-
+        const mimeType = type === 'csv' ? 'text/csv' : 'text/plain';
+        const blob = new Blob([content], { type: mimeType });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = filename;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
-    }
-
-    // TXT or CSV
-    let content = '';
-    sessionLogs.forEach((session, index) => {
-        const firstEvent = session.events[0];
-        const lastEvent = session.events[session.events.length - 1];
-        const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-        const end = lastEvent ? new Date(lastEvent.timestamp) : null;
-        const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
-
-        content += `Session ${index + 1}\n`;
-        content += `Device: ${deviceName}\n`;
-        content += `Session ID: ${session.sessionId}\n`;
-        content += `Date of Session: ${start?.toLocaleDateString() || 'N/A'}\n`;
-        content += `Start Time: ${start?.toLocaleTimeString() || 'N/A'}\n`;
-        content += `End Time: ${end?.toLocaleTimeString() || 'N/A'}\n`;
-        content += `Duration: ${duration !== null ? formatDuration(duration) : 'N/A'}\n`;
-        content += `Events:\n`;
-        session.events.forEach(event => {
-            content += ` - ${new Date(event.timestamp).toLocaleString()} | ${event.type} | ${event.description}\n`;
-        });
-        content += '\n---\n\n';
-    });
-
-    const mimeType = type === 'csv' ? 'text/csv' : 'text/plain';
-    const blob = new Blob([content], { type: mimeType });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
+    };
 
 
     if (!sessionLogs.length) {
@@ -159,7 +172,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
 
             {sessionLogs.map((session, i) => {
                 const firstEvent = session.events[0];
-                const lastEvent = session.events[session.events.length -1];
+                const lastEvent = session.events[session.events.length - 1];
                 const start = firstEvent ? new Date(firstEvent.timestamp) : null;
                 const end = lastEvent ? new Date(lastEvent.timestamp) : null;
                 const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;

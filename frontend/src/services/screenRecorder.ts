@@ -41,8 +41,7 @@ class ScreenRecorder {
 
         console.log(`Stream za snimanje aktivan: ${streamToRecord.active}`);
         streamToRecord.getTracks().forEach(track => {
-                console.log(`Track: Kind=<span class="math-inline">${track.kind}, ID\=</span>${track.id}, Enabled=<span class="math-inline">${track.enabled}, ReadyState=</span>${track.readyState}`);
-   
+                console.log(`Track: Kind=<span class="math-inline">${track.kind}, ID=</span>${track.id}, Enabled=<span class="math-inline">${track.enabled}, ReadyState=</span>${track.readyState}`);
          });
 
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
@@ -68,6 +67,7 @@ class ScreenRecorder {
             this.mediaRecorder.onstop = () => {
                 console.log('Snimanje zaustavljeno. Spremno za preuzimanje.');
                 this.onRecordingStatusChange?.('Snimanje zaustavljeno. Spremno za preuzimanje.');
+                this.downloadRecording();
             };
 
             this.mediaRecorder.onerror = (event: Event) => { 
@@ -102,7 +102,6 @@ class ScreenRecorder {
     }
 
     public downloadRecording(): void {
-        console.log("evo ih"+ this.recordedChunks); 
         const finalMimeType = this.mediaRecorder?.mimeType || 'video/webm'; 
         const superBuffer = new Blob(this.recordedChunks, { type: finalMimeType });
 
@@ -116,7 +115,7 @@ class ScreenRecorder {
 
         URL.revokeObjectURL(url);
         console.log('Snimak preuzet i Blob URL opozvan.');
-        //this.recordedChunks = []; 
+        this.recordedChunks = [];
         this.onRecordingStatusChange?.('Snimak uspešno preuzet.');
     }
 

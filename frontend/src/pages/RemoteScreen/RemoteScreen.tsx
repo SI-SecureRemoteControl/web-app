@@ -22,7 +22,6 @@ const RemoteControlPage: React.FC = () => {
 		"Nema aktivnog snimanja."
 	);
 	const [isRecording, setIsRecording] = useState<boolean>(false);
-  const [isDownloadReady, setIsDownloadReady] = useState<boolean>(false);
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -608,6 +607,7 @@ const RemoteControlPage: React.FC = () => {
 
 	const handleGoToFileBrowser = () => {
 		if (pageSessionId && deviceIdFromUrl) {
+			handleStopRecordingClick();
 			console.log(
 				`Navigating to File Browser for session: ${pageSessionId}, device: ${deviceIdFromUrl}`
 			);
@@ -629,7 +629,6 @@ const RemoteControlPage: React.FC = () => {
 	const handleStopRecordingClick = () => {
 		screenRecorder.stopRecording();
 		setIsRecording(false);
-    setIsDownloadReady(true);
 	};
 
 	const latencyStatus = getLatencyStatus();
@@ -699,16 +698,6 @@ const RemoteControlPage: React.FC = () => {
 						Stop Recording
 					</button>
 				</div>
-        {isDownloadReady && ( 
-  <div className="flex justify-center mt-4">
-    <button
-      onClick={screenRecorder.downloadRecording}
-      className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 font-medium"
-    >
-      Preuzmi Snimak
-    </button>
-  </div>
-)}
 				<p
 					id="recordingStatus"
 					className="text-sm text-gray-600 text-center mt-2"

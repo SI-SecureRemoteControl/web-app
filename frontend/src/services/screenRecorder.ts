@@ -13,17 +13,17 @@ class ScreenRecorder {
 
         this.currentStream = stream;
         if (this.onRecordingStatusChange && stream) {
-            this.onRecordingStatusChange('Stream spreman za snimanje.');
+            this.onRecordingStatusChange('Stream is ready for recording...');
         } else if (this.onRecordingStatusChange && !stream) {
-            this.onRecordingStatusChange('Čekam stream...');
+            this.onRecordingStatusChange('Waiting for stream...');
         }
     }
 
     public startRecording(): boolean {
         const videoTrack = this.currentStream?.getVideoTracks()[0];
         if (!videoTrack) {
-            console.error('Nema video tracka u MediaStream-u za snimanje.');
-            this.onRecordingStatusChange?.('Greška: Nema video tracka za snimanje.');
+            console.error('There is no video track in the MediaStream for recording.');
+            this.onRecordingStatusChange?.('Error: No video track for recording.');
             return false;
         }
 
@@ -34,25 +34,25 @@ class ScreenRecorder {
         }
 
         if (!streamToRecord) {
-            console.error('Nije moguće započeti snimanje: MediaStream nije dostupan.');
-            this.onRecordingStatusChange?.('Greška: Stream nije dostupan.');
+            console.error('It is not possible to start recording: MediaStream is not available.');
+            this.onRecordingStatusChange?.('Error: Stream is not available.');
             return false;
         }
 
-        console.log(`Stream za snimanje aktivan: ${streamToRecord.active}`);
+        console.log(`The recording stream is active: ${streamToRecord.active}`);
         streamToRecord.getTracks().forEach(track => {
                 console.log(`Track: Kind=<span class="math-inline">${track.kind}, ID=</span>${track.id}, Enabled=<span class="math-inline">${track.enabled}, ReadyState=</span>${track.readyState}`);
          });
 
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            console.warn('Snimanje je već u toku.');
-            this.onRecordingStatusChange?.('Snimanje je već u toku.');
+            console.warn('The recording is already in progress.');
+            this.onRecordingStatusChange?.('The recording is already in progress.');
             return true;
         }
 
         //this.recordedChunks = []; 
-        this.onRecordingStatusChange?.('Snimanje u toku...');
-        console.log('Pokušavam započeti snimanje...');
+        this.onRecordingStatusChange?.('Recording in progress...');
+        console.log('Trying to start recording...');
 
         try {
             this.mediaRecorder = new MediaRecorder(streamToRecord);
@@ -65,26 +65,26 @@ class ScreenRecorder {
             };
 
             this.mediaRecorder.onstop = () => {
-                console.log('Snimanje zaustavljeno. Spremno za preuzimanje.');
-                this.onRecordingStatusChange?.('Snimanje zaustavljeno. Spremno za preuzimanje.');
+                console.log('Recording stopped. Ready for download.');
+                this.onRecordingStatusChange?.('Recording stopped. Ready for download.');
                 this.downloadRecording();
             };
 
             this.mediaRecorder.onerror = (event: Event) => { 
                 const error = (event as any).error;
-                console.error('MediaRecorder greška:', error);
-                this.onRecordingStatusChange?.(`Greška snimanja: ${error.name}`);
-                alert(`Greška snimanja: ${error.name}`);
+                console.error('MediaRecorder error:', error);
+                this.onRecordingStatusChange?.(`Error recording: ${error.name}`);
+                alert(`Error recording: ${error.name}`);
             };
 
             this.mediaRecorder.start(1000); 
-            console.log('Snimanje započeto.');
+            console.log('Recording started successfully.');
             return true;
 
         } catch (e: any) {
-            console.error('Nije moguće kreirati MediaRecorder:', e);
-            this.onRecordingStatusChange?.(`Greška pri pokretanju snimanja: ${e.message}`);
-            alert(`Greška pri pokretanju snimanja: ${e.message}`);
+            console.error('Cannot create MediaRecorder:', e);
+            this.onRecordingStatusChange?.(`Error starting recording: ${e.message}`);
+            alert(`Error starting recording: ${e.message}`);
             return false;
         }
     }
@@ -93,11 +93,11 @@ class ScreenRecorder {
         if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
             console.log('Zaustavljam snimanje...');
             console.log(this.recordedChunks);
-            this.onRecordingStatusChange?.('Zaustavljam snimanje...');
+            this.onRecordingStatusChange?.('Stopping the recording...');
             this.mediaRecorder.stop();
         } else {
             console.warn('Snimanje nije aktivno ili MediaRecorder nije inicijalizovan.');
-            this.onRecordingStatusChange?.('Snimanje nije aktivno.');
+            this.onRecordingStatusChange?.('Record is not active.');
         }
     }
 
@@ -116,7 +116,7 @@ class ScreenRecorder {
         URL.revokeObjectURL(url);
         console.log('Snimak preuzet i Blob URL opozvan.');
         this.recordedChunks = [];
-        this.onRecordingStatusChange?.('Snimak uspešno preuzet.');
+        this.onRecordingStatusChange?.('The recording has been successfully downloaded.');
     }
 
     public isRecording(): boolean {

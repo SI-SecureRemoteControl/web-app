@@ -156,6 +156,10 @@ wssControl.on('connection', (ws) => {
         handleBrowseRequest(parsedMessage);
       } else if (parsedMessage.type === 'download_status') {
         handleDownloadStatus(parsedMessage);
+      } else if(parsedMessage.type === 'recording_start') {
+        handleRecordingStart(parsedMessage);
+      } else if (parsedMessage.type === 'recording_stop') {
+        handleRecordingStop(parsedMessage);
       } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
@@ -199,6 +203,8 @@ wssComm.on('connection', (ws) => {
       } else if (parsedMessage.type === 'download_response') {
         console.log('Download response:', parsedMessage);
         handleDownloadResponse(parsedMessage);
+      } else if (parsedMessage.type === 'inactive_disconnect') { 
+        handleCommLayerInactiveDisconnect(parsedMessage);
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -507,6 +513,38 @@ function cleanupSessionsForSocket(ws) {
   }
 }
 
+function handleRecordingStart(message) {
+  const { deviceIdFromUrl, pageSessionId } = message;
+  if(!deviceIdFromUrl || !pageSessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
+  sendToCommLayer(pageSessionId, {
+    deviceIdFromUrl,
+    pageSessionId,
+    recordStarted: Date.now(),
+    message: "Web admin started stream recording."
+  })
+}
+
+function handleRecordingStop(message) {
+  const { deviceIdFromUrl, pageSessionId } = message;
+  if (!deviceIdFromUrl || !pageSessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
+  sendToCommLayer(pageSessionId, {
+    deviceIdFromUrl,
+    pageSessionId,
+    recordEnded: Date.now(),
+    message: "Web admin stopped the recording."
+  })
+}
+
 function handleBrowseRequest(message) {
   const { sessionId, deviceId, path } = message;
   if (!sessionId || !deviceId || !path) {
@@ -624,6 +662,39 @@ function handleBrowseResponse(message) {
     path,
     entries: entries || []
   });
+}
+
+function handleCommLayerInactiveDisconnect(message) {
+  const { sessionId, deviceId, status } = message; 
+
+  if (!sessionId) {
+    console.error('[Inactive Disconnect] Message missing sessionId:', message);
+    return;
+  }
+
+  const session = controlSessions.get(sessionId);
+  if (!session) {
+    console.warn(`[Inactive Disconnect] Session ${sessionId} not found or already terminated.`);
+    broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: deviceId, 
+      status: 'terminated_not_found', 
+      message: `Attempted to terminate session ${sessionId} due to inactivity, but it was not found.`
+    });
+    return;
+  }
+
+  console.log(`Comm Layer reported inactivity for session ${sessionId}. Terminating.`);
+
+  broadcastToControlFrontend({
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session.device?.deviceId || deviceId, 
+    status: 'inactive_disconnect', 
+    message: status || 'The session has been terminated due to inactivity.' 
+  });
+  cleanupSession(sessionId, 'INACTIVITY_REPORTED_BY_COMM');
 }
 
 // ---------------------------------------------------------- rute

@@ -38,14 +38,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
             .get<ApiResponse>(`${import.meta.env.VITE_BASE_URL}/sessionview/${deviceId}?page=${page}&limit=1`)
             .then((res) => {
                 const filtered = res.data.sessionLogs
-                    .filter(log => log.status !== 'pending')
-                    .map(log => {
-                        const isRecorded = log.events.some(event => event.type === 'record_stream_ended');
-                        return {
-                            ...log,
-                            recorded: isRecorded,
-                        };
-                    });
+                    .filter(log => log.status !== 'pending');
 
                 setSessionLogs(filtered);
                 setTotalPages(res.data.totalPages);
@@ -166,12 +159,6 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
                         <p><b>Start Time:</b> {start?.toLocaleTimeString() || 'N/A'}</p>
                         <p><b>End Time:</b> {end?.toLocaleTimeString() || 'N/A'}</p>
                         <p><b>Duration:</b> {duration !== null ? formatDuration(duration) : 'N/A'}</p>
-                        {session.recorded ? (
-                            <p className="text-green-800 font-semibold">Ova sesija je snimljena od strane web admina.</p>
-                        ) : (
-                            <p><b>Recorded:</b> No</p>
-                        )}
-
                         <div className="mt-2 space-y-1">
                             {session.events.map((event, j) => (
                                 <div key={j} className="text-sm text-gray-800">

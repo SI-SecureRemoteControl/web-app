@@ -116,35 +116,35 @@ const FileBrowser: React.FC = () => {
         console.log('download_response received:', data);
         const fileName = downloadUrl.split('/').pop();
         if (downloadUrl) {
-            const link = document.createElement('a');
-            link.href = downloadUrl;
-            link.target = '_self';
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.target = '_self';
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
 
-            setTimeout(() => {
-                const downloadStatus = {
-                    type: 'download_status',
-                    deviceId,
-                    sessionId,
-                    status: 'success',
-                    message: `Download started successfully for file: ${fileName}`,
-                    fileName
-                };
-                websocketService.sendControlMessage(downloadStatus);
-            }, 2000); 
-        } else {
+          setTimeout(() => {
             const downloadStatus = {
-                type: 'download_status',
-                deviceId,
-                sessionId,
-                status: 'failed',
-                message: `Download failed for file: ${fileName}`,
-                fileName
+              type: 'download_status',
+              deviceId,
+              sessionId,
+              status: 'success',
+              message: `Download started successfully for file: ${fileName}`,
+              fileName
             };
             websocketService.sendControlMessage(downloadStatus);
+          }, 2000);
+        } else {
+          const downloadStatus = {
+            type: 'download_status',
+            deviceId,
+            sessionId,
+            status: 'failed',
+            message: `Download failed for file: ${fileName}`,
+            fileName
+          };
+          websocketService.sendControlMessage(downloadStatus);
         }
 
         setIsLoading(false);
@@ -273,16 +273,6 @@ const FileBrowser: React.FC = () => {
     }
   }, [uploadMode]);
 
-  /*const handleCheckboxChange = (name: string) => {
-    const fullPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`; // Handle root path correctly
-    setSelectedPaths((prev) => {
-        if (prev.includes(fullPath)) {
-            return prev.filter((p) => p !== fullPath);
-        } else {
-            return [...prev, fullPath];
-        }
-    });*/
-
   const handleCheckboxChange = (path: string) => {
     setSelectedPaths((prev) =>
       prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]
@@ -292,36 +282,33 @@ const FileBrowser: React.FC = () => {
 
   const handleDownloadSelected = () => {
     if (selectedPaths.length === 0) {
-        alert('Please select files or folders to download.');
-        return;
+      alert('Please select files or folders to download.');
+      return;
     }
 
     setIsLoading(true);
 
     const downloadRequest = {
-        type: 'download_request',
-        deviceId,
-        sessionId,
-        paths: selectedPaths.map((fullPath) => {
-            const name = fullPath.split('/').pop();
-            const entry = entries.find((entry) => entry.name === name);
-            return {
-                name,
-                type: entry?.type || 'file',
-            };
-        }),
+      type: 'download_request',
+      deviceId,
+      sessionId,
+      paths: selectedPaths.map((fullPath) => {
+        const name = fullPath.split('/').pop();
+        const entry = entries.find((entry) => entry.name === name);
+        return {
+          name,
+          type: entry?.type || 'file',
+        };
+      }),
     };
 
     websocketService.sendControlMessage(downloadRequest);
-};
+  };
 
-  /*const handleUnselect = (path: string) => {
-    setSelectedPaths((prev) => prev.filter((p) => p !== path));
-  };*/
   const handleDownloadSingle = (path: string) => {
     const entry = entries.find((entry) => entry.name === path);
 
-    setIsLoading(true); 
+    setIsLoading(true);
 
     const downloadRequest = {
       type: 'download_request',
@@ -353,10 +340,6 @@ const FileBrowser: React.FC = () => {
       requestBrowse(currentPath);
     }
   };
-
-  /*useEffect(() => {
-    handleRetry();
-  }, [currentPath, entries]);*/
 
   useEffect(() => {
     console.log('isLoading state changed:', isLoading);
@@ -445,28 +428,6 @@ const FileBrowser: React.FC = () => {
           </div>
         </div>
 
-        {/*
-         {selectedPaths.length > 0 && (
-          <div className="mb-6 p-4 border border-gray-200 rounded-lg">
-            <h2 className="font-semibold mb-2">Selected Files/Folders</h2>
-            <ul className="list-disc pl-5">
-              {selectedPaths.map((path) => (
-                <li key={path} className="flex items-center justify-between">
-                  <span className="truncate" title={path}>{path}</span>
-                  <button
-                    onClick={() => handleUnselect(path)}
-                    className="text-red-500 hover:text-red-700 text-sm flex items-center"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Unselect
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      */}
-
         {selectedPaths.length > 0 && (
           <div className="mb-4">
             <button
@@ -512,7 +473,6 @@ const FileBrowser: React.FC = () => {
                   type="checkbox"
                   onChange={() => handleCheckboxChange(entry.name)}
                   checked={selectedPaths.includes(entry.name)}
-                  //checked={selectedPaths.includes(`${currentPath}/${entry.name}`)} // Ensure full path is checked
                   className="mr-3 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                 />
                 {entry.type === 'folder' ? (

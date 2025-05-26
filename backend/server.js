@@ -13,6 +13,9 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
+const { type } = require('os');
+const { format } = require('date-fns');
+
 
 
 
@@ -150,15 +153,17 @@ wssControl.on('connection', (ws) => {
         handleRemoteClicks(parsedMessage.sessionId, parsedMessage);
       } else if (parsedMessage.action === 'keyboard') {
         handleRemoteKeyboard(parsedMessage.sessionId, parsedMessage);
-      } else if (parsedMessage.type === 'decision_fileshare') {
-        handleFileShareDecision(parsedMessage);
       } else if (parsedMessage.type === 'download_request') {
         handleDownloadRequest(parsedMessage);
-      }else if (parsedMessage.type === 'browse_request') {
+      } else if (parsedMessage.type === 'browse_request') {
         handleBrowseRequest(parsedMessage);
       } else if (parsedMessage.type === 'download_status') {
         handleDownloadStatus(parsedMessage);
-      }else {
+      } else if(parsedMessage.type === 'recording_start') {
+        handleRecordingStart(parsedMessage);
+      } else if (parsedMessage.type === 'recording_stop') {
+        handleRecordingStop(parsedMessage);
+      } else {
         console.log('Received unknown message type from Control Frontend:', parsedMessage.type);
       }
     } catch (error) {
@@ -183,7 +188,6 @@ wssComm.on('connection', (ws) => {
 
   commLayerClients.add(ws);
   controlFrontendClients.set('commLayer', ws);
-  //controlFrontendClients.add(ws);
 
   ws.on('message', (message) => {
     try {
@@ -195,15 +199,15 @@ wssComm.on('connection', (ws) => {
         handleCommLayerStatusUpdate(parsedMessage);
       } else if (parsedMessage.type === 'answer' || parsedMessage.type === 'ice-candidate') {
         handleWebRTCSignalingFromAndroid(parsedMessage)
-      } /*else if (parsedMessage.type === 'request_session_fileshare') {
-        handleFileShareRequest(ws, parsedMessage);
-      }*/ else if (parsedMessage.type === 'browse_response') {
+      } else if (parsedMessage.type === 'browse_response') {
         handleBrowseResponse(parsedMessage);
       } else if (parsedMessage.type === 'upload_status') {
         handleUploadStatus(parsedMessage);
       } else if (parsedMessage.type === 'download_response') {
         console.log('Download response:', parsedMessage);
         handleDownloadResponse(parsedMessage);
+      } else if (parsedMessage.type === 'inactive_disconnect') { 
+        handleCommLayerInactiveDisconnect(parsedMessage);
       } else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -512,6 +516,40 @@ function cleanupSessionsForSocket(ws) {
   }
 }
 
+function handleRecordingStart(message) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
+    type: 'record_stream',
+    deviceId,
+    sessionId,
+    recordStarted: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+    message: "Web admin started stream recording."
+  })
+}
+
+function handleRecordingStop(message) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
+    console.error('Missing device id from URL or page session id');
+    return;
+  }
+
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
+    type: 'record_stream_ended',
+    deviceId,
+    sessionId,
+    recordEnded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+    message: "Web admin stopped the recording."
+  })
+}
+
 function handleBrowseRequest(message) {
   const { sessionId, deviceId, path } = message;
   if (!sessionId || !deviceId || !path) {
@@ -631,6 +669,39 @@ function handleBrowseResponse(message) {
   });
 }
 
+function handleCommLayerInactiveDisconnect(message) {
+  const { sessionId, deviceId, status } = message; 
+
+  if (!sessionId) {
+    console.error('[Inactive Disconnect] Message missing sessionId:', message);
+    return;
+  }
+
+  const session = controlSessions.get(sessionId);
+  if (!session) {
+    console.warn(`[Inactive Disconnect] Session ${sessionId} not found or already terminated.`);
+    broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: deviceId, 
+      status: 'terminated_not_found', 
+      message: `Attempted to terminate session ${sessionId} due to inactivity, but it was not found.`
+    });
+    return;
+  }
+
+  console.log(`Comm Layer reported inactivity for session ${sessionId}. Terminating.`);
+
+  broadcastToControlFrontend({
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session.device?.deviceId || deviceId, 
+    status: 'inactive_disconnect', 
+    message: status || 'The session has been terminated due to inactivity.' 
+  });
+  cleanupSession(sessionId, 'INACTIVITY_REPORTED_BY_COMM');
+}
+
 // ---------------------------------------------------------- rute
 
 app.post('/devices/registration', async (req, res) => {
@@ -713,8 +784,10 @@ app.get('/api/devices', async (req, res) => {
       if (lastActivityAfter) query.lastActiveTime.$gte = new Date(lastActivityAfter);
     }
 
-    const sort = {};
-    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    const sort = {
+      status: 1,
+      [sortBy]: sortOrder === 'asc' ? 1 : -1 
+    };
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const devicesCollection = db.collection('devices');
@@ -805,7 +878,6 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/sessionview/:deviceId', async (req, res) => {
   const { deviceId } = req.params;
-  console.log("Prije .. id je :", deviceId);
 
   const {
     startDate,
@@ -813,7 +885,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     page = 1,
     limit = 10,
     sortBy = 'timestamp',
-    sortOrder = 'desc'
+    sortOrder = 'asc'
   } = req.query;
 
   try {
@@ -833,18 +905,18 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     const sessionsCollection = db.collection('sessionLogs');
     const devicesCollection = db.collection('devices');
 
-    console.log("kolekcija:", sessionsCollection);
-
     // Fetch session logs
     const sessionLogs = await sessionsCollection.find(query)
-      .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
+      .sort({ timestamp: -1, _id: -1 })
       .toArray();
 
     const total = await sessionsCollection.countDocuments(query);
 
     console.log("query:", query);
+    console.log("page: ", page);
+    console.log("Logovi za ovaj page:", sessionLogs);
 
     // Fetch device info
     const device = await devicesCollection.findOne({ deviceId: deviceId });

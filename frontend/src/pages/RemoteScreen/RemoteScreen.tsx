@@ -592,6 +592,7 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	// Assign remoteStream to video element when it changes
+	// ne znam neki fazon begi da ne bude crn ekran
 	useEffect(() => {
 		if (videoRef.current && remoteStream) {
 			videoRef.current.srcObject = remoteStream;
@@ -626,8 +627,8 @@ const RemoteControlPage: React.FC = () => {
 		setIsRecording(true);
 		const recordingStart = {
 			type: "recording_start",
-			deviceIdFromUrl,
-			pageSessionId
+			deviceId: deviceIdFromUrl,
+			sessionId: pageSessionId
 		}
 		websocketService.sendControlMessage(recordingStart);
 	};
@@ -637,8 +638,8 @@ const RemoteControlPage: React.FC = () => {
 		setIsRecording(false);
 		const recordingStop = {
 			type: "recording_stop",
-			deviceIdFromUrl,
-			pageSessionId
+			deviceId: deviceIdFromUrl,
+			sessionId: pageSessionId
 		}
 		websocketService.sendControlMessage(recordingStop);
 	};
@@ -649,7 +650,7 @@ const RemoteControlPage: React.FC = () => {
 		<div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
 			<div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">
 				<h1 className="text-2xl font-bold text-center text-gray-800">
-					Daljinski Prikaz Ekrana
+					Remote Screen Display
 				</h1>
 				<div className="text-sm text-gray-600 text-center break-words whitespace-normal">
 					<p>
@@ -679,7 +680,7 @@ const RemoteControlPage: React.FC = () => {
 							className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center justify-center mx-auto"
 						>
 							<FolderKanban size={20} className="mr-2" />
-							Otvori File Browser
+							Open File Browser
 						</button>
 					</div>
 				) : null}
@@ -714,7 +715,9 @@ const RemoteControlPage: React.FC = () => {
 					id="recordingStatus"
 					className="text-sm text-gray-600 text-center mt-2"
 				>
-					{isRecording && "🔴 SNIMANJE"} {recordingStatus}
+					{isRecording && "🔴 RECORDING"} 
+					<br />
+					{recordingStatus}
 				</p>
 
 				{/* Kontejner za video ili loading ekran */}
@@ -741,7 +744,7 @@ const RemoteControlPage: React.FC = () => {
 								pointerEvents: "auto",
 								userSelect: "none",
 								WebkitUserSelect: "none",
-								WebkitTapHighlightColor: "rgba(0,0,0,0)",
+								//WebkitTapHighlightColor: "rgba(0,0,0,0)",
 								outline: "none",
 								cursor: "pointer",
 							}}
@@ -752,9 +755,9 @@ const RemoteControlPage: React.FC = () => {
 							style={{ width: "100%", maxWidth: "896px", aspectRatio: "16/9" }}
 						>
 							<Loader2 className="animate-spin text-blue-500 mb-4" size={48} />
-							<p className="text-lg font-medium">Čekam udaljeni stream...</p>
+							<p className="text-lg font-medium">Waiting for remote screen...</p>
 							<p className="text-sm text-gray-600 mt-2">
-								Povezivanje sa uređajem...
+								Connecting to the device...
 							</p>
 						</div>
 					)}

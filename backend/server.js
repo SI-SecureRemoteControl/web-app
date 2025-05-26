@@ -13,6 +13,9 @@ const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
 const { parse } = require('path');
+const { type } = require('os');
+const { format } = require('date-fns');
+
 
 
 
@@ -514,33 +517,35 @@ function cleanupSessionsForSocket(ws) {
 }
 
 function handleRecordingStart(message) {
-  const { deviceIdFromUrl, pageSessionId } = message;
-  if(!deviceIdFromUrl || !pageSessionId) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
     console.error('Missing device id from URL or page session id');
     return;
   }
 
-  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
-  sendToCommLayer(pageSessionId, {
-    deviceIdFromUrl,
-    pageSessionId,
-    recordStarted: Date.now(),
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
+    type: 'record_stream',
+    deviceId,
+    sessionId,
+    recordStarted: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
     message: "Web admin started stream recording."
   })
 }
 
 function handleRecordingStop(message) {
-  const { deviceIdFromUrl, pageSessionId } = message;
-  if (!deviceIdFromUrl || !pageSessionId) {
+  const { deviceId, sessionId } = message;
+  if(!deviceId || !sessionId) {
     console.error('Missing device id from URL or page session id');
     return;
   }
 
-  console.log(`Recording started for device ${deviceIdFromUrl} on session ${pageSessionId}`);
-  sendToCommLayer(pageSessionId, {
-    deviceIdFromUrl,
-    pageSessionId,
-    recordEnded: Date.now(),
+  console.log(`Recording started for device ${deviceId} on session ${sessionId}`);
+  sendToCommLayer(sessionId, {
+    type: 'record_stream_ended',
+    deviceId,
+    sessionId,
+    recordEnded: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
     message: "Web admin stopped the recording."
   })
 }
@@ -873,7 +878,6 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/sessionview/:deviceId', async (req, res) => {
   const { deviceId } = req.params;
-  console.log("Prije .. id je :", deviceId);
 
   const {
     startDate,
@@ -881,7 +885,7 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     page = 1,
     limit = 10,
     sortBy = 'timestamp',
-    sortOrder = 'desc'
+    sortOrder = 'asc'
   } = req.query;
 
   try {
@@ -901,18 +905,18 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     const sessionsCollection = db.collection('sessionLogs');
     const devicesCollection = db.collection('devices');
 
-    console.log("kolekcija:", sessionsCollection);
-
     // Fetch session logs
     const sessionLogs = await sessionsCollection.find(query)
-      .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
+      .sort({ timestamp: -1, _id: -1 })
       .toArray();
 
     const total = await sessionsCollection.countDocuments(query);
 
     console.log("query:", query);
+    console.log("page: ", page);
+    console.log("Logovi za ovaj page:", sessionLogs);
 
     // Fetch device info
     const device = await devicesCollection.findOne({ deviceId: deviceId });

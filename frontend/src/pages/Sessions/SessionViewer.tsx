@@ -39,7 +39,11 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
             .get<ApiResponse>(`${import.meta.env.VITE_BASE_URL}/sessionview/${deviceId}?page=${page}&limit=1`)
             .then((res) => {
                 const filtered = res.data.sessionLogs
-                    .filter(log => log.status !== 'pending');
+                    .filter(log => log.status !== 'pending')
+                    .map(log => ({
+                        ...log,
+                        events: log.events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                    }));
 
                 setSessionLogs(filtered);
                 setTotalPages(res.data.totalPages);
@@ -58,7 +62,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
-        return hrs > 0 ? `${hrs}h ${mins}m ${secs}s` : `${mins}m ${secs}s`;
+        return hrs > 0 ? `${Math.abs(hrs)}h ${Math.abs(mins)}m ${Math.abs(secs)}s` : `${Math.abs(mins)}m ${Math.abs(secs)}s`;
     };
 
 
@@ -71,6 +75,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
             const sheet = workbook.addWorksheet('Session Events');
 
             sheet.columns = [
+                { header: 'Session Number', key: 'session' },
                 { header: 'Session ID', key: 'sessionId' },
                 { header: 'Device', key: 'device' },
                 { header: 'Date of Session', key: 'dateOfSession' },
@@ -83,24 +88,28 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
             ];
 
             sessionLogs.forEach(session => {
-                const firstEvent = session.events[0];
-                const lastEvent = session.events[session.events.length - 1];
-                const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-                const end = lastEvent ? new Date(lastEvent.timestamp) : null;
-                const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
+                let sessionDetailsAdded = false; 
+
+                const startEvent = session.events.find(event => event.type === 'session_start');
+                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+                const start = startEvent ? new Date(startEvent.timestamp) : null;
+                const end = endEvent ? new Date(endEvent.timestamp) : null;
+                const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;
 
                 session.events.forEach(event => {
                     sheet.addRow({
-                        sessionId: session.sessionId,
-                        device: deviceName,
-                        dateOfSession: start?.toLocaleDateString() || 'N/A',
-                        startTime: start?.toLocaleTimeString() || 'N/A',
-                        endTime: end?.toLocaleTimeString() || 'N/A',
-                        duration: duration !== null ? formatDuration(duration) : 'N/A',
+                        session: sessionDetailsAdded ? '' : `Session ${(page - 1) * sessionLogs.length + sessionLogs.indexOf(session) + 1}`,
+                        sessionId: sessionDetailsAdded ? '' : session.sessionId,
+                        device: sessionDetailsAdded ? '' : deviceName,
+                        dateOfSession: sessionDetailsAdded ? '' : (start?.toLocaleDateString() || 'N/A'),
+                        startTime: sessionDetailsAdded ? '' : (start?.toLocaleTimeString() || 'N/A'),
+                        endTime: sessionDetailsAdded ? '' : (end?.toLocaleTimeString() || 'N/A'),
+                        duration: sessionDetailsAdded ? '' : (duration !== null ? formatDuration(duration) : 'N/A'),
                         eventTime: new Date(event.timestamp).toLocaleString(),
                         eventType: event.type,
                         eventDescription: event.description,
                     });
+                    sessionDetailsAdded = true; 
                 });
             });
 
@@ -120,14 +129,14 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
 
         // TXT or CSV
         let content = '';
-        sessionLogs.forEach((session, index) => {
-            const firstEvent = session.events[0];
-            const lastEvent = session.events[session.events.length - 1];
-            const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-            const end = lastEvent ? new Date(lastEvent.timestamp) : null;
-            const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
+        sessionLogs.forEach((session) => {
+            const startEvent = session.events.find(event => event.type === 'session_start');
+            const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+            const start = startEvent ? new Date(startEvent.timestamp) : null;
+            const end = endEvent ? new Date(endEvent.timestamp) : null;
+            const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;
 
-            content += `Session ${index + 1}\n`;
+            content += `Session ${page}\n`;
             content += `Device: ${deviceName}\n`;
             content += `Session ID: ${session.sessionId}\n`;
             content += `Date of Session: ${start?.toLocaleDateString() || 'N/A'}\n`;
@@ -171,11 +180,11 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
             </h2>
 
             {sessionLogs.map((session, i) => {
-                const firstEvent = session.events[0];
-                const lastEvent = session.events[session.events.length - 1];
-                const start = firstEvent ? new Date(firstEvent.timestamp) : null;
-                const end = lastEvent ? new Date(lastEvent.timestamp) : null;
-                const duration = start && end ? Math.floor((end.getTime() - start.getTime()) / 1000) : null;
+                const startEvent = session.events.find(event => event.type === 'session_start');
+                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+                const start = startEvent ? new Date(startEvent.timestamp) : null;
+                const end = endEvent ? new Date(endEvent.timestamp) : null;
+                const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;
 
                 return (
                     <div

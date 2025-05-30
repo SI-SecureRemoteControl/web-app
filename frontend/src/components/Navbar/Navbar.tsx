@@ -21,6 +21,7 @@ const Navbar = ({ handleLogout }: navbarProps) => {
                     <Link to="/registration" className="hover:text-gray-300 transition">Device Registration</Link>
                     <Link to="/sessionview" className="hover:text-gray-300 transition">Sessions View</Link>
                     <Link to="/register-user" className="hover:text-gray-300 transition">Register Admin</Link>
+                    <Link to="/session-settings" className="hover:text-gray-300 transition">Session Settings</Link>
                 </div>
 
                 <div className="ml-auto flex items-center space-x-2"> 

@@ -767,12 +767,16 @@ const RemoteControlPage: React.FC = () => {
 					<br />
 					{recordingStatus}
 					<br />
-					<span className="mr-2">Recording duration:</span>
-					{stopwatch.hours != 0 && stopwatch.hours + ":"}
-					{stopwatch.minutes != 0 && stopwatch.minutes + ":"}
-					{stopwatch.seconds}
-					<br />
-					{"Current file size: " + fileSize + " KB"}
+					{isRecording && (
+						<>
+							<span className="mr-2">Recording duration:</span>
+							{stopwatch.hours != 0 && stopwatch.hours + ":"}
+							{stopwatch.minutes != 0 && stopwatch.minutes + ":"}
+							{stopwatch.seconds}
+							<br />
+							{"Current file size: " + (fileSize / 1024).toFixed(2) + " KB"}
+						</>
+					)}
 				</p>
 
 				{/* Kontejner za video ili loading ekran */}

@@ -65,7 +65,7 @@ const SessionSettingsPage: React.FC = () => {
         
         try{
             const token = localStorage.getItem('token');
-            const response = await fetch(`${process.env.COMM_LAYER_API_URL || 'http://localhost:5000'}/update-config`, {
+            const response = await fetch(`${process.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/update-config`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

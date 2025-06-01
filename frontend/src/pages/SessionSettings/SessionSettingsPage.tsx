@@ -22,6 +22,7 @@ const SessionSettingsPage: React.FC = () => {
         setIsFetching(true);
         try {
             const token = localStorage.getItem('token');
+            console.log(process.env.COMM_LAYER_API_URL);
             const response = await fetch(`${process.env.COMM_LAYER_API_URL || 'http://localhost:5000'}/get-config`, {
                 method: 'GET',
                 headers: {

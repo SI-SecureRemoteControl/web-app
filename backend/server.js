@@ -16,9 +16,6 @@ const { parse } = require('path');
 const { type } = require('os');
 const { format } = require('date-fns');
 
-
-
-
 const corsOptions = {
   origin: '*',
   credentials: true,

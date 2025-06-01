@@ -638,8 +638,8 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	const handleStopRecordingClick = () => {
-		stopwatch.pause();
 		stopwatch.reset();
+		stopwatch.pause();
 		screenRecorder.stopRecording();
 		setIsRecording(false);
 		const recordingStop = {
@@ -729,7 +729,9 @@ const RemoteControlPage: React.FC = () => {
 					<br />
 					{recordingStatus}
 					<br />
-					{stopwatch.hours + ":" + stopwatch.minutes + ":" + stopwatch.seconds}
+					{stopwatch.hours != 0 && stopwatch.hours + ":"}
+					{stopwatch.minutes != 0 && stopwatch.minutes + ":"}
+					{stopwatch.seconds != 0 && stopwatch.seconds}
 					<br />
 					{"Current file size: " + fileSize + " KB"}
 				</p>

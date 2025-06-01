@@ -1,12 +1,18 @@
 class ScreenRecorder {
     private mediaRecorder: MediaRecorder | null = null;
     private recordedChunks: Blob[] = [];
-    private currentStream: MediaStream | null = null; 
+    private currentStream: MediaStream | null = null;
+    private currentFileSize: number = 0;
+    private onFileSizeUpdate: ((size: number) => void) | null = null;
 
     private onRecordingStatusChange: ((status: string) => void) | null = null;
 
     public setOnRecordingStatusChange(callback: (status: string) => void) {
         this.onRecordingStatusChange = callback;
+    }
+
+    public setOnFileSizeUpdate(callback: (size: number) => void) {
+        this.onFileSizeUpdate = callback;
     }
 
     public setStream(stream: MediaStream | null) {
@@ -50,7 +56,8 @@ class ScreenRecorder {
             return true;
         }
 
-        //this.recordedChunks = []; 
+        this.recordedChunks = [];
+        this.currentFileSize = 0;
         this.onRecordingStatusChange?.('Recording in progress...');
         console.log('Trying to start recording...');
 
@@ -61,6 +68,8 @@ class ScreenRecorder {
                 if (event.data.size > 0) {
                     console.log(event.data);
                     this.recordedChunks.push(event.data);
+                    this.currentFileSize = this.recordedChunks.reduce((total, chunk) => total + chunk.size, 0);
+                    this.onFileSizeUpdate?.(this.currentFileSize);
                 }
             };
 
@@ -116,7 +125,13 @@ class ScreenRecorder {
         URL.revokeObjectURL(url);
         console.log('Snimak preuzet i Blob URL opozvan.');
         this.recordedChunks = [];
+        this.currentFileSize = 0;
+        this.onFileSizeUpdate?.(0);
         this.onRecordingStatusChange?.('The recording has been successfully downloaded.');
+    }
+
+    public getCurrentFileSize(): number {
+        return this.currentFileSize;
     }
 
     public isRecording(): boolean {

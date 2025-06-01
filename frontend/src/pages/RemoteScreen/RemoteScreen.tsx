@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
+import {useStopwatch} from "react-timer-hook";
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,6 +23,8 @@ const RemoteControlPage: React.FC = () => {
 		"Nema aktivnog snimanja."
 	);
 	const [isRecording, setIsRecording] = useState<boolean>(false);
+	const stopwatch = useStopwatch();
+	const [fileSize, setFileSize] = useState(0);
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -623,6 +626,7 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	const handleStartRecordingClick = () => {
+		stopwatch.start();
 		screenRecorder.startRecording();
 		setIsRecording(true);
 		const recordingStart = {
@@ -634,6 +638,8 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	const handleStopRecordingClick = () => {
+		stopwatch.pause();
+		stopwatch.reset();
 		screenRecorder.stopRecording();
 		setIsRecording(false);
 		const recordingStop = {
@@ -645,6 +651,10 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	const latencyStatus = getLatencyStatus();
+
+	screenRecorder.setOnFileSizeUpdate((size) => {
+		setFileSize(size);
+	})
 
 	return (
 		<div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -718,6 +728,10 @@ const RemoteControlPage: React.FC = () => {
 					{isRecording && "🔴 RECORDING"} 
 					<br />
 					{recordingStatus}
+					<br />
+					{stopwatch.hours + ":" + stopwatch.minutes + ":" + stopwatch.seconds}
+					<br />
+					{"Current file size: " + fileSize + " KB"}
 				</p>
 
 				{/* Kontejner za video ili loading ekran */}

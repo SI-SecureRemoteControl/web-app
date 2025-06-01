@@ -76,7 +76,7 @@ const RemoteControlPage: React.FC = () => {
 
 				const config: SessionConfig = await response.json();
 				if (config.maxSessionDuration) {
-					setMaxSessionDuration(Date.now() + config.maxSessionDuration * 60000);
+					setMaxSessionDuration(Date.now() + config.maxSessionDuration * 1000);
 				}
 			} catch (error: any) {
 				console.error('Error fetching config: ', error);

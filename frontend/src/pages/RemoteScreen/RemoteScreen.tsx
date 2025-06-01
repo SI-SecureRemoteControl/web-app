@@ -6,7 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
-import {useStopwatch, useTimer} from "react-timer-hook";
+import {useStopwatch} from "react-timer-hook";
 import {toast} from "react-toastify";
 import { SessionConfig } from "../SessionSettings/SessionSettingsPage";
 import Countdown from "react-countdown";

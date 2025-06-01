@@ -7,6 +7,9 @@ import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
 import {useStopwatch, useTimer} from "react-timer-hook";
+import {toast} from "react-toastify";
+import { SessionConfig } from "../SessionSettings/SessionSettingsPage";
+import Countdown from "react-countdown";
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,9 +28,7 @@ const RemoteControlPage: React.FC = () => {
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
-	const date = new Date();
-	date.setMinutes(date.getMinutes() + Number(localStorage.getItem("max_session_duration")))
-	const timer = useTimer({expiryTimestamp: date, autoStart: true});
+	const [maxSessionDuration, setMaxSessionDuration] = useState(30);
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -55,6 +56,36 @@ const RemoteControlPage: React.FC = () => {
 	const [gestureStartTime, setGestureStartTime] = useState(0);
 	const [gestureStartX, setGestureStartX] = useState(0);
 	const [gestureStartY, setGestureStartY] = useState(0);
+
+	useEffect(() => {
+		async function fetchMaxSessionDuration() {
+			try {
+				const token = localStorage.getItem('token');
+				const response = await fetch(`${process.env.COMM_LAYER_API_URL || 'http://localhost:5000'}/get-config`, {
+					method: 'GET',
+					headers: {
+						'Content-Type': 'application/json',
+						'Authorization': `Bearer ${token}`,
+					},
+				});
+
+				if(!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || `Failed to fetch config: ${response.statusText}`);
+				}
+
+				const config: SessionConfig = await response.json();
+				if(config.maxSessionDuration) {
+					setMaxSessionDuration(config.maxSessionDuration);
+				}
+			} catch (error: any) {
+				console.error('Error fetching config: ', error);
+				toast.error(error.message || 'Could not load current configuration');
+			}
+		}
+
+		fetchMaxSessionDuration();
+	}, []);
 
 	useEffect(() => {
 		screenRecorder.setOnRecordingStatusChange((status) => {
@@ -683,9 +714,7 @@ const RemoteControlPage: React.FC = () => {
 					</p>
 					<p>
 						<span className="font-medium">Total session time left:</span>
-						{timer.hours > 0 && timer.hours + ":"}
-						{timer.minutes > 0 && timer.minutes + ":"}
-						{timer.seconds > 0 && timer.seconds}
+						<Countdown date={Date.now() + maxSessionDuration * 60000} />
 					</p>
 				</div>
 
@@ -738,10 +767,10 @@ const RemoteControlPage: React.FC = () => {
 					<br />
 					{recordingStatus}
 					<br />
-					Recording duration:
+					<span className="mr-2">Recording duration:</span>
 					{stopwatch.hours != 0 && stopwatch.hours + ":"}
 					{stopwatch.minutes != 0 && stopwatch.minutes + ":"}
-					{stopwatch.seconds != 0 && stopwatch.seconds}
+					{stopwatch.seconds}
 					<br />
 					{"Current file size: " + fileSize + " KB"}
 				</p>

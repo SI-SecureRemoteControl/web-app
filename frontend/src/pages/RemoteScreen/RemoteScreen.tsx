@@ -23,7 +23,7 @@ const RemoteControlPage: React.FC = () => {
 		"Nema aktivnog snimanja."
 	);
 	const [isRecording, setIsRecording] = useState<boolean>(false);
-	const stopwatch = useStopwatch();
+	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
 
 

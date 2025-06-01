@@ -28,7 +28,7 @@ const RemoteControlPage: React.FC = () => {
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
-	const [maxSessionDuration, setMaxSessionDuration] = useState(30);
+	const [maxSessionDuration, setMaxSessionDuration] = useState(Date.now() + 30 * 60000);
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -76,7 +76,7 @@ const RemoteControlPage: React.FC = () => {
 
 				const config: SessionConfig = await response.json();
 				if(config.maxSessionDuration) {
-					setMaxSessionDuration(config.maxSessionDuration);
+					setMaxSessionDuration(Date.now() + config.maxSessionDuration * 60000);
 				}
 			} catch (error: any) {
 				console.error('Error fetching config: ', error);
@@ -714,7 +714,7 @@ const RemoteControlPage: React.FC = () => {
 					</p>
 					<p>
 						<span className="font-medium">Total session time left:</span>
-						<Countdown date={Date.now() + maxSessionDuration * 60000} />
+						<Countdown date={maxSessionDuration} />
 					</p>
 				</div>
 

@@ -7,8 +7,6 @@ import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
 import {useStopwatch, useTimer} from "react-timer-hook";
-import {SessionConfig} from "src/pages/SessionSettings/SessionSettingsPage";
-import {toast} from "react-toastify";
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);

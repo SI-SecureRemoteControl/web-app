@@ -61,7 +61,7 @@ const RemoteControlPage: React.FC = () => {
 		async function fetchMaxSessionDuration() {
 			try {
 				const token = localStorage.getItem('token');
-				const response = await fetch(`${process.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
+				const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
 					method: 'GET',
 					headers: {
 						'Content-Type': 'application/json',

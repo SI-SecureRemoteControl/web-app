@@ -65,6 +65,8 @@ const SessionSettingsPage: React.FC = () => {
         
         try{
             const token = localStorage.getItem('token');
+            console.log('Sending POST request to update-config with settings:', settingsToSave);
+
             const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/update-config`, {
                 method: 'POST',
                 headers: {
@@ -74,12 +76,17 @@ const SessionSettingsPage: React.FC = () => {
                 body: JSON.stringify(settingsToSave),
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+
             if(!response.ok) {
                 const errorData = await response.json();
+                console.error('Error response data:', errorData);
                 throw new Error(errorData.error || `Failed to save settings: ${response.statusText}`);
             }
 
             const result = await response.json();
+            console.log('Success response data:', result);
             toast.success(result.message || 'Settings updated successfully!');
             fetchConfig();
         } catch (error: any) {

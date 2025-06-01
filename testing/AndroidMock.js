@@ -5,7 +5,7 @@ const readline = require('readline');
 
 // Configuration
 const config = {
-  serverUrl: 'ws://localhost:9000/ws/control/comm', // Update this to your server URL
+  serverUrl: 'wss://backend-wf7e.onrender.com/ws/control/comm', // Update this to your server URL
   deviceId: 'c7d865a558032f35',
   deviceName: 'AdiTest',
   sessionId: 'session-' + crypto.randomBytes(8).toString('hex'),

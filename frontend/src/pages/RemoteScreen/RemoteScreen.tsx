@@ -61,7 +61,7 @@ const RemoteControlPage: React.FC = () => {
 		async function fetchMaxSessionDuration() {
 			try {
 				const token = localStorage.getItem('token');
-				const response = await fetch(`${process.env.COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
+				const response = await fetch(`${process.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
 					method: 'GET',
 					headers: {
 						'Content-Type': 'application/json',
@@ -69,13 +69,13 @@ const RemoteControlPage: React.FC = () => {
 					},
 				});
 
-				if(!response.ok) {
+				if (!response.ok) {
 					const errorData = await response.json();
 					throw new Error(errorData.error || `Failed to fetch config: ${response.statusText}`);
 				}
 
 				const config: SessionConfig = await response.json();
-				if(config.maxSessionDuration) {
+				if (config.maxSessionDuration) {
 					setMaxSessionDuration(Date.now() + config.maxSessionDuration * 60000);
 				}
 			} catch (error: any) {

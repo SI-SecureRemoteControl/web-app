@@ -38,6 +38,7 @@ const SessionSettingsPage: React.FC = () => {
             const config: SessionConfig = await response.json();
             if(config.maxSessionDuration) {
                 setMaxSessionDuration(config.maxSessionDuration);
+                localStorage.setItem('max_session_duration', config.maxSessionDuration.toString());
             }
             if(config.inactiveTimeout) {
                 setInactiveTimeout(config.inactiveTimeout);
@@ -51,6 +52,7 @@ const SessionSettingsPage: React.FC = () => {
     };
 
     useEffect(() => {
+        localStorage.setItem('max_session_duration', maxSessionDuration.toString());
         fetchConfig();
     }, []);
 
@@ -79,6 +81,7 @@ const SessionSettingsPage: React.FC = () => {
                 throw new Error(errorData.error || `Failed to save settings: ${response.statusText}`);
             }
 
+            localStorage.setItem('max_session_duration', settingsToSave.maxSessionDuration.toString());
             const result = await response.json();
             toast.success(result.message || 'Settings updated successfully!');
         } catch (error: any) {

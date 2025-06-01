@@ -6,7 +6,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
-import {useStopwatch} from "react-timer-hook";
+import {useStopwatch, useTimer} from "react-timer-hook";
+import {SessionConfig} from "src/pages/SessionSettings/SessionSettingsPage";
+import {toast} from "react-toastify";
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,6 +27,9 @@ const RemoteControlPage: React.FC = () => {
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
+	const date = new Date();
+	date.setMinutes(date.getMinutes() + Number(localStorage.getItem("max_session_duration")))
+	const timer = useTimer({expiryTimestamp: date, autoStart: true});
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -638,8 +643,8 @@ const RemoteControlPage: React.FC = () => {
 	};
 
 	const handleStopRecordingClick = () => {
-		stopwatch.reset();
 		stopwatch.pause();
+		stopwatch.reset(undefined, false);
 		screenRecorder.stopRecording();
 		setIsRecording(false);
 		const recordingStop = {
@@ -677,6 +682,12 @@ const RemoteControlPage: React.FC = () => {
 						<span className="font-medium">Latency:</span>{" "}
 						{latency !== null ? `${latency.toFixed(2)} ms` : "N/A"} (
 						{latencyStatus.label})
+					</p>
+					<p>
+						<span className="font-medium">Total session time left:</span>
+						{timer.hours > 0 && timer.hours + ":"}
+						{timer.minutes > 0 && timer.minutes + ":"}
+						{timer.seconds > 0 && timer.seconds}
 					</p>
 				</div>
 
@@ -729,6 +740,7 @@ const RemoteControlPage: React.FC = () => {
 					<br />
 					{recordingStatus}
 					<br />
+					Recording duration:
 					{stopwatch.hours != 0 && stopwatch.hours + ":"}
 					{stopwatch.minutes != 0 && stopwatch.minutes + ":"}
 					{stopwatch.seconds != 0 && stopwatch.seconds}

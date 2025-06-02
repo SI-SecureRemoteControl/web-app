@@ -433,7 +433,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (state.navigateToWebRTC && state.currentDeviceId && state.currentSessionId) {
       console.log(`Navigating to /remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
-      localStorage.setItem('session_start_time', Date.now().toString());
+      localStorage.setItem('session_start_time', new Date().toString());
       navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
       dispatch({ type: 'RESET_NAVIGATION' });
     }

@@ -365,7 +365,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         const sessionId = data.sessionId;
         const status = data.status; // Keep the original backend status (string)
         const message = data.message || `Session status: ${data.status}`;
-        if(!data.endTime) {
+        if(data.endTime) {
           localStorage.setItem("session_end_time", data.endTime);
         }
 

@@ -4,6 +4,8 @@ import { websocketService, registerFileBrowserListener } from '../../services/we
 import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw/*, Trash2 */ } from 'lucide-react';
 import axios from 'axios';
 import JSZip from "jszip";
+import { useSessionTimer } from '../../contexts/SessionTimerContext';
+import Countdown from 'react-countdown';
 
 const uploadUrl = import.meta.env.VITE_API_UPLOAD_URL;
 
@@ -43,6 +45,8 @@ const FileBrowser: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'files' | 'folder'>('files');
+
+  const { maxSessionDuration } = useSessionTimer();
 
   const requestBrowse = useCallback((path: string) => {
     console.log(`Sending browse_request for path: ${path} (deviceId: ${deviceId}, sessionId: ${sessionId})`);
@@ -375,6 +379,13 @@ const FileBrowser: React.FC = () => {
             <ArrowLeft className="mr-2" size={18} />
             Back to Remote Control
           </button>
+        </div>
+
+        <div className="mt-6">
+          <p>
+            <span className="font-medium">Total session time left: </span>
+            <Countdown date={maxSessionDuration} />
+          </p>
         </div>
 
         <div className="mb-4 flex items-center">

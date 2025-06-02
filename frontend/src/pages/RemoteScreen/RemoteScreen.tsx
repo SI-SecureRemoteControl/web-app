@@ -10,6 +10,7 @@ import {useStopwatch} from "react-timer-hook";
 import {toast} from "react-toastify";
 import { SessionConfig } from "../SessionSettings/SessionSettingsPage";
 import Countdown from "react-countdown";
+import { useSessionTimer } from '../../contexts/SessionTimerContext';
 
 const RemoteControlPage: React.FC = () => {
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -28,7 +29,7 @@ const RemoteControlPage: React.FC = () => {
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
-	const [maxSessionDuration, setMaxSessionDuration] = useState(Date.now() + 30 * 60000);
+	const { maxSessionDuration, setMaxSessionDuration } = useSessionTimer();
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -85,7 +86,7 @@ const RemoteControlPage: React.FC = () => {
 		}
 
 		fetchMaxSessionDuration();
-	}, []);
+	}, [setMaxSessionDuration]);
 
 	useEffect(() => {
 		screenRecorder.setOnRecordingStatusChange((status) => {
@@ -713,7 +714,7 @@ const RemoteControlPage: React.FC = () => {
 						{latencyStatus.label})
 					</p>
 					<p>
-						<span className="font-medium">Total session time left:</span>
+						<span className="font-medium">Total session time left: </span>
 						<Countdown date={maxSessionDuration} />
 					</p>
 				</div>

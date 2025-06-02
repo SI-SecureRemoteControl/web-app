@@ -153,8 +153,18 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           navigateToWebRTC: false, 
         };
       }
+      else if (backendStatus === 'session_expired' && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+        console.log(`Context Reducer: Received 'session_expired' for active session ${payloadSessionId}. Setting trigger.`);
+        return {
+          ...state,
+          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena zbog toga sto je istekla.` },
+          triggerAutomaticTermination: payloadSessionId, 
+          navigateToWebRTC: false, 
+        };
+      }
 
-      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect'].includes(backendStatus);
+      //INACTIVITY_REPORTED_BY_COMM
+      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect', 'session_expired'].includes(backendStatus);
       if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
         // Clear persisted session on terminal
@@ -355,6 +365,9 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         const sessionId = data.sessionId;
         const status = data.status; // Keep the original backend status (string)
         const message = data.message || `Session status: ${data.status}`;
+        if(data.endTime) {
+          localStorage.setItem("session_end_time", data.endTime);
+        }
 
         dispatch({
           type: 'SESSION_STATUS_UPDATE',

@@ -91,7 +91,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
                 let sessionDetailsAdded = false; 
 
                 const startEvent = session.events.find(event => event.type === 'session_start');
-                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect' || event.type === 'session_expired');
                 const start = startEvent ? new Date(startEvent.timestamp) : null;
                 const end = endEvent ? new Date(endEvent.timestamp) : null;
                 const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;
@@ -131,7 +131,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
         let content = '';
         sessionLogs.forEach((session) => {
             const startEvent = session.events.find(event => event.type === 'session_start');
-            const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+            const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect'|| event.type === 'session_expired');
             const start = startEvent ? new Date(startEvent.timestamp) : null;
             const end = endEvent ? new Date(endEvent.timestamp) : null;
             const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;
@@ -181,7 +181,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
 
             {sessionLogs.map((session, i) => {
                 const startEvent = session.events.find(event => event.type === 'session_start');
-                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect');
+                const endEvent = session.events.find(event => event.type === 'session_end' || event.type === 'inactive_disconnect'|| event.type === 'session_expired');
                 const start = startEvent ? new Date(startEvent.timestamp) : null;
                 const end = endEvent ? new Date(endEvent.timestamp) : null;
                 const duration = start && end ? Math.round((Math.floor(end.getTime() / 1000) - Math.floor(start.getTime() / 1000))) : null;

@@ -16,9 +16,6 @@ const { parse } = require('path');
 const { type } = require('os');
 const { format } = require('date-fns');
 
-
-
-
 const corsOptions = {
   origin: '*',
   credentials: true,
@@ -208,7 +205,9 @@ wssComm.on('connection', (ws) => {
         handleDownloadResponse(parsedMessage);
       } else if (parsedMessage.type === 'inactive_disconnect') { 
         handleCommLayerInactiveDisconnect(parsedMessage);
-      } else {
+      } else if (parsedMessage.type === 'session_expired') { 
+        handleCommLayerSessionExpired(parsedMessage);
+      }else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
     } catch (error) {
@@ -426,7 +425,8 @@ function handleAdminTimeout(sessionId) {
 
 // za odgovor sa strane androida
 function handleCommLayerStatusUpdate(message) {
-  const { sessionId, status, details, deviceId } = message;
+  const { sessionId, status, details, deviceId, startTime, endTime } = message;
+  console.log("Start time: " + startTime + "End time: " + endTime);
   if (!sessionId || !status) { console.error('Comm Layer status update missing sessionId or status'); return; }
   const session = controlSessions.get(sessionId);
   if (!session) { console.warn(`Status update for unknown/expired session: ${sessionId}`); return; }
@@ -462,7 +462,9 @@ function handleCommLayerStatusUpdate(message) {
     deviceId: deviceId,
     status: frontendStatus,
     message: details || `Session ${sessionId} status: ${frontendStatus}.`,
-    details: details
+    details: details,
+    startTime: startTime,
+    endTime: endTime,
   });
 
   if (cleanupReason) {
@@ -700,6 +702,38 @@ function handleCommLayerInactiveDisconnect(message) {
     message: status || 'The session has been terminated due to inactivity.' 
   });
   cleanupSession(sessionId, 'INACTIVITY_REPORTED_BY_COMM');
+}
+function handleCommLayerSessionExpired(message) {
+  const { sessionId, deviceId, status } = message; 
+
+  if (!sessionId) {
+    console.error('[Session Expired] Message missing sessionId:', message);
+    return;
+  }
+
+  const session = controlSessions.get(sessionId);
+  if (!session) {
+    console.warn(`[Session Expired] Session ${sessionId} not found or already terminated.`);
+    broadcastToControlFrontend({
+      type: 'control_status_update',
+      sessionId: sessionId,
+      deviceId: deviceId, 
+      status: 'terminated_not_found', 
+      message: `Attempted to terminate session ${sessionId} due to session expired, but it was not found.`
+    });
+    return;
+  }
+
+  console.log(`Comm Layer reported session expired for session ${sessionId}. Terminating.`);
+
+  broadcastToControlFrontend({
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session.device?.deviceId || deviceId, 
+    status: 'session_expired', 
+    message: status || 'The session has been terminated due to session_expired.' 
+  });
+  cleanupSession(sessionId, 'SESSIONEXPIRED_REPORTED_BY_COMM');
 }
 
 // ---------------------------------------------------------- rute

@@ -360,10 +360,10 @@ const FileBrowser: React.FC = () => {
     setSelectedPaths([]);
   }, [currentPath]);
 
-  useEffect(() => {
+  /*useEffect(() => {
     // Ensure the timer persists across navigation
     console.log('Session timer loaded:', maxSessionDuration);
-  }, [maxSessionDuration]);
+  }, [maxSessionDuration]);*/
 
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.type === b.type) {

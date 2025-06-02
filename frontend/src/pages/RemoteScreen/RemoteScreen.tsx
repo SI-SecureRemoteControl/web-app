@@ -59,10 +59,10 @@ const RemoteControlPage: React.FC = () => {
 	const [gestureStartY, setGestureStartY] = useState(0);
 
 	useEffect(() => {
-		if (maxSessionDuration) {
+		/*if (maxSessionDuration) {
 			console.log('Using existing maxSessionDuration:', maxSessionDuration);
 			return;
-		}
+		}*/
 
 		async function fetchMaxSessionDuration() {
 			try {
@@ -91,7 +91,7 @@ const RemoteControlPage: React.FC = () => {
 		}
 
 		fetchMaxSessionDuration();
-	}, [maxSessionDuration, setMaxSessionDuration]);
+	}, [/*maxSessionDuration, */setMaxSessionDuration]);
 
 	useEffect(() => {
 		screenRecorder.setOnRecordingStatusChange((status) => {

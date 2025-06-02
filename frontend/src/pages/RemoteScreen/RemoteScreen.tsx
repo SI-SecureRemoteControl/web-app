@@ -703,6 +703,14 @@ const RemoteControlPage: React.FC = () => {
 		setFileSize(size);
 	})
 
+	useEffect(() => {
+		const savedDuration = localStorage.getItem('maxSessionDuration');
+		if (savedDuration) {
+			setMaxSessionDuration(parseInt(savedDuration, 10));
+			console.log('Restored maxSessionDuration from localStorage:', savedDuration);
+		}
+	}, [setMaxSessionDuration]);
+
 	return (
 		<div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
 			<div className="bg-white rounded-2xl shadow-lg p-6 max-w-5xl w-full space-y-4">

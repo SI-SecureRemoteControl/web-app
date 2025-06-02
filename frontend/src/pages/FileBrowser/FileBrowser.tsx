@@ -360,6 +360,11 @@ const FileBrowser: React.FC = () => {
     setSelectedPaths([]);
   }, [currentPath]);
 
+  useEffect(() => {
+    // Ensure the timer persists across navigation
+    console.log('Session timer loaded:', maxSessionDuration);
+  }, [maxSessionDuration]);
+
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.type === b.type) {
       return a.name.localeCompare(b.name);

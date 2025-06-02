@@ -365,6 +365,7 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
         const sessionId = data.sessionId;
         const status = data.status; // Keep the original backend status (string)
         const message = data.message || `Session status: ${data.status}`;
+        localStorage.setItem("session_end_time", data.endTime);
 
         dispatch({
           type: 'SESSION_STATUS_UPDATE',
@@ -433,7 +434,6 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (state.navigateToWebRTC && state.currentDeviceId && state.currentSessionId) {
       console.log(`Navigating to /remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
-      localStorage.setItem('session_start_time', new Date().toString());
       navigate(`/remote-control?deviceId=${state.currentDeviceId}&sessionId=${state.currentSessionId}`);
       dispatch({ type: 'RESET_NAVIGATION' });
     }

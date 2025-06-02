@@ -7,8 +7,6 @@ import { useRemoteControl } from "../../contexts/RemoteControlContext";
 import { Wifi, FolderKanban, Loader2 } from "lucide-react";
 import { screenRecorder } from "../../services/screenRecorder";
 import {useStopwatch} from "react-timer-hook";
-import {toast} from "react-toastify";
-import { SessionConfig } from "../SessionSettings/SessionSettingsPage";
 import Countdown from "react-countdown";
 
 const RemoteControlPage: React.FC = () => {
@@ -28,8 +26,7 @@ const RemoteControlPage: React.FC = () => {
 	const [isRecording, setIsRecording] = useState<boolean>(false);
 	const stopwatch = useStopwatch({ autoStart: false});
 	const [fileSize, setFileSize] = useState(0);
-	const sessionDate = new Date(localStorage.getItem("session_start_time") ?? "");
-	const [maxSessionDuration, setMaxSessionDuration] = useState(sessionDate.getTime() + 30 * 1000);
+	const sessionEndDate = new Date(localStorage.getItem("session_end_time") ?? "");
 
 
 	const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -58,35 +55,35 @@ const RemoteControlPage: React.FC = () => {
 	const [gestureStartX, setGestureStartX] = useState(0);
 	const [gestureStartY, setGestureStartY] = useState(0);
 
-	useEffect(() => {
-		async function fetchMaxSessionDuration() {
-			try {
-				const token = localStorage.getItem('token');
-				const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
-					method: 'GET',
-					headers: {
-						'Content-Type': 'application/json',
-						'Authorization': `Bearer ${token}`,
-					},
-				});
-
-				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.error || `Failed to fetch config: ${response.statusText}`);
-				}
-
-				const config: SessionConfig = await response.json();
-				if (config.maxSessionDuration) {
-					setMaxSessionDuration(sessionDate.getTime() + config.maxSessionDuration * 1000);
-				}
-			} catch (error: any) {
-				console.error('Error fetching config: ', error);
-				toast.error(error.message || 'Could not load current configuration');
-			}
-		}
-
-		fetchMaxSessionDuration();
-	}, []);
+	// useEffect(() => {
+	// 	async function fetchMaxSessionDuration() {
+	// 		try {
+	// 			const token = localStorage.getItem('token');
+	// 			const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
+	// 				method: 'GET',
+	// 				headers: {
+	// 					'Content-Type': 'application/json',
+	// 					'Authorization': `Bearer ${token}`,
+	// 				},
+	// 			});
+	//
+	// 			if (!response.ok) {
+	// 				const errorData = await response.json();
+	// 				throw new Error(errorData.error || `Failed to fetch config: ${response.statusText}`);
+	// 			}
+	//
+	// 			const config: SessionConfig = await response.json();
+	// 			if (config.maxSessionDuration) {
+	// 				setMaxSessionDuration(sessionDate.getTime() + config.maxSessionDuration * 1000);
+	// 			}
+	// 		} catch (error: any) {
+	// 			console.error('Error fetching config: ', error);
+	// 			toast.error(error.message || 'Could not load current configuration');
+	// 		}
+	// 	}
+	//
+	// 	fetchMaxSessionDuration();
+	// }, []);
 
 	useEffect(() => {
 		screenRecorder.setOnRecordingStatusChange((status) => {
@@ -715,7 +712,7 @@ const RemoteControlPage: React.FC = () => {
 					</p>
 					<p>
 						<span className="font-medium">Total session time left:</span>
-						<Countdown date={maxSessionDuration} />
+						<Countdown date={sessionEndDate} />
 					</p>
 				</div>
 

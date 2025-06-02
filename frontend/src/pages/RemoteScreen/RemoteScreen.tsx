@@ -94,12 +94,12 @@ const RemoteControlPage: React.FC = () => {
 	//}, [/*maxSessionDuration, */setMaxSessionDuration]);
 	}, [maxSessionDuration, setMaxSessionDuration]);
 
-	useEffect(() => {
+	/*useEffect(() => {
 		if (maxSessionDuration) {
 			console.log('Countdown timer initialized and actively updating:', maxSessionDuration);
 		}
-	}, [maxSessionDuration]);
-	
+	}, [maxSessionDuration]);*/
+
 	useEffect(() => {
 		screenRecorder.setOnRecordingStatusChange((status) => {
 			setRecordingStatus(status);

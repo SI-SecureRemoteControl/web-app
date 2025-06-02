@@ -4,7 +4,6 @@ import { websocketService, registerFileBrowserListener } from '../../services/we
 import { FolderOpen, FileText, ArrowLeft, Upload, Download, RefreshCw/*, Trash2 */ } from 'lucide-react';
 import axios from 'axios';
 import JSZip from "jszip";
-import { useSessionTimer } from '../../contexts/SessionTimerContext';
 import Countdown from 'react-countdown';
 
 const uploadUrl = import.meta.env.VITE_API_UPLOAD_URL;
@@ -45,8 +44,7 @@ const FileBrowser: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'files' | 'folder'>('files');
-
-  const { maxSessionDuration } = useSessionTimer();
+  const sessionEndDate = new Date(localStorage.getItem("session_end_time") ?? "");
 
   const requestBrowse = useCallback((path: string) => {
     console.log(`Sending browse_request for path: ${path} (deviceId: ${deviceId}, sessionId: ${sessionId})`);
@@ -360,16 +358,6 @@ const FileBrowser: React.FC = () => {
     setSelectedPaths([]);
   }, [currentPath]);
 
-  /*useEffect(() => {
-    // Ensure the timer persists across navigation
-    console.log('Session timer loaded:', maxSessionDuration);
-  }, [maxSessionDuration]);*/
-
-   useEffect(() => {
-    // Ensure the timer persists across navigation
-    console.log('Session timer loaded:', maxSessionDuration);
-  }, [maxSessionDuration]);
-
   const sortedEntries = [...entries].sort((a, b) => {
     if (a.type === b.type) {
       return a.name.localeCompare(b.name);
@@ -394,7 +382,7 @@ const FileBrowser: React.FC = () => {
         <div className="mt-6">
           <p>
             <span className="font-medium">Total session time left: </span>
-            <Countdown date={maxSessionDuration} />
+            <Countdown date={sessionEndDate} />
           </p>
         </div>
 

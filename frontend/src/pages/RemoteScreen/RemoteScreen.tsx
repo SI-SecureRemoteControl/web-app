@@ -92,7 +92,7 @@ const RemoteControlPage: React.FC = () => {
 
 		fetchMaxSessionDuration();
 	//}, [/*maxSessionDuration, */setMaxSessionDuration]);
-	}, [maxSessionDuration, setMaxSessionDuration]);
+	}, [setMaxSessionDuration]);
 
 	/*useEffect(() => {
 		if (maxSessionDuration) {

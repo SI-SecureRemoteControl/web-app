@@ -1,7 +1,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Loader2, CheckCircle, AlertTriangle, UserPlus } from 'lucide-react'; 
 
-const API_URL = import.meta.env.VITE_API_URL; 
+const API_URL = import.meta.env.VITE_BASE_URL; 
 
 interface AdminRegistrationResponse {
     message?: string;

@@ -31,7 +31,7 @@ export default function Login({handleLogin}: LoginProps) {
 
     async function handleSubmit() {
         const req: LoginRequest = {username: username, password: password};
-        const url: string = import.meta.env.VITE_API_URL + '/api/auth/login';
+        const url: string = import.meta.env.VITE_BASE_URL + '/api/auth/login';
         const headers = new Headers({'Content-Type': 'application/json'});
         const res: Response = await fetch(url, {
             method: 'POST',

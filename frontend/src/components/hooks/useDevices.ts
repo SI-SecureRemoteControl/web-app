@@ -37,7 +37,7 @@ export function useDevices(filters: DeviceFilters) {
                     params.append('networkType', filters.networkTypeFilter);
                 }
 
-                const url = import.meta.env.VITE_API_URL + `/api/devices?${params.toString()}`;
+                const url = import.meta.env.VITE_BASE_URL + `/api/devices?${params.toString()}`;
                 const res = await fetch(url);
 
                 if (!res.ok) {

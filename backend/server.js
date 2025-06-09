@@ -35,18 +35,29 @@ let db;
 
 let server;
 let useHttps = false;
-try {
-  const key = fs.readFileSync('./key.pem');
-  const cert = fs.readFileSync('./cert.pem');
-  server = https.createServer({ key, cert }, app).listen(port, () => {
-    console.log(`HTTPS Server running on port ${port}`);
-  });
-  useHttps = true;
-} catch (err) {
-  console.warn('Could not start HTTPS server, falling back to HTTP. Reason:', err.message);
+
+if (process.env.RENDER) {
+  // On Render, always use HTTP (Render terminates SSL)
   server = app.listen(port, () => {
-    console.log(`HTTP Server running on port ${port}`);
+    console.log(`HTTP Server running on port ${port} (Render)`);
   });
+  useHttps = false;
+} else {
+  // Local development: try HTTPS, fallback to HTTP
+  try {
+    const key = fs.readFileSync('./key.pem');
+    const cert = fs.readFileSync('./cert.pem');
+    server = https.createServer({ key, cert }, app).listen(port, () => {
+      console.log(`HTTPS Server running on port ${port}`);
+    });
+    useHttps = true;
+  } catch (err) {
+    console.warn('Could not start HTTPS server, falling back to HTTP. Reason:', err.message);
+    server = app.listen(port, () => {
+      console.log(`HTTP Server running on port ${port}`);
+    });
+    useHttps = false;
+  }
 }
 
 // stari ws server za db updates prema frontu

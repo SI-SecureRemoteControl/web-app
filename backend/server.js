@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken');
 const authorize = require('./services/authorization');
 const authenticateToken = require('./services/authenticateToken');
 const requireAdmin = require('./services/requireAdmin');
+const fs = require('fs');
+const https = require('https');
 const app = express();
 const port = process.env.PORT || 5000;
 const cors = require("cors");
@@ -27,9 +29,21 @@ app.use(express.json());
 
 let db;
 
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-});
+let server;
+let useHttps = false;
+try {
+  const key = fs.readFileSync('./key.pem');
+  const cert = fs.readFileSync('./cert.pem');
+  server = https.createServer({ key, cert }, app).listen(port, () => {
+    console.log(`HTTPS Server running on port ${port}`);
+  });
+  useHttps = true;
+} catch (err) {
+  console.warn('Could not start HTTPS server, falling back to HTTP. Reason:', err.message);
+  server = app.listen(port, () => {
+    console.log(`HTTP Server running on port ${port}`);
+  });
+}
 
 // stari ws server za db updates prema frontu
 const wssDbUpdates = new WebSocket.Server({ noServer: true });
@@ -48,7 +62,8 @@ const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda 
 
 server.on('upgrade', (request, socket, head) => {
 
-  const pathname = new URL(request.url, `http://${request.headers.host}`).pathname;
+  const protocol = useHttps ? 'https' : 'http';
+  const pathname = new URL(request.url, `${protocol}://${request.headers.host}`).pathname;
   console.log(`WebSocket upgrade request received for path: ${pathname}`);
 
   if (pathname === '/ws/db_updates') {

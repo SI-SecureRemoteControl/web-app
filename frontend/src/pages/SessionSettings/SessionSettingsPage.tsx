@@ -22,7 +22,7 @@ const SessionSettingsPage: React.FC = () => {
         setIsFetching(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/config`, {
+            const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL}/config`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ const SessionSettingsPage: React.FC = () => {
             const token = localStorage.getItem('token');
             console.log('Sending POST request to update-config with settings:', settingsToSave);
 
-            const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL || 'http://localhost:5000'}/update-config`, {
+            const response = await fetch(`${import.meta.env.VITE_COMM_LAYER_API_URL}/update-config`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

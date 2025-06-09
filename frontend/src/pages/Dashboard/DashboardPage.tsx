@@ -87,7 +87,7 @@ export default function DeviceDashboard() {
                 params.append('networkType', networkTypeFilter);
             }
 
-            const url: string = import.meta.env.VITE_BASE_URL + `/api/devices?${params.toString()}`;
+            const url: string = import.meta.env.VITE_API_URL + `/api/devices?${params.toString()}`;
             const headers = new Headers({ 'Content-Type': 'application/json' });
 
             const res: Response = await fetch(url, {
@@ -114,7 +114,7 @@ export default function DeviceDashboard() {
 
     const handleUnregister = async (device: Device) => {
         setSelectedDevice(device);
-        const url: string = import.meta.env.VITE_BASE_URL + `/devices/deregistration/${device.deviceId}`;
+        const url: string = import.meta.env.VITE_API_URL + `/devices/deregistration/${device.deviceId}`;
         const headers = new Headers({ 'Content-Type': 'application/json' });
 
         const res: Response = await fetch(url, {

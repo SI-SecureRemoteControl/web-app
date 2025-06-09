@@ -20,8 +20,9 @@ const { format } = require('date-fns');
 
 const corsOptions = {
   origin: [
-    'https://frontend-s9k3.onrender.com', // zamijeni s tvojim pravim frontend URL-om
-    'https://localhost:5173', // development
+    'https://frontend-s9k3.onrender.com',
+    'https://backend-wf7e.onrender.com',
+    'https://localhost:5173',
   ],
   credentials: true,
   optionSuccessStatus: 200,

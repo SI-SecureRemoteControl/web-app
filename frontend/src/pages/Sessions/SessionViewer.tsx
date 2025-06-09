@@ -36,7 +36,7 @@ const SessionViewer: React.FC<{ deviceId: string }> = ({ deviceId }) => {
         setLoading(true);
 
         axios
-            .get<ApiResponse>(`${import.meta.env.VITE_API_URL}/sessionview/${deviceId}?page=${page}&limit=1`)
+            .get<ApiResponse>(`${import.meta.env.VITE_BASE_URL}/sessionview/${deviceId}?page=${page}&limit=1`)
             .then((res) => {
                 const filtered = res.data.sessionLogs
                     .filter(log => log.status !== 'pending')

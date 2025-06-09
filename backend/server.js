@@ -36,7 +36,7 @@ let db;
 let server;
 let useHttps = false;
 
-if (process.env.RENDER) {
+if (process.env.RENDER == 'true') {
   // On Render, always use HTTP (Render terminates SSL)
   server = app.listen(port, () => {
     console.log(`HTTP Server running on port ${port} (Render)`);

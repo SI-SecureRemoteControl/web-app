@@ -23,6 +23,12 @@ const corsOptions = {
     'https://frontend-s9k3.onrender.com',
     'https://backend-wf7e.onrender.com',
     'https://localhost:5173',
+    'https://localhost:5000',
+    'https://localhost:8080',
+    'https://localhost:9000',
+    'http://localhost:9000',
+
+
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -36,29 +42,70 @@ let db;
 let server;
 let useHttps = false;
 
-if (process.env.RENDER == 'true') {
-  // On Render, always use HTTP (Render terminates SSL)
-  server = app.listen(port, () => {
-    console.log(`HTTP Server running on port ${port} (Render)`);
+// Only start the server after DB is connected
+connectDB()
+  .then((database) => {
+    db = database;
+
+    if (process.env.USE_LOCAL_DB !== "true") {
+      setupChangeStream();
+      console.log("setup");
+    }
+
+    if (process.env.RENDER === 'true') {
+      // On Render, always use HTTP (Render terminates SSL)
+      server = app.listen(port, () => {
+        console.log(`HTTP Server running on port ${port} (Render)`);
+      });
+      useHttps = false;
+    } else {
+      // Local development: try HTTPS, fallback to HTTP
+      try {
+        const key = fs.readFileSync('./key.pem');
+        const cert = fs.readFileSync('./cert.pem');
+        server = https.createServer({ key, cert }, app).listen(port, () => {
+          console.log(`HTTPS Server running on port ${port}`);
+        });
+        useHttps = true;
+      } catch (err) {
+        console.warn('Could not start HTTPS server, falling back to HTTP. Reason:', err.message);
+        server = app.listen(port, () => {
+          console.log(`HTTP Server running on port ${port}`);
+        });
+        useHttps = false;
+      }
+    }
+
+    // Move WebSocket server setup here, after server is created
+    server.on('upgrade', (request, socket, head) => {
+      const protocol = useHttps ? 'https' : 'http';
+      const pathname = new URL(request.url, `${protocol}://${request.headers.host}`).pathname;
+      console.log(`WebSocket upgrade request received for path: ${pathname}`);
+
+      if (pathname === '/ws/db_updates') {
+        wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
+          wssDbUpdates.emit('connection', ws, request);
+        });
+      }
+      else if (pathname === '/ws/control/frontend') {
+        wssControl.handleUpgrade(request, socket, head, (ws) => {
+          wssControl.emit('connection', ws, request, 'frontend');
+        });
+      }
+      else if (pathname === '/ws/control/comm') {
+        wssComm.handleUpgrade(request, socket, head, (ws) => {
+          wssComm.emit('connection', ws, request, 'comm');
+        });
+      }
+      else {
+        console.log(`WebSocket connection rejected for unknown path: ${pathname}`);
+        socket.destroy();
+      }
+    });
+  })
+  .catch((err) => {
+    process.exit(1);
   });
-  useHttps = false;
-} else {
-  // Local development: try HTTPS, fallback to HTTP
-  try {
-    const key = fs.readFileSync('./key.pem');
-    const cert = fs.readFileSync('./cert.pem');
-    server = https.createServer({ key, cert }, app).listen(port, () => {
-      console.log(`HTTPS Server running on port ${port}`);
-    });
-    useHttps = true;
-  } catch (err) {
-    console.warn('Could not start HTTPS server, falling back to HTTP. Reason:', err.message);
-    server = app.listen(port, () => {
-      console.log(`HTTP Server running on port ${port}`);
-    });
-    useHttps = false;
-  }
-}
 
 // stari ws server za db updates prema frontu
 const wssDbUpdates = new WebSocket.Server({ noServer: true });
@@ -74,37 +121,6 @@ const controlSessions = new Map();
 const commLayerClients = new Set();
 
 const CONTROL_REQUEST_TIMEOUT = 30000; // 30 sekundi za timeout requesta, mozda izmijenit
-
-server.on('upgrade', (request, socket, head) => {
-
-  const protocol = useHttps ? 'https' : 'http';
-  const pathname = new URL(request.url, `${protocol}://${request.headers.host}`).pathname;
-  console.log(`WebSocket upgrade request received for path: ${pathname}`);
-
-  if (pathname === '/ws/db_updates') {
-
-    wssDbUpdates.handleUpgrade(request, socket, head, (ws) => {
-      wssDbUpdates.emit('connection', ws, request);
-    });
-  }
-  else if (pathname === '/ws/control/frontend') {
-
-    wssControl.handleUpgrade(request, socket, head, (ws) => {
-      wssControl.emit('connection', ws, request, 'frontend');
-    });
-  }
-  else if (pathname === '/ws/control/comm') {
-    // TODO: Add Comm Layer specific authentication/validation if needed here
-    wssComm.handleUpgrade(request, socket, head, (ws) => {
-      wssComm.emit('connection', ws, request, 'comm');
-    });
-  }
-  else {
-
-    console.log(`WebSocket connection rejected for unknown path: ${pathname}`);
-    socket.destroy();
-  }
-})
 
 // prvi server
 wssDbUpdates.on('connection', (ws, req) => {
@@ -1015,15 +1031,3 @@ app.get('/sessionview/:deviceId', async (req, res) => {
     res.status(500).json({ error: 'Internal server error', details: err.message });
   }
 });
-connectDB()
-  .then((database) => {
-    db = database;
-
-    if (process.env.USE_LOCAL_DB !== "true") {
-      setupChangeStream();
-      console.log("setup");
-    }
-  })
-  .catch((err) => {
-    process.exit(1);
-  });

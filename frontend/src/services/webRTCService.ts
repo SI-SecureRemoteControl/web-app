@@ -41,8 +41,17 @@ class WebRTCService {
   private initializePeerConnection() {
     this.peerConnection = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-      ],
+      
+    {
+      urls:'turn:edinspi.duckdns.org:3478',
+      username: 'edinhg',
+      credential: '$i6u3#aSi4r@',
+    },
+      { 
+        urls: 'stun:edinspi.duckdns.org:3478', // Use 'turn:' or 'turns:' (not https)
+      
+      },
+    ],
     });
 
     // Dodajte transceiver za video (receive-only)

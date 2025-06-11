@@ -81,7 +81,8 @@ const connectWebSocket = (
     newSocket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        listeners.forEach(listener => {
+        const listeneriIspravni = socketVar === 'controlSocket' ? controlMessageListeners : dbMessageListeners;
+        listeneriIspravni.forEach(listener => {
           try {
             listener(data);
           } catch (err) {
@@ -99,8 +100,8 @@ const connectWebSocket = (
 
     newSocket.onclose = (event) => {
       console.log(`WebSocket (${pathSuffix}): Connection closed. Clean: ${event.wasClean}, Code: ${event.code}, Reason: ${event.reason}`);
-
-      listeners.forEach(listener => {
+      let listeneriIspravni = socketVar === 'controlSocket' ? controlMessageListeners : dbMessageListeners;
+      listeneriIspravni.forEach(listener => {
         try {
           listener({ type: 'connection_status', connected: false, socketType: socketVar });
         } catch (err) {

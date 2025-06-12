@@ -475,6 +475,31 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     }
   }, [state.activeSession, state.notification, navigate]);
 
+  // Auto-disconnect and navigate to dashboard on terminate_session
+  useEffect(() => {
+    // If backend triggers terminate_session, auto-disconnect and navigate
+    if (
+      state.notification &&
+      state.notification.type === 'error' &&
+      state.notification.message &&
+      (
+        state.notification.message.includes('terminate_session') ||
+        state.notification.message.includes('završena') ||
+        state.notification.message.includes('terminated')
+      )
+    ) {
+      // Call terminateSession if session is still active
+      if (state.activeSession) {
+        // Use a ref to avoid closure issues
+        stateRef.current.activeSession && terminateSession(stateRef.current.activeSession.sessionId);
+      } else {
+        // If already cleared, just navigate
+        navigate('/dashboard');
+        window.location.reload();
+      }
+    }
+  }, [state.notification, state.activeSession, navigate]);
+
   // Context Actions
   const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {
     console.log('Accepting request:', { requestId, deviceId, deviceName, sessionId });

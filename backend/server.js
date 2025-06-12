@@ -99,6 +99,7 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
+  console.log('[DB_UPDATE] Broadcasting DB update:', JSON.stringify(data));
   const message = JSON.stringify({ type: 'db_change', ...data });
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
@@ -112,6 +113,7 @@ function setupChangeStream() {
   const changeStream = devicesCollection.watch();
 
   changeStream.on('change', (change) => {
+    console.log('[DB_CHANGE_STREAM] Change detected:', JSON.stringify(change));
     broadcastDbUpdate({
       change,
     });
@@ -207,6 +209,8 @@ wssComm.on('connection', (ws) => {
         handleCommLayerInactiveDisconnect(parsedMessage);
       } else if (parsedMessage.type === 'session_expired') { 
         handleCommLayerSessionExpired(parsedMessage);
+      } else if (parsedMessage.type === 'terminate_session') { 
+        handleCommLayerDisconnect(parsedMessage);
       }else {
         console.log('Received unknown message type from Comm Layer:', parsedMessage.type);
       }
@@ -669,6 +673,28 @@ function handleBrowseResponse(message) {
     path,
     entries: entries || []
   });
+}
+
+
+function handleCommLayerDisconnect(message) {
+  const { sessionId, deviceId } = message; 
+
+  if (!sessionId) {
+    console.error('[Disconnect] Message missing sessionId:', message);
+    return;
+  }
+
+  const session = controlSessions.get(sessionId);
+  console.log(`Comm Layer reported disconnect from device for session ${sessionId}. Terminating.`);
+
+  broadcastToControlFrontend({
+    type: 'control_status_update',
+    sessionId: sessionId,
+    deviceId: session && session.device ? session.device.deviceId : deviceId, 
+    status: 'terminate_session', 
+    message: 'The session has been terminated by android.' 
+  });
+  cleanupSession(sessionId, 'ANDROID_DISCONNECT');
 }
 
 function handleCommLayerInactiveDisconnect(message) {

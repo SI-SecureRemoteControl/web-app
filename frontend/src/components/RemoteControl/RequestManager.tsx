@@ -16,6 +16,13 @@ export const RequestManager: React.FC = () => {
     }
   };
   
+  // Auto-disconnect effect: call handleDisconnect when session is terminated by backend
+  React.useEffect(() => {
+    if (activeSession && activeSession.status === 'error') {
+      handleDisconnect();
+    }
+  }, [activeSession]);
+  
   return (
     <>
       {currentRequest && (

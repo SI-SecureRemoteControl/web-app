@@ -162,9 +162,18 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           navigateToWebRTC: false, 
         };
       }
+      else if (backendStatus === 'terminate_session' && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+        console.log(`Context Reducer: Received 'terminate_session' for active session ${payloadSessionId}. Setting trigger.`);
+        return {
+          ...state,
+          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena zbog toga sto je ugasena od androida.` },
+          triggerAutomaticTermination: payloadSessionId, 
+          navigateToWebRTC: false, 
+        };
+      }
 
       //INACTIVITY_REPORTED_BY_COMM
-      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect', 'session_expired'].includes(backendStatus);
+      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect', 'session_expired', 'terminate_session'].includes(backendStatus);
       if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
         // Clear persisted session on terminal
@@ -447,6 +456,49 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     }*/
   }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, navigate]);
 
+  // NEW: Navigate to dashboard after session is terminated by backend (e.g., terminate_session)
+  useEffect(() => {
+    // If session is cleared and last notification is terminal, go to dashboard
+    if (
+      state.activeSession === null &&
+      state.notification &&
+      state.notification.type === 'error' &&
+      state.notification.message &&
+      (
+        state.notification.message.includes('završena') ||
+        state.notification.message.includes('terminated')
+      )
+    ) {
+      console.log('Session terminated by backend, navigating to dashboard.');
+      navigate('/dashboard');
+      window.location.reload();
+    }
+  }, [state.activeSession, state.notification, navigate]);
+
+  // Auto-disconnect and navigate to dashboard on terminate_session
+  useEffect(() => {
+    // If backend triggers terminate_session, auto-disconnect and navigate
+    if (
+      state.notification &&
+      state.notification.type === 'error' &&
+      state.notification.message &&
+      (
+        state.notification.message.includes('terminate_session') ||
+        state.notification.message.includes('završena') ||
+        state.notification.message.includes('terminated')
+      )
+    ) {
+      // Call terminateSession if session is still active
+      if (state.activeSession) {
+        // Use a ref to avoid closure issues
+        stateRef.current.activeSession && terminateSession(stateRef.current.activeSession.sessionId);
+      } else {
+        // If already cleared, just navigate
+        navigate('/dashboard');
+        window.location.reload();
+      }
+    }
+  }, [state.notification, state.activeSession, navigate]);
 
   // Context Actions
   const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {

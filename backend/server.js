@@ -688,7 +688,7 @@ function handleCommLayerDisconnect(message) {
   broadcastToControlFrontend({
     type: 'control_status_update',
     sessionId: sessionId,
-    deviceId: session.device?.deviceId || deviceId, 
+    deviceId: session && session.device ? session.device.deviceId : deviceId, 
     status: 'terminate_session', 
     message: 'The session has been terminated by android.' 
   });

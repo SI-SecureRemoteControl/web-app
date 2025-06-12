@@ -683,18 +683,6 @@ function handleCommLayerDisconnect(message) {
   }
 
   const session = controlSessions.get(sessionId);
-  if (!session) {
-    console.warn(`[Disconnect] Session ${sessionId} not found or already terminated.`);
-    broadcastToControlFrontend({
-      type: 'control_status_update',
-      sessionId: sessionId,
-      deviceId: deviceId, 
-      status: 'terminated_not_found', 
-      message: `Attempted to terminate session ${sessionId}, but it was not found.`
-    });
-    return;
-  }
-
   console.log(`Comm Layer reported disconnect from device for session ${sessionId}. Terminating.`);
 
   broadcastToControlFrontend({

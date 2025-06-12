@@ -456,6 +456,24 @@ export function RemoteControlProvider({ children }: { children: React.ReactNode 
     }*/
   }, [state.navigateToWebRTC, state.currentDeviceId, state.currentSessionId, navigate]);
 
+  // NEW: Navigate to dashboard after session is terminated by backend (e.g., terminate_session)
+  useEffect(() => {
+    // If session is cleared and last notification is terminal, go to dashboard
+    if (
+      state.activeSession === null &&
+      state.notification &&
+      state.notification.type === 'error' &&
+      state.notification.message &&
+      (
+        state.notification.message.includes('završena') ||
+        state.notification.message.includes('terminated')
+      )
+    ) {
+      console.log('Session terminated by backend, navigating to dashboard.');
+      navigate('/dashboard');
+      window.location.reload();
+    }
+  }, [state.activeSession, state.notification, navigate]);
 
   // Context Actions
   const acceptRequest = (requestId: string, deviceId: string, deviceName: string, sessionId: string) => {

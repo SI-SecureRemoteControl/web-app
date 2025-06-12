@@ -99,6 +99,7 @@ wssDbUpdates.on('connection', (ws, req) => {
 });
 
 function broadcastDbUpdate(data) {
+  console.log('[DB_UPDATE] Broadcasting DB update:', JSON.stringify(data));
   const message = JSON.stringify({ type: 'db_change', ...data });
   for (const client of dbUpdateClients) {
     if (client.readyState === WebSocket.OPEN) {
@@ -112,6 +113,7 @@ function setupChangeStream() {
   const changeStream = devicesCollection.watch();
 
   changeStream.on('change', (change) => {
+    console.log('[DB_CHANGE_STREAM] Change detected:', JSON.stringify(change));
     broadcastDbUpdate({
       change,
     });

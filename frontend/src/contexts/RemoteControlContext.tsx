@@ -162,9 +162,18 @@ function reducer(state: RemoteControlState, action: RemoteControlAction): Remote
           navigateToWebRTC: false, 
         };
       }
+      else if (backendStatus === 'terminate_session' && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
+        console.log(`Context Reducer: Received 'terminate_session' for active session ${payloadSessionId}. Setting trigger.`);
+        return {
+          ...state,
+          notification: { type: 'error', message: payloadMessage || `Sesija ${payloadSessionId} završena zbog toga sto je ugasena od androida.` },
+          triggerAutomaticTermination: payloadSessionId, 
+          navigateToWebRTC: false, 
+        };
+      }
 
       //INACTIVITY_REPORTED_BY_COMM
-      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect', 'session_expired'].includes(backendStatus);
+      const isTerminal = ['failed', 'rejected', 'timed_out', 'disconnected', 'terminated', 'terminated_by_admin', 'terminated_not_found', 'inactive_disconnect', 'session_expired', 'terminate_session'].includes(backendStatus);
       if (isTerminal && state.activeSession && state.activeSession.sessionId === payloadSessionId) {
         console.log(`Context Reducer: Clearing active session ${payloadSessionId} due to terminal status: ${backendStatus}`);
         // Clear persisted session on terminal
